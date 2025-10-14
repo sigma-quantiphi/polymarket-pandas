@@ -1,0 +1,29 @@
+[project]
+name = "polymarket-pandas"
+version = "0.1.0"
+description = "Pandas API client to Polymarket"
+authors = [
+    {name = "Sigma Quantiphi", email = "contact@sqphi.com"}
+]
+license = "Apache-2.0"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "cachetools (>=6.0.0,<7.0.0)",
+    "httpx (>=0.28.1,<1.0.0)",
+    "pandas[computation, output-formatting, performance] (>=2.2.3,<3.0.0)",
+    "pandera (>=0.22.1,<1.0.0)",
+]
+
+[project.urls]
+homepage = "https://github.com/sigma-quantiphi/polymarket-pandas"
+repository = "https://github.com/sigma-quantiphi/polymarket-pandas"
+documentation = "https://github.com/sigma-quantiphi/polymarket-pandas"
+
+[tool.poetry]
+include = ["polymarket_pandas/*"]
+exclude = ["binder/*", "dist/*", "docs/*", "examples/*", "tests/*", ".env"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
