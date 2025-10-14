@@ -17,8 +17,11 @@ orderbook_meta = [
 def filter_params(params: dict) -> dict:
     new_params = {}
     for key, value in params.items():
-        if pd.notnull(value):
-            new_params[key] = value
+        if value:
+            if isinstance(value, list):
+                new_params[key] = value
+            elif pd.notnull(value):
+                new_params[key] = value
     return new_params
 
 
@@ -182,7 +185,7 @@ class PolymarketPandas:
         self,
         limit: int | None = 500,
         offset: int | None = None,
-        order: str | None = None,
+        order: list[str] | None = None,
         ascending: bool | None = None,
         id: list[int] | None = None,
         slug: list[str] | None = None,
@@ -308,7 +311,7 @@ class PolymarketPandas:
 
 if __name__ == "__main__":
     client = PolymarketPandas()
-    markets = client.get_markets(order=["volume"], ascending=False)
+    markets = client.get_markets(order=["volume", "volume24hrAmm"], ascending=False)
     print(markets.loc[0])
     teams = client.get_teams()
     print(teams)
