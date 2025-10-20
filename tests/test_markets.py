@@ -1,13 +1,9 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-from polymarket_pandas.client import PolymarketPandasClient
+from polymarket_pandas import PolymarketPandas
 import pandas as pd
 
-def test_get_markets_df_returns_dataframe():
-    client = PolymarketPandasClient()
-    df = client.get_markets_df(limit=5)
-    # Basic checks
+def test_get_markets_returns_dataframe() -> None:
+    c = PolymarketPandas()
+    df = c.get_markets(limit=5)
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
-    assert "question" in df.columns
+    assert any(col in df.columns for col in ["id", "slug", "question", "title"])

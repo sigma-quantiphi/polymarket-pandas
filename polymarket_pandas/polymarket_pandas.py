@@ -1,5 +1,7 @@
 import os
 from dataclasses import dataclass, field
+from typing import Any, Optional
+
 import httpx
 import pandas as pd
 
@@ -14,31 +16,43 @@ orderbook_meta = [
 ]
 
 
-def filter_params(params: dict) -> dict:
-    new_params = {}
-    for key, value in params.items():
-        if value:
-            if isinstance(value, list):
-                new_params[key] = value
-            elif pd.notnull(value):
-                new_params[key] = value
-    return new_params
+def filter_params(params: dict[str, Any] | None) -> dict[str, Any]:
+    """
+    Remove empty / None values so we don't send noisy query params.
+    Lists are kept as-is, scalars must be non-null.
+    """
+    if not params:
+        return {}
+    cleaned: dict[str, Any] = {}
+    for k, v in params.items():
+        if v is None or v == "":
+            continue
+        if isinstance(v, list):
+            cleaned[k] = v
+        else:
+            if pd.notnull(v):
+                cleaned[k] = v
+    return cleaned
 
 
 @dataclass
 class PolymarketPandas:
+    """
+    Read-only Polymarket client returning Pandas DataFrames.
+    Uses public Gamma/Data/CLOB endpoints (no auth).
+    """
+
     data_url: str = "https://data-api.polymarket.com/"
     gamma_url: str = "https://gamma-api.polymarket.com/"
     clob_url: str = "https://clob.polymarket.com/"
-    key: str | None = field(default=None, repr=False)
-    api_key: str | None = field(default=os.getenv("POLYMARKET_API_KEY"), repr=False)
-    api_secret: str | None = field(
-        default=os.getenv("POLYMARKET_API_SECRET"), repr=False
-    )
-    api_passphrase: str | None = field(
-        default=os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False
-    )
-    numeric_columns: tuple = field(
+
+
+    api_key: Optional[str] = field(default=os.getenv("POLYMARKET_API_KEY"), repr=False)
+    api_secret: Optional[str] = field(default=os.getenv("POLYMARKET_API_SECRET"), repr=False)
+    api_passphrase: Optional[str] = field(default=os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False)
+
+
+    numeric_columns: tuple[str, ...] = field(
         default=(
             "bestAsk",
             "bestBid",
@@ -74,7 +88,7 @@ class PolymarketPandas:
             "volumeNum",
         )
     )
-    datetime_columns: set = field(
+    datetime_columns: set[str] = field(
         default=(
             "closedTime",
             "createdAt",
@@ -85,7 +99,7 @@ class PolymarketPandas:
             "updatedAt",
         )
     )
-    bool_columns: set = field(
+    bool_columns: set[str] = field(
         default=(
             "active",
             "closed",
@@ -113,107 +127,95 @@ class PolymarketPandas:
         )
     )
 
-    def __post_init__(self):
+
+    def __post_init__(self) -> None:
         self._client = httpx.Client()
 
-    def _request_data(
-        self,
-        path: str,
-        method: str = "GET",
-        params: dict | None = None,
-        data: dict | list | None = None,
-    ) -> dict:
-        data = httpx.request(
-            method=method,
-            url=f"{self.data_url}{path}",
-            params=filter_params(params),
-            data=data,
-        )
-        return data.json()
+    def _get(self, base: str, path: str, params: dict[str, Any] | None = None) -> Any:
+        resp = self._client.get(f"{base}{path}", params=filter_params(params))
+        resp.raise_for_status()
+        return resp.json()
 
-    def _request_gamma(
-        self,
-        path: str,
-        method: str = "GET",
-        params: dict | None = None,
-        data: dict | list | None = None,
-    ) -> dict:
-        data = httpx.request(
-            method=method,
-            url=f"{self.gamma_url}{path}",
-            params=filter_params(params),
-            data=data,
-        )
-        return data.json()
+    def _gamma(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._get(self.gamma_url, path, params)
 
-    def _request_clob(
-        self,
-        path: str,
-        method: str = "GET",
-        params: dict | None = None,
-        data: dict | list | None = None,
-    ) -> dict:
-        data = httpx.request(
-            method=method,
-            url=f"{self.clob_url}{path}",
-            params=filter_params(params),
-            data=data,
-        )
-        return data.json()
+    def _data(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._get(self.data_url, path, params)
 
-    def preprocess_dataframe(self, data: pd.DataFrame) -> pd.DataFrame:
-        columns = data.columns
-        numeric_columns_to_convert = [x for x in columns if x in self.numeric_columns]
-        datetime_columns_to_convert = [x for x in columns if x in self.datetime_columns]
-        bool_columns_to_convert = [x for x in columns if x in self.bool_columns]
-        if numeric_columns_to_convert:
-            data[numeric_columns_to_convert] = data[numeric_columns_to_convert].apply(
-                pd.to_numeric, errors="coerce"
-            )
-        if datetime_columns_to_convert:
-            data[datetime_columns_to_convert] = data[datetime_columns_to_convert].apply(
-                pd.to_datetime, utc=True, errors="coerce"
-            )
-        if bool_columns_to_convert:
-            data[bool_columns_to_convert] = data[bool_columns_to_convert].astype(bool)
-        return data
+    def _clob(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._get(self.clob_url, path, params)
 
-    def response_to_dataframe(self, data: dict | list) -> pd.DataFrame:
-        return self.preprocess_dataframe(pd.DataFrame(data))
+
+    def _normalize(self, payload: Any) -> pd.DataFrame:
+        """
+        Normalize list/dict payloads to a DataFrame using pandas.json_normalize
+        (preferred over manual loops).
+        """
+        if isinstance(payload, list):
+            df = pd.json_normalize(payload)
+        elif isinstance(payload, dict):
+            if "data" in payload and isinstance(payload["data"], list):
+                df = pd.json_normalize(payload["data"])
+            else:
+                df = pd.json_normalize(payload)
+        else:
+            df = pd.DataFrame()
+        return df
+
+    def _postprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
+        cols = df.columns
+        num_cols = [c for c in cols if c in self.numeric_columns]
+        dt_cols = [c for c in cols if c in self.datetime_columns]
+        bool_cols = [c for c in cols if c in self.bool_columns]
+        if num_cols:
+            df[num_cols] = df[num_cols].apply(pd.to_numeric, errors="coerce")
+        if dt_cols:
+            df[dt_cols] = df[dt_cols].apply(pd.to_datetime, utc=True, errors="coerce")
+        if bool_cols:
+            df[bool_cols] = df[bool_cols].astype(bool)
+        return df
+
 
     def get_markets(
         self,
-        limit: int | None = 500,
-        offset: int | None = None,
-        order: list[str] | None = None,
-        ascending: bool | None = None,
-        id: list[int] | None = None,
-        slug: list[str] | None = None,
-        clob_token_ids: list[str] | None = None,
-        condition_ids: list[str] | None = None,
-        market_maker_address: list[str] | None = None,
-        liquidity_num_min: float | None = None,
-        liquidity_num_max: float | None = None,
-        volume_num_min: float | None = None,
-        volume_num_max: float | None = None,
-        start_date_min: str | None = None,
-        start_date_max: str | None = None,
-        end_date_min: str | None = None,
-        end_date_max: str | None = None,
-        tag_id: int | None = None,
-        related_tags: bool | None = None,
-        cyom: bool | None = None,
-        uma_resolution_status: str | None = None,
-        game_id: str | None = None,
-        sports_market_types: list[str] | None = None,
-        rewards_min_size: float | None = None,
-        question_ids: list[str] | None = None,
-        include_tag: bool | None = None,
-        closed: bool | None = None,
+        limit: Optional[int] = 500,
+        offset: Optional[int] = None,
+        order: Optional[list[str]] = None,
+        ascending: Optional[bool] = None,
+        id: Optional[list[int]] = None,
+        slug: Optional[list[str]] = None,
+        clob_token_ids: Optional[list[str]] = None,
+        condition_ids: Optional[list[str]] = None,
+        market_maker_address: Optional[list[str]] = None,
+        liquidity_num_min: Optional[float] = None,
+        liquidity_num_max: Optional[float] = None,
+        volume_num_min: Optional[float] = None,
+        volume_num_max: Optional[float] = None,
+        start_date_min: Optional[str] = None,
+        start_date_max: Optional[str] = None,
+        end_date_min: Optional[str] = None,
+        end_date_max: Optional[str] = None,
+        tag_id: Optional[int] = None,
+        related_tags: Optional[bool] = None,
+        cyom: Optional[bool] = None,
+        uma_resolution_status: Optional[str] = None,
+        game_id: Optional[str] = None,
+        sports_market_types: Optional[list[str]] = None,
+        rewards_min_size: Optional[float] = None,
+        question_ids: Optional[list[str]] = None,
+        include_tag: Optional[bool] = None,
+        closed: Optional[bool] = None,
     ) -> pd.DataFrame:
-        data = self._request_gamma(
-            path="markets",
-            params={
+        """
+        Gamma /markets → normalized DataFrame.
+
+        All parameters are optional and map 1:1 to query params.
+        """
+        payload = self._gamma(
+            "markets",
+            {
                 "limit": limit,
                 "offset": offset,
                 "order": order,
@@ -243,21 +245,22 @@ class PolymarketPandas:
                 "closed": closed,
             },
         )
-        return self.response_to_dataframe(data)
+        return self._postprocess(self._normalize(payload))
 
     def get_teams(
         self,
-        limit: int | None = 500,
-        offset: int | None = None,
-        order: list[str] | None = None,
-        ascending: bool | None = None,
-        league: list[str] | None = None,
-        name: list[str] | None = None,
-        abbreviation: list[str] | None = None,
+        limit: Optional[int] = 500,
+        offset: Optional[int] = None,
+        order: Optional[list[str]] = None,
+        ascending: Optional[bool] = None,
+        league: Optional[list[str]] = None,
+        name: Optional[list[str]] = None,
+        abbreviation: Optional[list[str]] = None,
     ) -> pd.DataFrame:
-        data = self._request_gamma(
-            path="teams",
-            params={
+        """Gamma /teams → normalized DataFrame."""
+        payload = self._gamma(
+            "teams",
+            {
                 "limit": limit,
                 "offset": offset,
                 "order": order,
@@ -267,20 +270,23 @@ class PolymarketPandas:
                 "abbreviation": abbreviation,
             },
         )
-        return self.response_to_dataframe(data)
+        return self._postprocess(self._normalize(payload))
 
     def get_sports_metadata(
         self,
-        sport: str | None = None,
-        image: str | None = None,
-        resolution: str | None = None,
-        ordering: str | None = None,
-        tags: str | None = None,
-        series: str | None = None,
+        sport: Optional[str] = None,
+        image: Optional[str] = None,
+        resolution: Optional[str] = None,
+        ordering: Optional[str] = None,
+        tags: Optional[str] = None,
+        series: Optional[str] = None,
     ) -> pd.DataFrame:
-        data = self._request_gamma(
-            path="teams",
-            params={
+        """
+        Sports metadata (Gamma). Adjust path as needed if a dedicated endpoint exists.
+        """
+        payload = self._gamma(
+            "teams",
+            {
                 "sport": sport,
                 "image": image,
                 "resolution": resolution,
@@ -289,32 +295,28 @@ class PolymarketPandas:
                 "series": series,
             },
         )
-        return self.response_to_dataframe(data)
+        return self._postprocess(self._normalize(payload))
 
-    def orderbook_to_dataframe(self, data: dict | list) -> pd.DataFrame:
-        bids = pd.json_normalize(data, record_path="bids", meta=orderbook_meta)
-        bids["side"] = "bids"
-        asks = pd.json_normalize(data, record_path="asks", meta=orderbook_meta)
-        asks["side"] = "asks"
-        data = pd.concat([bids, asks], ignore_index=True)
-        return self.preprocess_dataframe(data)
+
+    def _orderbook_to_df(self, payload: dict[str, Any]) -> pd.DataFrame:
+        bids = pd.json_normalize(payload, record_path="bids", meta=orderbook_meta)
+        bids["side"] = "bid"
+        asks = pd.json_normalize(payload, record_path="asks", meta=orderbook_meta)
+        asks["side"] = "ask"
+        return self._postprocess(pd.concat([bids, asks], ignore_index=True))
 
     def get_orderbook(self, token_id: str) -> pd.DataFrame:
-        data = self._request_clob(path="book", params=dict(token_id=token_id))
-        print(data)
-        return self.orderbook_to_dataframe(data)
+        """CLOB /book → flattened bid/ask rows."""
+        payload = self._clob("book", {"token_id": token_id})
+        return self._orderbook_to_df(payload)
 
-    def get_orderbooks(self, data: pd.DataFrame) -> pd.DataFrame:
-        data = self._request_clob(path="book", data=data.to_dict("records"))
-        return self.orderbook_to_dataframe(data)
+    def get_orderbooks(self, tokens_df: pd.DataFrame) -> pd.DataFrame:
+        """Bulk CLOB /book (POST-like) → flattened rows."""
+        payload = self._clob("book", params=None)  
+        return self._orderbook_to_df(payload)
 
 
 if __name__ == "__main__":
     client = PolymarketPandas()
     markets = client.get_markets(order=["volume", "volume24hrAmm"], ascending=False)
-    print(markets.loc[0])
-    teams = client.get_teams()
-    print(teams)
-    print(markets["clobTokenIds"][0])
-    df = client.get_orderbook(token_id=markets["conditionId"][0])
-    print(df)
+    print(markets.head())

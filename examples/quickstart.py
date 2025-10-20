@@ -1,5 +1,9 @@
-from polymarket_pandas.client import PolymarketPandasClient
+from polymarket_pandas.polymarket_pandas import PolymarketPandas
 
-client = PolymarketPandasClient()
-df = client.get_markets_df(limit=20)
-print(df.head())
+def main() -> None:
+    client = PolymarketPandas()
+    df = client.get_markets(limit=20)
+    print(df.head())
+
+if __name__ == "__main__":
+    main()
