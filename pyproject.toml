@@ -7,9 +7,10 @@ authors = [
 ]
 license = "Apache-2.0"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "<4,>=3.11"
 dependencies = [
     "cachetools (>=6.0.0,<7.0.0)",
+    "eth-account (>=0.13.7,<0.14.0)",
     "httpx (>=0.28.1,<1.0.0)",
     "pandas[computation, output-formatting, performance] (>=2.2.3,<3.0.0)",
     "pandera (>=0.22.1,<1.0.0)",
