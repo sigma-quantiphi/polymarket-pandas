@@ -6,9 +6,8 @@ import pandas as pd
 import time
 
 
-def _parse_params(params: dict) -> dict:
-    """Parse parameters for API requests."""
-    if params:
+def filter_params(params: dict) -> dict:
+    if params is not None:
         new_params = {}
         for key, value in params.items():
             if value:
@@ -16,21 +15,7 @@ def _parse_params(params: dict) -> dict:
                     value, pd.Timestamp
                 ):
                     value = value.isoformat() + "Z"
-                new_params[key] = value
-        return new_params
-    else:
-        return params
-
-
-def filter_params(params: dict) -> dict:
-    if params is not None:
-        new_params = {}
-        for key, value in params.items():
-            if value:
-                if isinstance(value, list):
-                    new_params[key] = value
-                elif pd.notnull(value):
-                    new_params[key] = value
+            new_params[key] = value
         params = new_params
     return params
 
