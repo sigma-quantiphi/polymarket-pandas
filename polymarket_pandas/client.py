@@ -6,13 +6,20 @@ import os
 import time
 from dataclasses import dataclass, field
 import httpx
+
+import orjson
 import pandas as pd
+from pandas import DataFrame
 from tqdm import tqdm
 from dotenv import load_dotenv
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 
-from polymarket_pandas.utils import filter_params
+from polymarket_pandas.utils import (
+    filter_params,
+    snake_columns_to_camel,
+    snake_to_camel,
+)
 
 orderbook_meta = [
     "market",
@@ -25,6 +32,15 @@ orderbook_meta = [
 ]
 load_dotenv()
 
+
+def markets_to_dict(data: pd.DataFrame) -> list:
+    data = (
+        data.rename(columns={"clobTokenIds": "token_id"})
+        .reindex(columns=["token_id", "side"])
+        .to_dict("records")
+    )
+    data = [filter_params(x) for x in data]
+    return data
 
 
 @dataclass
@@ -56,17 +72,25 @@ class PolymarketPandas:
         default=(
             "bestAsk",
             "bestBid",
+            "best_ask",
+            "best_bid",
+            "fee_rate_bps",
+            "full_accuracy_value",
             "lastTradePrice",
             "liquidity",
             "liquidityAmm",
             "liquidityNum",
             "lowerBound",
+            "matched_amount",
             "min_order_size",
+            "new_tick_size",
+            "old_tick_size",
             "oneDayPriceChange",
             "oneHourPriceChange",
             "oneMonthPriceChange",
             "oneWeekPriceChange",
             "oneYearPriceChange",
+            "original_size",
             "price",
             "rewardsMaxSpread",
             "rewardsMinSize",
@@ -88,48 +112,78 @@ class PolymarketPandas:
             "volumeNum",
         )
     )
-    datetime_columns: tuple = field(
+    str_datetime_columns: tuple = field(
         default=(
+            "acceptingOrdersTimestamp",
             "closedTime",
             "createdAt",
+            "creationDate",
             "endDate",
             "endDateIso",
             "eventStartTime",
+            "expiration",
+            "gameStartTime",
+            "matchtime",
+            "last_update",
             "startDate",
-            "timestamp",
+            "startDateIso",
+            "startTime",
+            "umaEndDate",
             "updatedAt",
         )
     )
+    int_datetime_columns: tuple = field(default=("timestamp",))
     bool_columns: tuple = field(
         default=(
             "active",
-            "closed",
-            "archived",
-            "restricted",
-            "hasReviewedDates",
-            "readyForCron",
-            "fpmmLive",
-            "ready",
-            "funded",
-            "cyom",
-            "competitive",
-            "pagerDutyNotificationEnabled",
             "approved",
+            "archived",
             "clearBookOnStart",
+            "closed",
+            "competitive",
+            "cyom",
+            "deploying",
+            "feesEnabled",
+            "fpmmLive",
+            "funded",
+            "hasReviewedDates",
+            "holdingRewardsEnabled",
             "manualActivation",
             "negRiskOther",
-            "pendingDeployment",
-            "deploying",
-            "rfqEnabled",
-            "holdingRewardsEnabled",
-            "feesEnabled",
             "notificationsEnabled",
+            "pagerDutyNotificationEnabled",
+            "pendingDeployment",
+            "ready",
+            "readyForCron",
+            "restricted",
+            "rfqEnabled",
             "wideFormat",
+        )
+    )
+    drop_columns: tuple = field(
+        default=(
+            "icon",
+            "image",
         )
     )
 
     def __post_init__(self):
         self._client = httpx.Client()
+        self._str_datetime_columns = list(self.str_datetime_columns) + [
+            snake_to_camel(f"event_{x}") for x in self.str_datetime_columns
+        ]
+        self._int_datetime_columns = list(self.int_datetime_columns) + [
+            snake_to_camel(f"event_{x}") for x in self.int_datetime_columns
+        ]
+        self._bool_columns = list(self.bool_columns) + [
+            snake_to_camel(f"event_{x}") for x in self.bool_columns
+        ]
+        self._numeric_columns = list(self.numeric_columns) + [
+            snake_to_camel(f"event_{x}") for x in self.numeric_columns
+        ]
+        self._drop_columns = list(self.drop_columns) + [
+            snake_to_camel(f"event_{x}") for x in self.drop_columns
+        ]
 
     def _autopage(
         self,
@@ -156,7 +210,11 @@ class PolymarketPandas:
         data = []
         n_pages = 0
         len_pages = limit
-        progress_bar = tqdm(total=self.max_pages, desc=self.tqdm_description) if self.use_tqdm and max_pages else None
+        progress_bar = (
+            tqdm(total=self.max_pages, desc=self.tqdm_description)
+            if self.use_tqdm and max_pages
+            else None
+        )
         while len_pages == limit and (max_pages is None or n_pages < max_pages):
             n_pages += 1
             call_kwargs = dict(kwargs)
@@ -299,25 +357,45 @@ class PolymarketPandas:
             method=method,
             url=f"{self.clob_url}{path}",
             params=filter_params(params),
-            data=data,
+            json=data,
         )
-        return data.json()
+        data = data.json()
+        return data
 
     def preprocess_dataframe(self, data: pd.DataFrame) -> pd.DataFrame:
+        data = snake_columns_to_camel(data)
+        data = data.drop(columns=self._drop_columns, errors="ignore")
         columns = data.columns
-        numeric_columns_to_convert = [x for x in columns if x in self.numeric_columns]
-        datetime_columns_to_convert = [x for x in columns if x in self.datetime_columns]
-        bool_columns_to_convert = [x for x in columns if x in self.bool_columns]
+        numeric_columns_to_convert = [
+            x
+            for x in columns
+            if x in self._numeric_columns + self._int_datetime_columns
+        ]
+        int_datetime_columns_to_convert = [
+            x for x in columns if x in self._int_datetime_columns
+        ]
+        str_datetime_columns_to_convert = [
+            x for x in columns if x in self._str_datetime_columns
+        ]
+        bool_columns_to_convert = [x for x in columns if x in self._bool_columns]
         if numeric_columns_to_convert:
             data[numeric_columns_to_convert] = data[numeric_columns_to_convert].apply(
                 pd.to_numeric, errors="coerce"
             )
-        if datetime_columns_to_convert:
-            data[datetime_columns_to_convert] = data[datetime_columns_to_convert].apply(
-                pd.to_datetime, utc=True, errors="coerce"
-            )
+        if int_datetime_columns_to_convert:
+            data[int_datetime_columns_to_convert] = data[
+                int_datetime_columns_to_convert
+            ].apply(pd.to_datetime, utc=True, unit="ms", errors="coerce")
+        if str_datetime_columns_to_convert:
+            data[str_datetime_columns_to_convert] = data[
+                str_datetime_columns_to_convert
+            ].apply(pd.to_datetime, utc=True, errors="coerce")
         if bool_columns_to_convert:
             data[bool_columns_to_convert] = data[bool_columns_to_convert].astype(bool)
+        if "clobTokenIds" in columns:
+            data["clobTokenIds"] = (
+                data["clobTokenIds"].dropna().apply(lambda x: orjson.loads(x))
+            )
         return data
 
     def response_to_dataframe(self, data: dict | list) -> pd.DataFrame:
@@ -360,6 +438,7 @@ class PolymarketPandas:
         question_ids: list[str] | None = None,
         include_tag: bool | None = None,
         closed: bool | None = None,
+        expand_clob_token_ids: bool = False,
     ) -> pd.DataFrame:
         data = self._request_gamma(
             path="markets",
@@ -393,7 +472,11 @@ class PolymarketPandas:
                 "closed": closed,
             },
         )
-        return self.response_to_dataframe(data)
+        data = self.response_to_dataframe(data)
+        if expand_clob_token_ids:
+            data = data.explode("clobTokenIds")
+            data["clobTokenIds"] = data["clobTokenIds"].astype(str)
+        return data
 
     def get_tags(
         self,
@@ -548,6 +631,7 @@ class PolymarketPandas:
         closed: bool | None = None,
         include_chat: bool | None = None,
         recurrence: str | None = None,
+        expand_events: bool = True,
     ) -> pd.DataFrame:
         """
         Retrieve a list of series with optional filters.
@@ -562,6 +646,7 @@ class PolymarketPandas:
             closed (bool | None): Filter by closed status.
             include_chat (bool | None): Whether to include chat information.
             recurrence (str | None): Filter by recurrence type.
+            expand_events (bool): Whether to expand the events fields.
         Returns:
             pd.DataFrame: A DataFrame containing the series data.
         """
@@ -580,7 +665,19 @@ class PolymarketPandas:
                 "recurrence": recurrence,
             },
         )
-        return self.response_to_dataframe(data)
+        if expand_events:
+            data = pd.DataFrame(data)
+            meta = [x for x in data.columns if x != "events"]
+            data = pd.json_normalize(
+                data=data.to_dict("records"),
+                record_path="events",
+                meta=meta,
+                # errors="ignore",
+                record_prefix="event_",
+            )
+        else:
+            data = pd.DataFrame(data)
+        return self.preprocess_dataframe(data)
 
     def get_series_by_id(self, id: int, include_chat: bool | None = None) -> dict:
         """
@@ -1012,10 +1109,12 @@ class PolymarketPandas:
         return self.orderbook_to_dataframe(data)
 
     def get_orderbooks(self, data: pd.DataFrame) -> pd.DataFrame:
-        data = self._request_clob(path="book", data=data.to_dict("records"))
+        data = self._request_clob(
+            path="books", method="POST", data=markets_to_dict(data)
+        )
         return self.orderbook_to_dataframe(data)
 
-    def get_market_price(self, token_id: str, side: str) -> dict:
+    def get_market_price(self, token_id: str, side: str) -> float:
         """
         Retrieves the market price for a specific token and side.
 
@@ -1029,36 +1128,35 @@ class PolymarketPandas:
         data = self._request_clob(
             path="price", params={"token_id": token_id, "side": side}
         )
-        return data
+        return float(data["price"])
 
-    def get_multiple_market_prices(self) -> pd.DataFrame:
-        """
-        Retrieves the market prices.
+    # def get_multiple_market_prices(self) -> pd.DataFrame:
+    #     """
+    #     Retrieves the market prices.
+    #
+    #     Returns:
+    #         dict: A dictionary containing the market price data.
+    #     """
+    #     data = self._request_clob(
+    #         path="prices",
+    #     )
+    #     return self.response_to_dataframe(data)
 
-        Returns:
-            dict: A dictionary containing the market price data.
-        """
-        data = self._request_clob(
-            path="prices",
-        )
-        return self.response_to_dataframe(data)
-
-    def get_multiple_market_prices_by_request(
-        self, token_sides: list[dict]
-    ) -> pd.DataFrame:
+    def get_multiple_market_prices_by_request(self, data: pd.DataFrame) -> DataFrame:
         """
         Retrieves market prices for specified tokens and sides via a POST request.
-
-        Args:
-            token_sides (list[dict]): A list of dictionaries. Each dictionary must contain:
-                - token_id (str): The unique identifier for the token.
-                - side (str): The side of the market ("BUY" or "SELL").
 
         Returns:
             pd.DataFrame: A DataFrame containing the market prices for the specified tokens and sides.
         """
-        data = self._request_clob(path="prices", method="POST", data=token_sides)
-        return self.response_to_dataframe(data)
+        data = self._request_clob(
+            path="prices", method="POST", data=markets_to_dict(data)
+        )
+        df = []
+        for k, v in data.items():
+            for sub_k, sub_v in v.items():
+                df.append({"tokenId": k, "side": sub_k, "price": sub_v})
+        return self.response_to_dataframe(df)
 
     def get_price_history(
         self,
@@ -1093,7 +1191,7 @@ class PolymarketPandas:
         )
         return self.response_to_dataframe(data)
 
-    def get_midpoint_price(self, token_id: str) -> dict:
+    def get_midpoint_price(self, token_id: str) -> float:
         """
         Retrieve the midpoint price for a specific token.
 
@@ -1104,9 +1202,9 @@ class PolymarketPandas:
             dict: A dictionary containing the midpoint price data.
         """
         data = self._request_clob(path="midpoint", params={"token_id": token_id})
-        return data
+        return float(data["mid"])
 
-    def get_bid_ask_spreads(self, data: pd.DataFrame) -> pd.DataFrame:
+    def get_bid_ask_spreads(self, data: pd.DataFrame) -> dict:
         """
         Retrieves bid-ask spreads for multiple tokens via a POST request.
 
@@ -1117,9 +1215,10 @@ class PolymarketPandas:
             pd.DataFrame: A DataFrame containing the bid-ask spreads data.
         """
         data = self._request_clob(
-            path="spreads", method="POST", data=data.to_dict("records")
+            path="spreads", method="POST", data=markets_to_dict(data)
         )
-        return self.response_to_dataframe(data)
+        data = {k: float(v) for k, v in data.items()}
+        return data
 
     def get_user_trades(
         self,
@@ -1157,6 +1256,22 @@ class PolymarketPandas:
         )
         return self.response_to_dataframe(data)
 
+    def get_order(self, order_id: str) -> dict:
+        """
+        Get information about an existing order.
+
+        Args:
+            order_id (str): ID of the order to retrieve.
+
+        Returns:
+            dict: A dictionary containing the order information.
+        """
+        data = self._request_clob(
+            path=f"data/order/{order_id}",
+            method="GET",
+        )
+        return data
+
     def get_active_orders(
         self,
         id: str | None = None,
@@ -1182,8 +1297,74 @@ class PolymarketPandas:
                 "asset_id": asset_id,
             },
         )
-        print(data)
         return self.response_to_dataframe(data)
+
+    def place_order(
+        self,
+        order: dict,
+        owner: str,
+        orderType: str,
+    ) -> dict:
+        """
+        Create and place an order using the Polymarket CLOB API.
+
+        Args:
+            order (dict): The signed order object.
+            owner (str): API key of the order owner.
+            orderType (str): The order type, e.g., "FOK", "GTC", "GTD".
+
+        Returns:
+            dict: Response from the API.
+        """
+        headers = self._build_l2_headers(
+            method="POST",
+            request_path="/order",
+            body={
+                "order": order,
+                "owner": owner,
+                "orderType": orderType,
+            },
+        )
+        response = self._client.post(
+            f"{self.clob_url}order",
+            json={
+                "order": order,
+                "owner": owner,
+                "orderType": orderType,
+            },
+            headers=headers,
+        )
+        return response.json()
+
+    def place_orders(self, orders: pd.DataFrame) -> DataFrame:
+        """
+        Place multiple orders in a batch (up to 15 orders).
+
+        Args:
+            orders (list[dict]): A list of dictionaries. Each dictionary must contain:
+                - order (dict): The signed order object.
+                - owner (str): API key of the order owner.
+                - orderType (str): The order type, e.g., "FOK", "GTC", "GTD", "FAK".
+
+        Returns:
+            dict: Response from the API.
+        """
+        orders_data = []
+        data = orders.copy()
+        data["expiration"] = data["expiration"].astype(int)
+        for [owner, orderType], sub_orders in data.groupby(["owner", "orderType"]):
+            for x in sub_orders.to_dict("records"):
+                order = {
+                    "order": x,
+                    "owner": owner,
+                    "orderType": orderType,
+                }
+                orders_data.append(order.copy())
+        response = self._request_clob(
+            f"orders",
+            data=orders_data,
+        )
+        return self.response_to_dataframe(response)
 
     def cancel_order(self, order_id: str) -> dict:
         """
@@ -1264,39 +1445,38 @@ class PolymarketPandas:
     def get_markets_all(self, **kwargs) -> pd.DataFrame:
         return self._autopage(self.get_markets, **kwargs)
 
+
 if __name__ == "__main__":
     client = PolymarketPandas()
-    orders = client.get_active_orders()
-    breakpoint()
-    tags = client.get_tags()
-    slugs = client.get_markets()
-    series = client.get_series(slug=["crypto-prices"])
-    markets = client.get_markets(
-        order=["volume", "volume24hrAmm"], slug=["crypto"], ascending=False
-    )
-    print(markets.loc[0])
+    # orders = client.get_active_orders()
     teams = client.get_teams()
     print(teams)
-    print(markets["clobTokenIds"][1])
-    breakpoint()
-    df = client.get_orderbook(
-        token_id="94289233902185865090533920840638967266043465471551478192652040598397166458606"
+    tags = client.get_tags()
+    print(tags)
+    series = client.get_series()
+    print(series)
+    btc_market = series.loc[series["eventEndDate"] >= pd.Timestamp.utcnow()].query(
+        "active and slug == 'btc-up-or-down-daily'"
     )
-    print(df)
-
-    # Retrieve market price for a specific token and side.
-    market_price = client.get_market_price(token_id="1234567890", side="BUY")
+    slugs = btc_market["eventSlug"].head(4).tolist()
+    markets = client.get_markets(slug=slugs, expand_clob_token_ids=True)
+    print(markets)
+    events = client.get_events(slug=slugs)
+    print(events)
+    token = markets["clobTokenIds"].values[0]
+    orderbook = client.get_orderbook(token_id=token)
+    print(orderbook)
+    orderbooks = client.get_orderbooks(data=markets)
+    print(orderbooks)
+    market_price = client.get_market_price(token_id=token, side="BUY")
     print(market_price)
-
-    spreads_data = [
-        {"token_id": "1234567890", "side": "BUY"},
-        {"token_id": "0987654321", "side": "SELL"},
-    ]
-    spreads_df = client.get_bid_ask_spreads(data=spreads_data)
+    spreads_df = client.get_bid_ask_spreads(data=markets)
     print(spreads_df)
-
-    # Retrieve the midpoint price for a specific token.
-    midpoint_price = client.get_midpoint_price(
-        token_id="94289233902185865090533920840638967266043465471551478192652040598397166458606"
-    )
+    midpoint_price = client.get_midpoint_price(token_id=token)
     print(midpoint_price)
+    market_prices = client.get_multiple_market_prices_by_request(data=markets)
+    print(market_prices)
+    trades = client.get_trades()
+    print(trades)
+    # market_prices = client.get_multiple_market_prices()
+    # print(market_prices)

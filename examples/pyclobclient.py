@@ -20,8 +20,9 @@ client = ClobClient(
 )
 client.set_api_creds(client.create_or_derive_api_creds())
 
-trades = client.get_markets()
+trades = client.get_midpoint("1761552617477")
 trades = pd.DataFrame(trades["data"])
+breakpoint()
 print(trades.loc[trades["market_slug"].str.contains("crypto")])
 
 trades = client.get_positions("")

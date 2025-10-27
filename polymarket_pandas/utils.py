@@ -1,5 +1,7 @@
 import inspect
+import re
 from functools import wraps
+
 import pandas as pd
 import time
 
@@ -21,14 +23,33 @@ def _parse_params(params: dict) -> dict:
 
 
 def filter_params(params: dict) -> dict:
-    new_params = {}
-    for key, value in params.items():
-        if value:
-            if isinstance(value, list):
-                new_params[key] = value
-            elif pd.notnull(value):
-                new_params[key] = value
-    return new_params
+    if params is not None:
+        new_params = {}
+        for key, value in params.items():
+            if value:
+                if isinstance(value, list):
+                    new_params[key] = value
+                elif pd.notnull(value):
+                    new_params[key] = value
+        params = new_params
+    return params
+
+
+def snake_to_camel(value: str) -> str:
+    """Convert snake_case or kebab-case to lowerCamelCase."""
+    if "_" in value:
+        parts = value.split("_")
+        value = parts[0].lower() + "".join(
+            p[:1].upper() + p[1:] for p in parts[1:] if p
+        )
+    return value
+
+
+def snake_columns_to_camel(data: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy of df with camelCase column names."""
+    data = data.copy()
+    data.columns = [snake_to_camel(col) for col in data.columns]
+    return data
 
 
 def autopage(param_limit: str = "limit", param_offset: str = "offset"):
