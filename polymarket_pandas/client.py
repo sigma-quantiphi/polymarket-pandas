@@ -1451,6 +1451,8 @@ if __name__ == "__main__":
     # orders = client.get_active_orders()
     teams = client.get_teams()
     print(teams)
+    sports_metadata = client.get_sports_metadata()
+    print(sports_metadata)
     tags = client.get_tags()
     print(tags)
     series = client.get_series()

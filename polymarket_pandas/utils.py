@@ -10,12 +10,14 @@ def filter_params(params: dict) -> dict:
     if params is not None:
         new_params = {}
         for key, value in params.items():
-            if value:
+            if isinstance(value, list) and len(value) > 0:
+                new_params[key] = value
+            elif pd.notnull(value):
                 if key in ["before", "after", "startTs", "endTs"] and isinstance(
                     value, pd.Timestamp
                 ):
                     value = value.isoformat() + "Z"
-            new_params[key] = value
+                new_params[key] = value
         params = new_params
     return params
 
