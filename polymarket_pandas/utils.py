@@ -1,5 +1,4 @@
 import inspect
-import re
 from functools import wraps
 
 import pandas as pd
@@ -13,9 +12,12 @@ def filter_params(params: dict) -> dict:
             if isinstance(value, list) and len(value) > 0:
                 new_params[key] = value
             elif pd.notnull(value):
-                if key in ["before", "after", "startTs", "endTs"] and isinstance(
-                    value, pd.Timestamp
-                ):
+                if key in [
+                    "start_date_min",
+                    "start_date_max",
+                    "end_date_min",
+                    "end_date_max",
+                ] and isinstance(value, pd.Timestamp):
                     value = value.isoformat() + "Z"
                 new_params[key] = value
         params = new_params
