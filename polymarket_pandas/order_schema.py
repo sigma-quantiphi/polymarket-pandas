@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pandera.pandas as pa
 
 

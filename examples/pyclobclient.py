@@ -25,7 +25,7 @@ trades = pd.DataFrame(trades["data"])
 breakpoint()
 print(trades.loc[trades["market_slug"].str.contains("crypto")])
 
-trades = client.get_positions("")
+trades = client.get_trades("")
 print(pd.DataFrame(trades).asset_id)
 
 # orders = client.cancel_all()

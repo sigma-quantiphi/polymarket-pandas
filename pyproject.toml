@@ -7,14 +7,38 @@ authors = [
 ]
 license = "Apache-2.0"
 readme = "README.md"
-requires-python = "<4,>=3.11"
+requires-python = ">=3.11"
+keywords = ["polymarket", "prediction-markets", "trading", "pandas", "api-client"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+
 dependencies = [
-    "cachetools (>=6.0.0,<7.0.0)",
-    "eth-account (>=0.13.7,<0.14.0)",
-    "httpx (>=0.28.1,<1.0.0)",
-    "orjson (>=3.11.0,<4.0.0)",
-    "pandas[computation, output-formatting, performance] (>=2.2.3,<3.0.0)",
-    "pandera (>=0.22.1,<1.0.0)",
+    "eth-account>=0.13.7",
+    "httpx>=0.28.1",
+    "orjson>=3.11.0",
+    "pandas[computation,output-formatting,performance]>=2.2.3",
+    "pandera>=0.22.1",
+    "websocket-client>=1.8.0",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-httpx>=0.35",
+    "ruff>=0.9",
+    "mypy>=1.11",
+    "pandas-stubs>=2.2",
 ]
 
 [project.urls]
@@ -22,10 +46,33 @@ homepage = "https://github.com/sigma-quantiphi/polymarket-pandas"
 repository = "https://github.com/sigma-quantiphi/polymarket-pandas"
 documentation = "https://github.com/sigma-quantiphi/polymarket-pandas"
 
-[tool.poetry]
-include = ["polymarket_pandas/*"]
-exclude = ["binder/*", "dist/*", "docs/*", "examples/*", "tests/*", ".env"]
+[tool.uv]
+package = true
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["polymarket_pandas*"]
+
+[tool.setuptools.package-data]
+polymarket_pandas = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_return_any = false
+warn_unused_ignores = true
