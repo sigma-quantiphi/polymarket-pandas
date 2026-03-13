@@ -76,16 +76,17 @@ class GammaMixin:
         )
         data = pd.DataFrame(data)
         if not data.empty:
-            if expand_clob_token_ids:
-                data = data.explode("clobTokenIds")
-                data["clobTokenIds"] = data["clobTokenIds"].astype(str)
             if expand_events or expand_series:
                 data = expand_dataframe(data, field="events", column="events")
                 if expand_series:
                     data = expand_dataframe(
                         data, field="eventsSeries", column="eventsSeries"
                     )
-        return self.preprocess_dataframe(data).reset_index(drop=True)
+        data = self.preprocess_dataframe(data)
+        if expand_clob_token_ids and not data.empty:
+            data = data.explode("clobTokenIds", ignore_index=True)
+            data["clobTokenIds"] = data["clobTokenIds"].astype(str)
+        return data.reset_index(drop=True)
 
     def get_market_by_id(self, id: int, include_tag: bool | None = None) -> dict:
         return self._request_gamma(

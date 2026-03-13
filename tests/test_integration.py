@@ -29,7 +29,7 @@ def crypto_slugs(client: PolymarketPandas) -> list[str]:
     assert not series.empty
 
     active = series.loc[
-        (series["eventsEndDate"] >= pd.Timestamp.utcnow()) & ~series["eventsClosed"]
+        (series["eventsEndDate"] >= pd.Timestamp.now(tz="UTC")) & ~series["eventsClosed"]
     ].query("active")
     assert not active.empty, "No active crypto series found — check market data"
 
@@ -61,13 +61,13 @@ def events(client: PolymarketPandas, crypto_slugs: list[str]) -> pd.DataFrame:
 
 @pytest.fixture(scope="session")
 def token(markets: pd.DataFrame) -> str:
-    return str(markets["clobTokenIds"].values[0])
+    return str(markets["clobTokenIds"].iloc[0])
 
 
 @pytest.fixture(scope="session")
 def active_token_ids(events: pd.DataFrame) -> pd.DataFrame:
     active = events.loc[
-        (events["marketsStartDate"] <= pd.Timestamp.utcnow())
+        (events["marketsStartDate"] <= pd.Timestamp.now(tz="UTC"))
         & ~events["marketsClosed"]
         & events["marketsActive"]
     ]
@@ -149,7 +149,8 @@ def test_get_market_price(client: PolymarketPandas, token: str) -> None:
 
 
 def test_get_bid_ask_spreads(client: PolymarketPandas, markets: pd.DataFrame) -> None:
-    result = client.get_bid_ask_spreads(data=markets)
+    data = markets[["clobTokenIds"]].rename(columns={"clobTokenIds": "token_id"}).head(20)
+    result = client.get_bid_ask_spreads(data=data)
     assert isinstance(result, dict)
     assert len(result) > 0
     for v in result.values():
@@ -165,7 +166,8 @@ def test_get_midpoint_price(client: PolymarketPandas, token: str) -> None:
 def test_get_multiple_market_prices_by_request(
     client: PolymarketPandas, markets: pd.DataFrame
 ) -> None:
-    df = client.get_multiple_market_prices_by_request(data=markets)
+    data = markets[["clobTokenIds"]].rename(columns={"clobTokenIds": "token_id"}).head(20)
+    df = client.get_multiple_market_prices_by_request(data=data)
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     assert "tokenId" in df.columns

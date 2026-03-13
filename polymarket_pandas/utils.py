@@ -54,7 +54,7 @@ def preprocess_dataframe(
         )
     if int_datetime_to_convert:
         df[int_datetime_to_convert] = df[int_datetime_to_convert].apply(
-            pd.to_datetime, utc=True, unit="ms", errors="coerce"
+            pd.to_datetime, utc=True, unit="s", errors="coerce"
         )
     if str_datetime_to_convert:
         df[str_datetime_to_convert] = df[str_datetime_to_convert].apply(

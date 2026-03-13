@@ -1,4 +1,7 @@
 """Unit tests — no live API calls, all HTTP interactions mocked via pytest-httpx."""
+from unittest.mock import MagicMock
+
+import orjson
 import pandas as pd
 import pytest
 from pytest_httpx import HTTPXMock
@@ -8,6 +11,7 @@ from polymarket_pandas import (
     PolymarketAuthError,
     PolymarketPandas,
     PolymarketRateLimitError,
+    PolymarketWebSocket,
 )
 from polymarket_pandas.utils import (
     expand_column_lists,
@@ -302,3 +306,256 @@ def test_get_sampling_markets_returns_dict(
     result = client.get_sampling_markets()
     assert isinstance(result["data"], pd.DataFrame)
     assert result["next_cursor"] == "LTE="
+
+
+# ── WebSocket: from_client ──────────────────────────────────────────────────
+
+
+def test_websocket_from_client():
+    client = PolymarketPandas(
+        use_tqdm=False,
+        _api_key="key1",
+        _api_secret="secret1",
+        _api_passphrase="pass1",
+    )
+    ws = PolymarketWebSocket.from_client(client)
+    assert ws.api_key == "key1"
+    assert ws.api_secret == "secret1"
+    assert ws.api_passphrase == "pass1"
+    assert ws.numeric_columns == client.numeric_columns
+    assert ws.bool_columns == client.bool_columns
+
+
+def test_websocket_from_client_no_creds():
+    client = PolymarketPandas(use_tqdm=False)
+    ws = PolymarketWebSocket.from_client(client)
+    assert ws.api_key is None
+    assert ws.api_secret is None
+
+
+# ── WebSocket: market_channel dispatch ──────────────────────────────────────
+
+
+@pytest.fixture
+def ws() -> PolymarketWebSocket:
+    return PolymarketWebSocket(
+        api_key=None, api_secret=None, api_passphrase=None,
+    )
+
+
+def _get_on_message(session) -> callable:
+    """Extract the _on_message callback from the WebSocketApp."""
+    return session.app.on_message
+
+
+def test_market_channel_pong_ignored(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_message=lambda et, data: received.append((et, data)),
+    )
+    _get_on_message(session)(MagicMock(), "PONG")
+    assert received == []
+
+
+def test_market_channel_book_event(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_book=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "event_type": "book",
+        "market": "0xabc",
+        "asset_id": "tok1",
+        "timestamp": "1700000000",
+        "hash": "0x1",
+        "min_order_size": "1",
+        "tick_size": "0.01",
+        "neg_risk": False,
+        "bids": [{"price": "0.45", "size": "100"}],
+        "asks": [{"price": "0.55", "size": "200"}],
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    df = received[0]
+    assert isinstance(df, pd.DataFrame)
+    assert set(df["side"].unique()) == {"bids", "asks"}
+    assert pd.api.types.is_numeric_dtype(df["price"])
+
+
+def test_market_channel_price_change(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_price_change=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "event_type": "price_change",
+        "asset_id": "tok1",
+        "price": "0.60",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    assert pd.api.types.is_numeric_dtype(received[0]["price"])
+
+
+def test_market_channel_last_trade_price(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_last_trade_price=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "event_type": "last_trade_price",
+        "asset_id": "tok1",
+        "price": "0.48",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+
+
+def test_market_channel_best_bid_ask(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_best_bid_ask=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "event_type": "best_bid_ask",
+        "asset_id": "tok1",
+        "best_bid": "0.44",
+        "best_ask": "0.56",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+
+
+def test_market_channel_new_market_dispatches_dict(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_new_market=lambda d: received.append(d),
+    )
+    msg = orjson.dumps({
+        "event_type": "new_market",
+        "market": "0xnew",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    assert isinstance(received[0], dict)
+    assert received[0]["market"] == "0xnew"
+
+
+def test_market_channel_fallback_on_message(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_message=lambda et, data: received.append((et, data)),
+    )
+    msg = orjson.dumps({
+        "event_type": "price_change",
+        "asset_id": "tok1",
+        "price": "0.60",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    assert received[0][0] == "price_change"
+    assert isinstance(received[0][1], pd.DataFrame)
+
+
+def test_market_channel_unknown_event_to_fallback(ws: PolymarketWebSocket):
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1"],
+        on_message=lambda et, data: received.append((et, data)),
+    )
+    msg = orjson.dumps({
+        "event_type": "something_new",
+        "data": "test",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    assert received[0][0] == "something_new"
+
+
+# ── WebSocket: user_channel ─────────────────────────────────────────────────
+
+
+def test_user_channel_requires_creds():
+    ws = PolymarketWebSocket(api_key=None, api_secret=None, api_passphrase=None)
+    with pytest.raises(ValueError, match="api_key"):
+        ws.user_channel(markets=["0xabc"])
+
+
+def test_user_channel_trade_event():
+    ws = PolymarketWebSocket(api_key="k", api_secret="s", api_passphrase="p")
+    received = []
+    session = ws.user_channel(
+        markets=["0xabc"],
+        on_trade=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "event_type": "trade",
+        "asset_id": "tok1",
+        "price": "0.55",
+        "size": "10",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    assert isinstance(received[0], pd.DataFrame)
+
+
+def test_user_channel_order_event():
+    ws = PolymarketWebSocket(api_key="k", api_secret="s", api_passphrase="p")
+    received = []
+    session = ws.user_channel(
+        markets=["0xabc"],
+        on_order=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "event_type": "order",
+        "asset_id": "tok1",
+        "price": "0.50",
+        "original_size": "25",
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+
+
+# ── WebSocket: sports_channel ───────────────────────────────────────────────
+
+
+def test_sports_channel_ping_pong(ws: PolymarketWebSocket):
+    session = ws.sports_channel()
+    mock_ws = MagicMock()
+    _get_on_message(session)(mock_ws, "ping")
+    mock_ws.send.assert_called_once_with("pong")
+
+
+# ── WebSocket: rtds_channel ─────────────────────────────────────────────────
+
+
+def test_rtds_channel_crypto_prices(ws: PolymarketWebSocket):
+    received = []
+    session = ws.rtds_channel(
+        subscriptions=[{"channel": "crypto_prices", "symbols": ["BTC"]}],
+        on_crypto_prices=lambda df: received.append(df),
+    )
+    msg = orjson.dumps({
+        "topic": "crypto_prices",
+        "payload": {"symbol": "BTC", "price": "83000.50"},
+    }).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 1
+    assert isinstance(received[0], pd.DataFrame)
+
+
+def test_rtds_channel_pong_ignored(ws: PolymarketWebSocket):
+    received = []
+    session = ws.rtds_channel(
+        subscriptions=[],
+        on_message=lambda t, d: received.append((t, d)),
+    )
+    _get_on_message(session)(MagicMock(), "PONG")
+    assert received == []
