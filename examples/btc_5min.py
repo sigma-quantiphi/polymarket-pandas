@@ -1,12 +1,12 @@
 """
 BTC 5-Minute Up/Down — Orderbook + Live Trades
 
-Finds the active BTC 5-minute binary market on Polymarket, pulls the
-current orderbook snapshot for both outcomes (Up / Down), then opens a
-WebSocket stream for real-time book updates and trade prints.
+Finds the current BTC 5-minute binary market on Polymarket, pulls the
+orderbook snapshot for both outcomes (Up / Down), then opens a WebSocket
+stream for real-time book updates and trade prints.
 
 Requirements:
-    pip install polymarket-pandas python-dotenv
+    pip install polymarket-pandas
 
 Usage:
     python examples/btc_5min.py
@@ -24,65 +24,51 @@ from polymarket_pandas import PolymarketPandas, PolymarketWebSocket
 pd.set_option("display.max_columns", 20)
 pd.set_option("display.width", 160)
 
-# ── 1. Find the BTC 5-min market ────────────────────────────────────────────
+# ── 1. Find the current BTC 5-min market ────────────────────────────────────
 
 client = PolymarketPandas()
+now = pd.Timestamp.now(tz="UTC")
 
-results = client.search_markets_events_profiles(
-    q="Bitcoin 5-minute",
-    events_status="active",
-    limit_per_type=5,
+# Markets ending within the next 10 minutes — catches the current 5-min window
+markets = client.get_markets(
+    end_date_min=now.isoformat(),
+    end_date_max=(now + pd.Timedelta(minutes=10)).isoformat(),
+    expand_clob_token_ids=True,
+    expand_events=False,
+    expand_series=False,
 )
 
-events = results.get("events", [])
-if not events:
-    print("No active BTC 5-min events found.")
+btc = markets[markets["slug"].str.contains("btc-updown-5m", case=False, na=False)]
+if btc.empty:
+    print("No active BTC 5-min markets found. Market may be between windows.")
     sys.exit(1)
 
-# Pick the first active event — usually the current 5-min window
-event = events[0]
-print(f"Event: {event['title']}")
-print(f"  slug:  {event['slug']}")
-print(f"  end:   {event.get('endDate', 'N/A')}")
+# Pick the soonest-ending market (current window)
+soonest_end = btc["endDate"].min()
+current = btc[btc["endDate"] == soonest_end].copy()
 
-# Each event has binary markets (Up / Down)
-markets = event.get("markets", [])
-if not markets:
-    print("No markets found in event.")
-    sys.exit(1)
+question = current["question"].iloc[0]
+end_date = current["endDate"].iloc[0]
+condition_id = current["conditionId"].iloc[0]
 
-# Collect token IDs and labels
-tokens: list[dict] = []
-for m in markets:
-    token_ids = m.get("clobTokenIds", "[]")
-    if isinstance(token_ids, str):
-        import json
+print(f"Market:  {question}")
+print(f"  end:   {end_date}")
+print(f"  cond:  {condition_id}")
 
-        token_ids = json.loads(token_ids)
-    outcomes = m.get("outcomes", "[]")
-    if isinstance(outcomes, str):
-        import json
+# Each market has 2 exploded rows — outcomes list tells us [Up, Down]
+# First token_id = Up, second = Down
+outcomes = current["outcomes"].iloc[0]  # e.g. ["Up", "Down"]
+token_ids = current["clobTokenIds"].tolist()
 
-        outcomes = json.loads(outcomes)
-    # token_ids[0] = Yes, token_ids[1] = No for each outcome
-    for tid, label in zip(token_ids, outcomes):
-        tokens.append(
-            {
-                "outcome": m.get("groupItemTitle", m.get("question", "")),
-                "label": label,
-                "token_id": tid,
-                "condition_id": m.get("conditionId", ""),
-            }
-        )
-
-token_df = pd.DataFrame(tokens)
+token_df = pd.DataFrame({
+    "outcome": outcomes,
+    "token_id": token_ids,
+})
 print(f"\n{'='*60}")
-print("Markets / Token IDs:")
+print("Token IDs:")
 print(token_df.to_string(index=False))
 
-# We only want the "Yes" tokens — one per outcome (Up / Down)
-yes_tokens = token_df[token_df["label"] == "Yes"]
-asset_ids = yes_tokens["token_id"].tolist()
+asset_ids = token_df["token_id"].tolist()
 
 # ── 2. REST snapshot: orderbook + recent trades ─────────────────────────────
 
@@ -90,10 +76,10 @@ print(f"\n{'='*60}")
 print("Orderbook Snapshot")
 print("=" * 60)
 
-for _, row in yes_tokens.iterrows():
+for _, row in token_df.iterrows():
     tid = row["token_id"]
     outcome = row["outcome"]
-    print(f"\n--- {outcome} (Yes) ---")
+    print(f"\n--- {outcome} ---")
     book = client.get_orderbook(tid)
     if book.empty:
         print("  (empty book)")
@@ -113,7 +99,7 @@ print("=" * 60)
 
 trades = client.get_trades(market=asset_ids, limit=20)
 if not trades.empty:
-    cols = [c for c in ["timestamp", "side", "price", "size", "market"] if c in trades.columns]
+    cols = [c for c in ["timestamp", "side", "price", "size"] if c in trades.columns]
     print(trades[cols].to_string(index=False))
 else:
     print("(no recent trades)")
@@ -133,25 +119,25 @@ def on_book(df: pd.DataFrame) -> None:
     best_bid = bids["price"].max() if not bids.empty else None
     best_ask = asks["price"].min() if not asks.empty else None
     asset = df["assetId"].iloc[0] if "assetId" in df.columns else "?"
-    label = yes_tokens.loc[yes_tokens["token_id"] == asset, "outcome"]
-    label = label.iloc[0] if not label.empty else asset[:12]
-    print(f"  [BOOK]  {label:<12}  bid={best_bid}  ask={best_ask}  levels={len(df)}")
+    label = token_df.loc[token_df["token_id"] == asset, "outcome"]
+    label = label.iloc[0] if not label.empty else str(asset)[:12]
+    print(f"  [BOOK]  {label:<6}  bid={best_bid}  ask={best_ask}  levels={len(df)}")
 
 
 def on_price_change(df: pd.DataFrame) -> None:
     for _, row in df.iterrows():
         asset = row.get("assetId", "?")
-        label = yes_tokens.loc[yes_tokens["token_id"] == asset, "outcome"]
+        label = token_df.loc[token_df["token_id"] == asset, "outcome"]
         label = label.iloc[0] if not label.empty else str(asset)[:12]
-        print(f"  [PRICE] {label:<12}  price={row.get('price', '?')}")
+        print(f"  [PRICE] {label:<6}  price={row.get('price', '?')}")
 
 
 def on_last_trade_price(df: pd.DataFrame) -> None:
     for _, row in df.iterrows():
         asset = row.get("assetId", "?")
-        label = yes_tokens.loc[yes_tokens["token_id"] == asset, "outcome"]
+        label = token_df.loc[token_df["token_id"] == asset, "outcome"]
         label = label.iloc[0] if not label.empty else str(asset)[:12]
-        print(f"  [TRADE] {label:<12}  last={row.get('price', '?')}")
+        print(f"  [TRADE] {label:<6}  last={row.get('price', '?')}")
 
 
 session = ws.market_channel(
