@@ -43,14 +43,44 @@ class ClobPublicMixin:
         return bool(self._extract(data, "neg_risk"))
 
     def get_fee_rate(self, token_id: str | None = None) -> int:
+        """Get the base fee rate, optionally for a specific token.
+
+        https://docs.polymarket.com/api-reference/clob/fee-rate
+
+        Args:
+            token_id: CLOB token ID. If ``None``, returns the global base fee.
+
+        Returns:
+            int: The base fee in basis points.
+        """
         data = self._request_clob(path="fee-rate", params={"token_id": token_id})
         return int(self._extract(data, "base_fee"))
 
     def get_orderbook(self, token_id: str) -> pd.DataFrame:
+        """Get the L2 orderbook for a token.
+
+        https://docs.polymarket.com/api-reference/clob/get-order-book
+
+        Args:
+            token_id: CLOB token ID.
+
+        Returns:
+            pd.DataFrame: Orderbook with bid/ask price and size columns.
+        """
         data = self._request_clob(path="book", params=dict(token_id=token_id))
         return self.orderbook_to_dataframe(data)
 
     def get_orderbooks(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Get orderbooks for multiple tokens in a single request.
+
+        https://docs.polymarket.com/api-reference/clob/get-order-books
+
+        Args:
+            data: DataFrame with a ``tokenId`` column identifying each token.
+
+        Returns:
+            pd.DataFrame: Combined orderbook rows for all requested tokens.
+        """
         from polymarket_pandas.client import markets_to_dict
         data = self._request_clob(
             path="books", method="POST", data=markets_to_dict(data)
@@ -114,6 +144,16 @@ class ClobPublicMixin:
         return float(self._extract(data, "mid"))
 
     def get_midpoints(self, token_ids: list[str]) -> pd.DataFrame:
+        """Get midpoint prices for multiple tokens.
+
+        https://docs.polymarket.com/api-reference/clob/get-midpoints
+
+        Args:
+            token_ids: List of CLOB token IDs.
+
+        Returns:
+            pd.DataFrame: Rows with ``tokenId`` and ``mid`` columns.
+        """
         data = self._request_clob(
             path="midpoints", params={"token_ids": ",".join(token_ids)}
         )
@@ -121,6 +161,16 @@ class ClobPublicMixin:
         return self.response_to_dataframe(rows)
 
     def get_midpoints_by_request(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Get midpoint prices for tokens specified in a DataFrame.
+
+        https://docs.polymarket.com/api-reference/clob/get-midpoints
+
+        Args:
+            data: DataFrame with a ``tokenId`` column identifying each token.
+
+        Returns:
+            pd.DataFrame: Rows with ``tokenId`` and ``mid`` columns.
+        """
         from polymarket_pandas.client import markets_to_dict
         result = self._request_clob(
             path="midpoints", method="POST", data=markets_to_dict(data)
@@ -129,6 +179,16 @@ class ClobPublicMixin:
         return self.response_to_dataframe(rows)
 
     def get_spread(self, token_id: str) -> float:
+        """Get the bid-ask spread for a token.
+
+        https://docs.polymarket.com/api-reference/clob/get-spread
+
+        Args:
+            token_id: CLOB token ID.
+
+        Returns:
+            float: The spread value.
+        """
         data = self._request_clob(path="spread", params={"token_id": token_id})
         return float(self._extract(data, "spread"))
 
@@ -143,11 +203,31 @@ class ClobPublicMixin:
         return {k: float(v) for k, v in data.items()}
 
     def get_last_trade_price(self, token_id: str) -> dict:
+        """Get the last traded price for a token.
+
+        https://docs.polymarket.com/api-reference/clob/get-last-trade-price
+
+        Args:
+            token_id: CLOB token ID.
+
+        Returns:
+            dict: Response containing the last trade price.
+        """
         return self._request_clob(
             path="last-trade-price", params={"token_id": token_id}
         )
 
     def get_last_trade_prices(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Get last traded prices for multiple tokens.
+
+        https://docs.polymarket.com/api-reference/clob/get-last-trades-prices
+
+        Args:
+            data: DataFrame with a ``tokenId`` column identifying each token.
+
+        Returns:
+            pd.DataFrame: Last trade price rows for each token.
+        """
         from polymarket_pandas.client import markets_to_dict
         result = self._request_clob(
             path="last-trades-prices", method="POST", data=markets_to_dict(data)

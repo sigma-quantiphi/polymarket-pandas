@@ -85,6 +85,16 @@ class ClobPrivateMixin:
         return self.response_to_dataframe(data)
 
     def get_order_scoring(self, order_id: str) -> bool:
+        """Check whether an order is being scored for rewards.
+
+        https://docs.polymarket.com/api-reference/clob/get-order-scoring
+
+        Args:
+            order_id: The order ID to check.
+
+        Returns:
+            True if the order is being scored, False otherwise.
+        """
         data = self._request_clob_private(
             path="order-scoring", params={"order_id": order_id}
         )
@@ -164,6 +174,10 @@ class ClobPrivateMixin:
         )
 
     def send_heartbeat(self) -> dict:
+        """Send a heartbeat to keep open orders alive.
+
+        https://docs.polymarket.com/api-reference/clob/post-heartbeat
+        """
         return self._request_clob_private(path="heartbeats", method="POST")
 
     # ── CLOB API: API Keys ───────────────────────────────────────────────

@@ -78,13 +78,8 @@ def filter_params(params: dict | None) -> dict:
             if len(value) > 0:
                 new_params[key] = value
         elif pd.notnull(value):
-            if key in [
-                "start_date_min",
-                "start_date_max",
-                "end_date_min",
-                "end_date_max",
-            ] and isinstance(value, pd.Timestamp):
-                value = value.isoformat() + "Z"
+            if isinstance(value, pd.Timestamp):
+                value = value.tz_convert("UTC").isoformat() if value.tzinfo else value.isoformat() + "Z"
             new_params[key] = value
     return new_params
 
@@ -122,8 +117,8 @@ _EXPAND_PREFIXES = ("events", "eventsTags", "markets", "eventsSeries")
 
 
 def expand_column_lists(base: tuple, prefixes: tuple = _EXPAND_PREFIXES) -> list:
-    """Return base columns plus prefixed camelCase variants for nested expand fields."""
-    result = list(base)
+    """Return base columns (camelCased) plus prefixed camelCase variants for nested expand fields."""
+    result = [snake_to_camel(x) for x in base]
     for prefix in prefixes:
         result += [snake_to_camel(f"{prefix}_{x}") for x in base]
     return result

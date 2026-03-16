@@ -49,6 +49,14 @@ class PolymarketPandas(
     RelayerMixin,
     BridgeMixin,
 ):
+    """Polymarket HTTP client that returns preprocessed pandas DataFrames.
+
+    All endpoint methods live in the six mixins; this class provides the
+    HTTP transport, authentication, DataFrame preprocessing, and pagination
+    infrastructure. Credentials fall back to environment variables when not
+    supplied explicitly. Use as a context manager to ensure the connection
+    pool is closed.
+    """
 
     data_url: str = "https://data-api.polymarket.com/"
     gamma_url: str = "https://gamma-api.polymarket.com/"
@@ -204,9 +212,11 @@ class PolymarketPandas(
         self._client.close()
 
     def __enter__(self) -> Self:
+        """Enter the context manager, returning this client instance."""
         return self
 
     def __exit__(self, *_: object) -> None:
+        """Exit the context manager and close the HTTP connection pool."""
         self.close()
 
     def _autopage(
@@ -541,6 +551,7 @@ class PolymarketPandas(
         }
 
     def preprocess_dataframe(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Apply column renaming, type coercion, and cleanup to a raw DataFrame."""
         return _preprocess_dataframe(
             data,
             numeric_columns=self._numeric_columns,
@@ -552,9 +563,11 @@ class PolymarketPandas(
         )
 
     def response_to_dataframe(self, data: dict | list) -> pd.DataFrame:
+        """Convert a raw JSON response (list of dicts) to a preprocessed DataFrame."""
         return self.preprocess_dataframe(pd.DataFrame(data))
 
     def orderbook_to_dataframe(self, data: dict | list) -> pd.DataFrame:
+        """Normalize a CLOB order-book response into a single bids+asks DataFrame."""
         bids = pd.json_normalize(data, record_path="bids", meta=orderbook_meta)
         bids["side"] = "bids"
         asks = pd.json_normalize(data, record_path="asks", meta=orderbook_meta)
@@ -596,12 +609,15 @@ class PolymarketPandas(
         return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame()
 
     def get_tags_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all tags and return a single DataFrame."""
         return self._autopage(self.get_tags, **kwargs)
 
     def get_events_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all events and return a single DataFrame."""
         return self._autopage(self.get_events, **kwargs)
 
     def get_markets_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all markets and return a single DataFrame."""
         return self._autopage(self.get_markets, **kwargs)
 
     def get_sampling_markets_all(self, **kwargs) -> pd.DataFrame:

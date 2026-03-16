@@ -14,7 +14,6 @@ from polymarket_pandas.utils import (
     expand_column_lists,
     orderbook_meta,
     preprocess_dataframe as _preprocess_dataframe,
-    snake_to_camel,
 )
 
 _MARKET_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
@@ -25,35 +24,95 @@ _RTDS_URL = "wss://ws-live-data.polymarket.com"
 
 @dataclass
 class PolymarketWebSocketSession:
-    """Thin wrapper around a WebSocketApp returned by each channel method."""
+    """Thin wrapper around a WebSocketApp returned by each channel method.
+
+    Provides subscribe/unsubscribe helpers for dynamic asset management.
+    See: https://docs.polymarket.com/api-reference/wss
+    """
 
     app: WebSocketApp
 
     def run_forever(self, **kwargs) -> None:
+        """Start the WebSocket event loop, blocking until the connection closes."""
         self.app.run_forever(**kwargs)
 
     def close(self) -> None:
+        """Close the WebSocket connection."""
         self.app.close()
 
-    def subscribe(self, asset_ids: list[str]) -> None:
-        msg = orjson.dumps({"assets_ids": asset_ids, "type": "market"})
-        self.app.send(msg)
+    def subscribe(
+        self,
+        asset_ids: list[str],
+        *,
+        level: int | None = None,
+        custom_feature_enabled: bool | None = None,
+    ) -> None:
+        """Subscribe to additional asset IDs on an open connection.
 
-    def unsubscribe(self, asset_ids: list[str]) -> None:
-        msg = orjson.dumps({"assets_ids": asset_ids, "type": "market", "action": "unsubscribe"})
-        self.app.send(msg)
+        Args:
+            asset_ids: CLOB token IDs to subscribe to.
+            level: Order book depth level (1 or 2).
+            custom_feature_enabled: Enable extended event types.
+        """
+        msg: dict = {"operation": "subscribe", "assets_ids": asset_ids}
+        if level is not None:
+            msg["level"] = level
+        if custom_feature_enabled is not None:
+            msg["custom_feature_enabled"] = custom_feature_enabled
+        self.app.send(orjson.dumps(msg))
+
+    def unsubscribe(
+        self,
+        asset_ids: list[str],
+        *,
+        level: int | None = None,
+        custom_feature_enabled: bool | None = None,
+    ) -> None:
+        """Unsubscribe from asset IDs on an open connection.
+
+        Args:
+            asset_ids: CLOB token IDs to unsubscribe from.
+            level: Order book depth level (1 or 2).
+            custom_feature_enabled: Enable extended event types.
+        """
+        msg: dict = {"operation": "unsubscribe", "assets_ids": asset_ids}
+        if level is not None:
+            msg["level"] = level
+        if custom_feature_enabled is not None:
+            msg["custom_feature_enabled"] = custom_feature_enabled
+        self.app.send(orjson.dumps(msg))
 
     def rtds_subscribe(self, subscriptions: list[dict]) -> None:
+        """Subscribe to RTDS topics on an open connection.
+
+        Args:
+            subscriptions: List of subscription dicts, e.g. ``[{"topic": "crypto_prices"}]``.
+        """
         msg = orjson.dumps({"action": "subscribe", "subscriptions": subscriptions})
         self.app.send(msg)
 
     def rtds_unsubscribe(self, subscriptions: list[dict]) -> None:
+        """Unsubscribe from RTDS topics on an open connection.
+
+        Args:
+            subscriptions: List of subscription dicts to remove.
+        """
         msg = orjson.dumps({"action": "unsubscribe", "subscriptions": subscriptions})
         self.app.send(msg)
 
 
 @dataclass
 class PolymarketWebSocket:
+    """WebSocket client for Polymarket real-time data streams.
+
+    Provides channel methods that return a ``PolymarketWebSocketSession``.
+    Incoming messages are parsed into DataFrames using the same preprocessing
+    pipeline as ``PolymarketPandas``. Use ``from_client()`` to share credentials
+    and column config with an existing HTTP client.
+
+    See: https://docs.polymarket.com/api-reference/wss
+    """
+
     api_key: str | None = field(default_factory=lambda: os.getenv("POLYMARKET_API_KEY"), repr=False)
     api_secret: str | None = field(default_factory=lambda: os.getenv("POLYMARKET_API_SECRET"), repr=False)
     api_passphrase: str | None = field(default_factory=lambda: os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False)
@@ -222,14 +281,36 @@ class PolymarketWebSocket:
         on_message: Callable[[str, pd.DataFrame | dict], None] | None = None,
         on_error: Callable | None = None,
         on_close: Callable | None = None,
+        initial_dump: bool = True,
+        level: int = 2,
         custom_feature_enabled: bool = True,
         ping_interval: int = 10,
     ) -> PolymarketWebSocketSession:
+        """Open a market data WebSocket for the given asset IDs.
+
+        Streams order-book snapshots, price changes, last trade prices,
+        best bid/ask updates, tick-size changes, and market lifecycle events.
+        Each named callback receives a preprocessed DataFrame (or dict for
+        ``on_new_market`` / ``on_market_resolved``). Unhandled event types
+        fall through to ``on_message``.
+
+        Args:
+            asset_ids: CLOB token IDs to subscribe to.
+            level: Order-book depth level (1 or 2).
+            initial_dump: Request an initial snapshot on connect.
+
+        Returns:
+            A session whose ``run_forever()`` starts the event loop.
+
+        See: https://docs.polymarket.com/api-reference/wss/market
+        """
 
         def _on_open(ws):
             sub = {
                 "assets_ids": asset_ids,
                 "type": "market",
+                "initial_dump": initial_dump,
+                "level": level,
                 "custom_feature_enabled": custom_feature_enabled,
             }
             ws.send(orjson.dumps(sub))
@@ -250,7 +331,8 @@ class PolymarketWebSocket:
                 self._dispatch(on_book, on_message, event_type, df)
 
             elif event_type == "price_change":
-                df = self._preprocess(pd.DataFrame([msg]))
+                data = pd.json_normalize([msg], record_path="price_changes", meta=["market", "timestamp"])
+                df = self._preprocess(data)
                 self._dispatch(on_price_change, on_message, event_type, df)
 
             elif event_type == "last_trade_price":
@@ -294,6 +376,18 @@ class PolymarketWebSocket:
         on_close: Callable | None = None,
         ping_interval: int = 10,
     ) -> PolymarketWebSocketSession:
+        """Open an authenticated user WebSocket for trade and order updates.
+
+        Requires L2 API credentials (api_key, api_secret, api_passphrase).
+
+        Args:
+            markets: Condition IDs to monitor for the authenticated user.
+
+        Returns:
+            A session whose ``run_forever()`` starts the event loop.
+
+        See: https://docs.polymarket.com/api-reference/wss/user
+        """
         if self.api_key is None or self.api_secret is None or self.api_passphrase is None:
             raise ValueError(
                 "api_key, api_secret, and api_passphrase are required for the user channel."
@@ -346,6 +440,13 @@ class PolymarketWebSocket:
         on_error: Callable | None = None,
         on_close: Callable | None = None,
     ) -> PolymarketWebSocketSession:
+        """Open a WebSocket for real-time sports result events.
+
+        Returns:
+            A session whose ``run_forever()`` starts the event loop.
+
+        See: https://docs.polymarket.com/api-reference/wss
+        """
 
         def _on_message(ws, raw: str):
             if raw == "ping":
@@ -380,6 +481,17 @@ class PolymarketWebSocket:
         on_close: Callable | None = None,
         ping_interval: int = 5,
     ) -> PolymarketWebSocketSession:
+        """Open an RTDS WebSocket for crypto prices, Chainlink feeds, and comments.
+
+        Args:
+            subscriptions: List of topic dicts, e.g.
+                ``[{"topic": "crypto_prices"}, {"topic": "comments"}]``.
+
+        Returns:
+            A session whose ``run_forever()`` starts the event loop.
+
+        See: https://docs.polymarket.com/api-reference/wss
+        """
 
         def _on_open(ws):
             sub = {"action": "subscribe", "subscriptions": subscriptions}

@@ -42,6 +42,12 @@ class GammaMixin:
         expand_events: bool = True,
         expand_series: bool = True,
     ) -> pd.DataFrame:
+        """Fetch markets with optional filtering, pagination, and nested expansion.
+
+        Returns one row per CLOB token when ``expand_clob_token_ids`` is True.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-markets
+        """
         data = self._request_gamma(
             path="markets",
             params={
@@ -89,16 +95,28 @@ class GammaMixin:
         return data.reset_index(drop=True)
 
     def get_market_by_id(self, id: int, include_tag: bool | None = None) -> dict:
+        """Fetch a single market by its numeric ID.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-markets
+        """
         return self._request_gamma(
             path=f"markets/{id}", params={"include_tag": include_tag}
         )
 
     def get_market_by_slug(self, slug: str, include_tag: bool | None = None) -> dict:
+        """Fetch a single market by its URL slug.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-markets
+        """
         return self._request_gamma(
             path=f"markets/slug/{slug}", params={"include_tag": include_tag}
         )
 
     def get_market_tags(self, id: int) -> pd.DataFrame:
+        """Fetch tags associated with a market by its numeric ID.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-tags
+        """
         data = self._request_gamma(path=f"markets/{id}/tags")
         return self.response_to_dataframe(data)
 
@@ -128,6 +146,12 @@ class GammaMixin:
         expand_markets: bool | None = True,
         expand_clob_token_ids: bool | None = True,
     ) -> pd.DataFrame:
+        """Fetch events with optional filtering, pagination, and nested market expansion.
+
+        Returns one row per CLOB token when ``expand_clob_token_ids`` is True.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-events
+        """
         data = self._request_gamma(
             path="events",
             params={
@@ -157,8 +181,9 @@ class GammaMixin:
             data = expand_dataframe(data, field="markets", column="markets")
         data = self.preprocess_dataframe(data)
         if expand_clob_token_ids:
-            data = data.explode("marketsClobTokenIds", ignore_index=True)
-            data["marketsClobTokenIds"] = data["marketsClobTokenIds"].astype(str)
+            if not data.empty:
+                data = data.explode("marketsClobTokenIds", ignore_index=True)
+                data["marketsClobTokenIds"] = data["marketsClobTokenIds"].astype(str)
         return data
 
     def get_event_by_id(
@@ -167,6 +192,10 @@ class GammaMixin:
         include_chat: bool | None = None,
         include_template: bool | None = None,
     ) -> dict:
+        """Fetch a single event by its numeric ID.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-events
+        """
         return self._request_gamma(
             path=f"events/{id}",
             params={
@@ -220,6 +249,10 @@ class GammaMixin:
         include_template: bool | None = None,
         is_carousel: bool | None = None,
     ) -> pd.DataFrame:
+        """Fetch tags with optional filtering and pagination.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-tags
+        """
         data = self._request_gamma(
             path="tags",
             params={
@@ -234,11 +267,19 @@ class GammaMixin:
         return self.response_to_dataframe(data)
 
     def get_tag_by_id(self, id: int, include_template: bool | None = None) -> dict:
+        """Fetch a single tag by its numeric ID.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-tags
+        """
         return self._request_gamma(
             path=f"tags/{id}", params={"include_template": include_template}
         )
 
     def get_tag_by_slug(self, slug: str, include_template: bool | None = None) -> dict:
+        """Fetch a single tag by its URL slug.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-tags
+        """
         return self._request_gamma(
             path=f"tags/slug/{slug}", params={"include_template": include_template}
         )
@@ -246,6 +287,10 @@ class GammaMixin:
     def get_related_tags_by_tag_id(
         self, id: int, omit_empty: bool | None = None, status: str | None = None
     ) -> pd.DataFrame:
+        """Fetch related tags for a tag by its numeric ID.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-tags
+        """
         data = self._request_gamma(
             path=f"tags/{id}/related-tags/tags",
             params={"omit_empty": omit_empty, "status": status},
@@ -255,6 +300,10 @@ class GammaMixin:
     def get_related_tags_by_tag_slug(
         self, slug: str, omit_empty: bool | None = None, status: str | None = None
     ) -> pd.DataFrame:
+        """Fetch related tags for a tag by its URL slug.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-tags
+        """
         data = self._request_gamma(
             path=f"tags/slug/{slug}/related-tags/tags",
             params={"omit_empty": omit_empty, "status": status},
@@ -278,6 +327,10 @@ class GammaMixin:
         expand_events: bool = False,
         expand_event_tags: bool = False,
     ) -> pd.DataFrame:
+        """Fetch series with optional filtering, pagination, and nested event expansion.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-series
+        """
         data = self._request_gamma(
             path="series",
             params={
@@ -303,6 +356,10 @@ class GammaMixin:
         return self.preprocess_dataframe(data)
 
     def get_series_by_id(self, id: int, include_chat: bool | None = None) -> dict:
+        """Fetch a single series by its numeric ID.
+
+        See: https://docs.polymarket.com/api-reference/gamma/get-series
+        """
         return self._request_gamma(
             path=f"series/{id}",
             params={"include_chat": include_chat},
@@ -317,6 +374,7 @@ class GammaMixin:
         tags: str | None = None,
         series: str | None = None,
     ) -> pd.DataFrame:
+        """Fetch sports metadata (leagues, resolution sources, ordering, etc.)."""
         data = self._request_gamma(
             path="sports",
             params={
@@ -331,6 +389,7 @@ class GammaMixin:
         return self.response_to_dataframe(data)
 
     def get_sports_market_types(self) -> dict:
+        """Fetch the list of supported sports market types."""
         return self._request_gamma(path="sports/market-types")
 
     def get_teams(
@@ -343,6 +402,7 @@ class GammaMixin:
         name: list[str] | None = None,
         abbreviation: list[str] | None = None,
     ) -> pd.DataFrame:
+        """Fetch sports teams with optional filtering by league, name, or abbreviation."""
         data = self._request_gamma(
             path="teams",
             params={
@@ -370,6 +430,7 @@ class GammaMixin:
         get_positions: bool | None = None,
         holders_only: bool | None = None,
     ) -> pd.DataFrame:
+        """Fetch comments with optional filtering and pagination."""
         data = self._request_gamma(
             path="comments",
             params={
@@ -393,6 +454,7 @@ class GammaMixin:
         order: str | None = None,
         ascending: bool | None = None,
     ) -> pd.DataFrame:
+        """Fetch comments posted by a specific user address."""
         data = self._request_gamma(
             path=f"comments/user_address/{user_address}",
             params={
@@ -405,6 +467,7 @@ class GammaMixin:
         return self.response_to_dataframe(data)
 
     def get_comment_by_id(self, id: int, get_positions: bool | None = None) -> dict:
+        """Fetch a single comment by its numeric ID."""
         return self._request_gamma(
             path=f"comments/{id}",
             params={"get_positions": get_positions},
@@ -429,6 +492,12 @@ class GammaMixin:
         exclude_tag_id: list[int] | None = None,
         optimized: bool | None = None,
     ) -> dict:
+        """Search across markets, events, and profiles by query string.
+
+        Returns a dict with separate keys for each result type.
+
+        See: https://docs.polymarket.com/api-reference/gamma/search
+        """
         return self._request_gamma(
             path="public-search",
             params={

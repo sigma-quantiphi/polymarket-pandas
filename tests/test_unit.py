@@ -64,6 +64,19 @@ def test_filter_params_converts_timestamp():
     assert result["end_date_min"].startswith("2025-01-15")
 
 
+def test_filter_params_converts_any_timestamp_key():
+    ts = pd.Timestamp("2025-06-01T08:00:00", tz="UTC")
+    result = filter_params({"before": ts, "after": ts})
+    assert isinstance(result["before"], str)
+    assert result["before"].startswith("2025-06-01")
+
+
+def test_filter_params_converts_naive_timestamp():
+    ts = pd.Timestamp("2025-03-01T12:00:00")
+    result = filter_params({"start": ts})
+    assert result["start"].endswith("Z")
+
+
 def test_filter_params_all_none_returns_empty():
     assert filter_params({"a": None, "b": None}) == {}
 
@@ -188,7 +201,7 @@ def test_api_error_is_base_for_rate_limit_error():
 
 
 def test_private_endpoint_without_creds_raises_auth_error(
-    client: PolymarketPandas, httpx_mock: HTTPXMock
+    client: PolymarketPandas
 ):
     with pytest.raises(PolymarketAuthError):
         client.get_active_orders()
@@ -392,8 +405,11 @@ def test_market_channel_price_change(ws: PolymarketWebSocket):
     )
     msg = orjson.dumps({
         "event_type": "price_change",
-        "asset_id": "tok1",
-        "price": "0.60",
+        "market": "0xabc",
+        "timestamp": "1700000000",
+        "price_changes": [
+            {"asset_id": "tok1", "price": "0.60", "size": "50"},
+        ],
     }).decode()
     _get_on_message(session)(MagicMock(), msg)
     assert len(received) == 1
@@ -455,8 +471,11 @@ def test_market_channel_fallback_on_message(ws: PolymarketWebSocket):
     )
     msg = orjson.dumps({
         "event_type": "price_change",
-        "asset_id": "tok1",
-        "price": "0.60",
+        "market": "0xabc",
+        "timestamp": "1700000000",
+        "price_changes": [
+            {"asset_id": "tok1", "price": "0.60"},
+        ],
     }).decode()
     _get_on_message(session)(MagicMock(), msg)
     assert len(received) == 1

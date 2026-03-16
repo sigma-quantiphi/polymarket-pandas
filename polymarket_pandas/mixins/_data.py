@@ -24,6 +24,26 @@ class DataMixin:
         sortDirection: str | None = "DESC",
         title: str | None = None,
     ) -> pd.DataFrame:
+        """Fetch open positions for a user.
+
+        Args:
+            user: Wallet address.
+            market: Filter by token ID(s).
+            eventId: Filter by event ID(s).
+            sizeThreshold: Minimum position size to include.
+            redeemable: Only show redeemable positions.
+            mergeable: Only show mergeable positions.
+            limit: Max rows per page.
+            offset: Pagination offset.
+            sortBy: Column to sort by (e.g. ``"TOKENS"``).
+            sortDirection: ``"ASC"`` or ``"DESC"``.
+            title: Filter by market title substring.
+
+        Returns:
+            DataFrame of open positions.
+
+        See https://docs.polymarket.com/api-reference/data/get-positions
+        """
         data = self._request_data(
             path="positions",
             params={
@@ -53,6 +73,23 @@ class DataMixin:
         sortBy: str | None = "REALIZEDPNL",
         sortDirection: str | None = "DESC",
     ) -> pd.DataFrame:
+        """Fetch closed (resolved) positions for a user.
+
+        Args:
+            user: Wallet address.
+            market: Filter by token ID(s).
+            eventId: Filter by event ID(s).
+            title: Filter by market title substring.
+            limit: Max rows per page.
+            offset: Pagination offset.
+            sortBy: Column to sort by (e.g. ``"REALIZEDPNL"``).
+            sortDirection: ``"ASC"`` or ``"DESC"``.
+
+        Returns:
+            DataFrame of closed positions.
+
+        See https://docs.polymarket.com/api-reference/data/get-closed-positions
+        """
         data = self._request_data(
             path="closed-positions",
             params={
@@ -78,6 +115,22 @@ class DataMixin:
         limit: int | None = 50,
         offset: int | None = 0,
     ) -> pd.DataFrame:
+        """Fetch all user positions for a specific market.
+
+        Args:
+            market: Token ID of the market.
+            user: Filter to a single wallet address.
+            status: Position status filter (``"ALL"``, ``"OPEN"``, ``"CLOSED"``).
+            sortBy: Column to sort by (e.g. ``"TOTAL_PNL"``).
+            sortDirection: ``"ASC"`` or ``"DESC"``.
+            limit: Max rows per page.
+            offset: Pagination offset.
+
+        Returns:
+            DataFrame of positions in the given market.
+
+        See https://docs.polymarket.com/api-reference/data/get-market-positions
+        """
         data = self._request_data(
             path="v1/market-positions",
             params={
@@ -98,6 +151,18 @@ class DataMixin:
         limit: int | None = 100,
         minBalance: int | None = 1,
     ) -> pd.DataFrame:
+        """Fetch the top token holders for one or more markets.
+
+        Args:
+            market: Token ID(s) to query.
+            limit: Max number of holders to return.
+            minBalance: Minimum token balance threshold.
+
+        Returns:
+            DataFrame of top holders.
+
+        See https://docs.polymarket.com/api-reference/data/get-holders
+        """
         data = self._request_data(
             path="holders",
             params={
@@ -113,6 +178,17 @@ class DataMixin:
         user: str,
         market: list[str] | None = None,
     ) -> pd.DataFrame:
+        """Fetch the current USD value of a user's positions.
+
+        Args:
+            user: Wallet address.
+            market: Filter by token ID(s).
+
+        Returns:
+            DataFrame with position values.
+
+        See https://docs.polymarket.com/api-reference/data/get-value
+        """
         data = self._request_data(
             path="value",
             params={"user": user, "market": market},
@@ -129,6 +205,22 @@ class DataMixin:
         user: str | None = None,
         userName: str | None = None,
     ) -> pd.DataFrame:
+        """Fetch the trader leaderboard.
+
+        Args:
+            category: Leaderboard category (e.g. ``"OVERALL"``).
+            timePeriod: Time window (``"DAY"``, ``"WEEK"``, ``"MONTH"``, ``"ALL"``).
+            orderBy: Ranking metric (e.g. ``"PNL"``, ``"VOLUME"``).
+            limit: Max rows per page.
+            offset: Pagination offset.
+            user: Filter to a specific wallet address.
+            userName: Filter by username substring.
+
+        Returns:
+            DataFrame of leaderboard entries.
+
+        See https://docs.polymarket.com/api-reference/data/get-leaderboard
+        """
         data = self._request_data(
             path="v1/leaderboard",
             params={
@@ -155,6 +247,24 @@ class DataMixin:
         user: str | None = None,
         side: str | None = None,
     ) -> pd.DataFrame:
+        """Fetch recent trades.
+
+        Args:
+            limit: Max rows per page.
+            offset: Pagination offset.
+            takerOnly: If True, return only taker-side trades.
+            filterType: Amount filter comparator (e.g. ``"ABOVE"``, ``"BELOW"``).
+            filterAmount: Threshold for the amount filter.
+            market: Filter by token ID(s).
+            eventId: Filter by event ID(s).
+            user: Filter to a specific wallet address.
+            side: Filter by trade side (``"BUY"`` or ``"SELL"``).
+
+        Returns:
+            DataFrame of trades.
+
+        See https://docs.polymarket.com/api-reference/data/get-trades
+        """
         data = self._request_data(
             path="trades",
             params={
@@ -185,6 +295,26 @@ class DataMixin:
         sortDirection: str | None = "DESC",
         side: str | None = None,
     ) -> pd.DataFrame:
+        """Fetch activity history (trades, redemptions, merges) for a user.
+
+        Args:
+            user: Wallet address.
+            limit: Max rows per page.
+            offset: Pagination offset.
+            market: Filter by token ID(s).
+            eventId: Filter by event ID(s).
+            type: Activity types to include (e.g. ``["TRADE", "REDEEM"]``).
+            start: Start timestamp (Unix seconds).
+            end: End timestamp (Unix seconds).
+            sortBy: Column to sort by (e.g. ``"TIMESTAMP"``).
+            sortDirection: ``"ASC"`` or ``"DESC"``.
+            side: Filter by side (``"BUY"`` or ``"SELL"``).
+
+        Returns:
+            DataFrame of activity records.
+
+        See https://docs.polymarket.com/api-reference/data/get-activity
+        """
         data = self._request_data(
             path="activity",
             params={
@@ -228,12 +358,42 @@ class DataMixin:
             }
 
     def get_live_volume(self, id: int) -> dict:
+        """Fetch live trading volume for an event.
+
+        Args:
+            id: Event ID.
+
+        Returns:
+            Dict with volume data.
+
+        See https://docs.polymarket.com/api-reference/data/get-live-volume
+        """
         return self._request_data(path="live-volume", params={"id": id})
 
     def get_open_interest(self, market: list[str] | None = None) -> dict:
+        """Fetch open interest for one or more markets.
+
+        Args:
+            market: Token ID(s). If None, returns aggregate open interest.
+
+        Returns:
+            Dict with open interest data.
+
+        See https://docs.polymarket.com/api-reference/data/get-oi
+        """
         return self._request_data(path="oi", params={"market": market})
 
     def get_traded_markets_count(self, user: str) -> dict:
+        """Fetch the number of distinct markets a user has traded.
+
+        Args:
+            user: Wallet address.
+
+        Returns:
+            Dict with the traded markets count.
+
+        See https://docs.polymarket.com/api-reference/data/get-traded
+        """
         return self._request_data(path="traded", params={"user": user})
 
     # ── Data API: Builders ───────────────────────────────────────────────
@@ -244,6 +404,18 @@ class DataMixin:
         limit: int | None = 25,
         offset: int | None = 0,
     ) -> pd.DataFrame:
+        """Fetch the builder (liquidity provider) leaderboard.
+
+        Args:
+            timePeriod: Time window (``"DAY"``, ``"WEEK"``, ``"MONTH"``, ``"ALL"``).
+            limit: Max rows per page.
+            offset: Pagination offset.
+
+        Returns:
+            DataFrame of builder leaderboard entries.
+
+        See https://docs.polymarket.com/api-reference/data/get-builders-leaderboard
+        """
         data = self._request_data(
             path="v1/builders/leaderboard",
             params={
@@ -255,6 +427,16 @@ class DataMixin:
         return self.response_to_dataframe(data)
 
     def get_builder_volume(self, timePeriod: str | None = "DAY") -> pd.DataFrame:
+        """Fetch builder volume breakdown by time period.
+
+        Args:
+            timePeriod: Time window (``"DAY"``, ``"WEEK"``, ``"MONTH"``, ``"ALL"``).
+
+        Returns:
+            DataFrame of builder volume entries.
+
+        See https://docs.polymarket.com/api-reference/data/get-builders-volume
+        """
         data = self._request_data(
             path="v1/builders/volume",
             params={"timePeriod": timePeriod},

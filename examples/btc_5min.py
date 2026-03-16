@@ -1,9 +1,9 @@
 """
 BTC 5-Minute Up/Down — Orderbook + Live Trades
 
-Finds the current BTC 5-minute binary market on Polymarket, pulls the
-orderbook snapshot for both outcomes (Up / Down), then opens a WebSocket
-stream for real-time book updates and trade prints.
+Finds the current BTC 5-minute binary market on Polymarket via series lookup,
+pulls the orderbook snapshot for both outcomes (Up / Down), then opens a
+WebSocket stream for real-time book updates and trade prints.
 
 Requirements:
     pip install polymarket-pandas
@@ -29,46 +29,47 @@ pd.set_option("display.width", 160)
 client = PolymarketPandas()
 now = pd.Timestamp.now(tz="UTC")
 
-# Markets ending within the next 10 minutes — catches the current 5-min window
+# Find the BTC 5-min series, get the soonest active event
+series = client.get_series(
+    slug="btc-up-or-down-5m",
+    expand_events=True,
+    closed=False,
+)
+series = series.loc[series["eventsEndDate"] >= now].sort_values(
+    "eventsEndDate", ignore_index=True
+)
+if series.empty:
+    print("No active BTC 5-min events found.")
+    sys.exit(1)
+
+event_slug = series["eventsSlug"].iloc[0]
+print(f"Event: {event_slug}")
+
+# Get event details with markets
+events = client.get_events(slug=[event_slug])
+
+# Get markets with exploded token IDs
 markets = client.get_markets(
-    end_date_min=now.isoformat(),
-    end_date_max=(now + pd.Timedelta(minutes=10)).isoformat(),
+    slug=events["marketsSlug"].tolist(),
     expand_clob_token_ids=True,
     expand_events=False,
     expand_series=False,
 )
-
-btc = markets[markets["slug"].str.contains("btc-updown-5m", case=False, na=False)]
-if btc.empty:
+if markets.empty:
     print("No active BTC 5-min markets found. Market may be between windows.")
     sys.exit(1)
 
-# Pick the soonest-ending market (current window)
-soonest_end = btc["endDate"].min()
-current = btc[btc["endDate"] == soonest_end].copy()
+# Sort by endDate, deduplicate token IDs, explode outcomes for display
+current = (
+    markets.sort_values("endDate")
+    .drop_duplicates(subset=["clobTokenIds"])
+    .explode(["outcomes", "outcomePrices"])
+)
 
-question = current["question"].iloc[0]
-end_date = current["endDate"].iloc[0]
-condition_id = current["conditionId"].iloc[0]
+asset_ids = current["clobTokenIds"].unique().tolist()
 
-print(f"Market:  {question}")
-print(f"  end:   {end_date}")
-print(f"  cond:  {condition_id}")
-
-# Each market has 2 exploded rows — outcomes list tells us [Up, Down]
-# First token_id = Up, second = Down
-outcomes = current["outcomes"].iloc[0]  # e.g. ["Up", "Down"]
-token_ids = current["clobTokenIds"].tolist()
-
-token_df = pd.DataFrame({
-    "outcome": outcomes,
-    "token_id": token_ids,
-})
 print(f"\n{'='*60}")
-print("Token IDs:")
-print(token_df.to_string(index=False))
-
-asset_ids = token_df["token_id"].tolist()
+print(current[["question", "endDate", "conditionId", "clobTokenIds", "outcomes", "outcomePrices"]].to_string(index=False))
 
 # ── 2. REST snapshot: orderbook + recent trades ─────────────────────────────
 
@@ -76,20 +77,10 @@ print(f"\n{'='*60}")
 print("Orderbook Snapshot")
 print("=" * 60)
 
-for _, row in token_df.iterrows():
-    tid = row["token_id"]
-    outcome = row["outcome"]
-    print(f"\n--- {outcome} ---")
-    book = client.get_orderbook(tid)
-    if book.empty:
-        print("  (empty book)")
-    else:
-        bids = book[book["side"] == "bids"].sort_values("price", ascending=False).head(5)
-        asks = book[book["side"] == "asks"].sort_values("price", ascending=True).head(5)
-        print(f"  Top Bids:\n{bids[['price', 'size']].to_string(index=False)}")
-        print(f"  Top Asks:\n{asks[['price', 'size']].to_string(index=False)}")
-
-    spread = client.get_spread(tid)
+for tid in asset_ids:
+    book = client.get_orderbook(token_id=tid)
+    print(f"  Book:\n{book}")
+    spread = client.get_spread(token_id=tid)
     mid = client.get_midpoint_price(tid)
     print(f"  Midpoint: {mid:.4f}  Spread: {spread:.4f}")
 
@@ -97,10 +88,10 @@ print(f"\n{'='*60}")
 print("Recent Trades")
 print("=" * 60)
 
-trades = client.get_trades(market=asset_ids, limit=20)
+event_id = events["id"].iloc[0]
+trades = client.get_trades(eventId=[event_id], limit=20)
 if not trades.empty:
-    cols = [c for c in ["timestamp", "side", "price", "size"] if c in trades.columns]
-    print(trades[cols].to_string(index=False))
+    print(trades.reindex(columns=["timestamp", "side", "price", "size"]))
 else:
     print("(no recent trades)")
 
@@ -114,30 +105,19 @@ ws = PolymarketWebSocket.from_client(client)
 
 
 def on_book(df: pd.DataFrame) -> None:
-    bids = df[df["side"] == "bids"]
-    asks = df[df["side"] == "asks"]
-    best_bid = bids["price"].max() if not bids.empty else None
-    best_ask = asks["price"].min() if not asks.empty else None
-    asset = df["assetId"].iloc[0] if "assetId" in df.columns else "?"
-    label = token_df.loc[token_df["token_id"] == asset, "outcome"]
-    label = label.iloc[0] if not label.empty else str(asset)[:12]
-    print(f"  [BOOK]  {label:<6}  bid={best_bid}  ask={best_ask}  levels={len(df)}")
+    print(f"  [BOOK]  {df.dropna(how='all', axis=1)}")
 
 
 def on_price_change(df: pd.DataFrame) -> None:
-    for _, row in df.iterrows():
-        asset = row.get("assetId", "?")
-        label = token_df.loc[token_df["token_id"] == asset, "outcome"]
-        label = label.iloc[0] if not label.empty else str(asset)[:12]
-        print(f"  [PRICE] {label:<6}  price={row.get('price', '?')}")
+    print(f"  [PRICE] {df.dropna(how='all', axis=1)}")
 
 
 def on_last_trade_price(df: pd.DataFrame) -> None:
-    for _, row in df.iterrows():
-        asset = row.get("assetId", "?")
-        label = token_df.loc[token_df["token_id"] == asset, "outcome"]
-        label = label.iloc[0] if not label.empty else str(asset)[:12]
-        print(f"  [TRADE] {label:<6}  last={row.get('price', '?')}")
+    print(f"  [TRADE] {df.dropna(how='all', axis=1)}")
+
+
+def on_best_bid_ask(df: pd.DataFrame) -> None:
+    print(f"  [BBA]   {df.dropna(how='all', axis=1)}")
 
 
 session = ws.market_channel(
@@ -145,10 +125,14 @@ session = ws.market_channel(
     on_book=on_book,
     on_price_change=on_price_change,
     on_last_trade_price=on_last_trade_price,
+    on_best_bid_ask=on_best_bid_ask,
+    initial_dump=True,
+    level=2,
+    custom_feature_enabled=True,
 )
 
 
-def _shutdown(sig, frame):
+def _shutdown(_sig, _frame):
     print("\nShutting down ...")
     session.close()
     client.close()
