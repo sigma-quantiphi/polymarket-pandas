@@ -1,4 +1,5 @@
 """Polymarket-specific exception hierarchy."""
+
 from __future__ import annotations
 
 

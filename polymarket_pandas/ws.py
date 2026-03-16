@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import orjson
 import pandas as pd
@@ -13,6 +13,8 @@ from websocket import WebSocketApp
 from polymarket_pandas.utils import (
     expand_column_lists,
     orderbook_meta,
+)
+from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
 )
 
@@ -114,8 +116,12 @@ class PolymarketWebSocket:
     """
 
     api_key: str | None = field(default_factory=lambda: os.getenv("POLYMARKET_API_KEY"), repr=False)
-    api_secret: str | None = field(default_factory=lambda: os.getenv("POLYMARKET_API_SECRET"), repr=False)
-    api_passphrase: str | None = field(default_factory=lambda: os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False)
+    api_secret: str | None = field(
+        default_factory=lambda: os.getenv("POLYMARKET_API_SECRET"), repr=False
+    )
+    api_passphrase: str | None = field(
+        default_factory=lambda: os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False
+    )
     numeric_columns: tuple = field(
         default=(
             "bestAsk",
@@ -213,15 +219,15 @@ class PolymarketWebSocket:
     json_columns: tuple = field(default=("clobTokenIds", "outcomes", "outcomePrices"))
 
     def __post_init__(self) -> None:
-        self._numeric_columns      = expand_column_lists(self.numeric_columns)
+        self._numeric_columns = expand_column_lists(self.numeric_columns)
         self._str_datetime_columns = expand_column_lists(self.str_datetime_columns)
         self._int_datetime_columns = expand_column_lists(self.int_datetime_columns)
-        self._bool_columns         = expand_column_lists(self.bool_columns)
-        self._drop_columns         = expand_column_lists(self.drop_columns)
-        self._json_columns         = expand_column_lists(self.json_columns)
+        self._bool_columns = expand_column_lists(self.bool_columns)
+        self._drop_columns = expand_column_lists(self.drop_columns)
+        self._json_columns = expand_column_lists(self.json_columns)
 
     @classmethod
-    def from_client(cls, client) -> "PolymarketWebSocket":
+    def from_client(cls, client) -> PolymarketWebSocket:
         """Share credentials and column config with an existing PolymarketPandas HTTP client."""
         return cls(
             api_key=client._api_key,
@@ -237,7 +243,7 @@ class PolymarketWebSocket:
 
     # ── Private helpers ─────────────────────────────────────────────────
 
-    def _preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _preprocess(self, df: pd.DataFrame, *, int_datetime_unit: str = "s") -> pd.DataFrame:
         return _preprocess_dataframe(
             df,
             numeric_columns=self._numeric_columns,
@@ -246,6 +252,7 @@ class PolymarketWebSocket:
             bool_columns=self._bool_columns,
             drop_columns=self._drop_columns,
             json_columns=self._json_columns,
+            int_datetime_unit=int_datetime_unit,
         )
 
     def _dispatch(self, named_cb, fallback_cb, event_type: str, payload) -> None:
@@ -323,15 +330,21 @@ class PolymarketWebSocket:
             event_type = msg.get("event_type", "")
 
             if event_type == "book":
-                bids = pd.json_normalize(msg, record_path="bids", meta=orderbook_meta, errors="ignore")
+                bids = pd.json_normalize(
+                    msg, record_path="bids", meta=orderbook_meta, errors="ignore"
+                )
                 bids["side"] = "bids"
-                asks = pd.json_normalize(msg, record_path="asks", meta=orderbook_meta, errors="ignore")
+                asks = pd.json_normalize(
+                    msg, record_path="asks", meta=orderbook_meta, errors="ignore"
+                )
                 asks["side"] = "asks"
                 df = self._preprocess(pd.concat([bids, asks], ignore_index=True))
                 self._dispatch(on_book, on_message, event_type, df)
 
             elif event_type == "price_change":
-                data = pd.json_normalize([msg], record_path="price_changes", meta=["market", "timestamp"])
+                data = pd.json_normalize(
+                    [msg], record_path="price_changes", meta=["market", "timestamp"]
+                )
                 df = self._preprocess(data)
                 self._dispatch(on_price_change, on_message, event_type, df)
 
@@ -495,7 +508,8 @@ class PolymarketWebSocket:
 
         def _on_open(ws):
             sub = {"action": "subscribe", "subscriptions": subscriptions}
-            ws.send(orjson.dumps(sub))
+            sub = orjson.dumps(sub)
+            ws.send(sub)
             self._ping_thread(ws, ping_interval)
 
         def _on_message(ws, raw: str):
@@ -504,15 +518,14 @@ class PolymarketWebSocket:
             msg = orjson.loads(raw)
             topic = msg.get("topic", "")
             payload = msg.get("payload", msg)
-
             if topic == "crypto_prices":
                 payload["source"] = "binance"
-                df = self._preprocess(pd.DataFrame([payload]))
+                df = self._preprocess(pd.DataFrame([payload]), int_datetime_unit="ms")
                 self._dispatch(on_crypto_prices, on_message, topic, df)
 
             elif topic == "crypto_prices_chainlink":
                 payload["source"] = "chainlink"
-                df = self._preprocess(pd.DataFrame([payload]))
+                df = self._preprocess(pd.DataFrame([payload]), int_datetime_unit="ms")
                 self._dispatch(on_crypto_prices_chainlink, on_message, topic, df)
 
             elif topic == "comments":

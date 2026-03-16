@@ -1,4 +1,5 @@
 """Gamma API endpoints mixin."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -85,9 +86,7 @@ class GammaMixin:
             if expand_events or expand_series:
                 data = expand_dataframe(data, field="events", column="events")
                 if expand_series:
-                    data = expand_dataframe(
-                        data, field="eventsSeries", column="eventsSeries"
-                    )
+                    data = expand_dataframe(data, field="eventsSeries", column="eventsSeries")
         data = self.preprocess_dataframe(data)
         if expand_clob_token_ids and not data.empty:
             data = data.explode("clobTokenIds", ignore_index=True)
@@ -99,18 +98,14 @@ class GammaMixin:
 
         See: https://docs.polymarket.com/api-reference/gamma/get-markets
         """
-        return self._request_gamma(
-            path=f"markets/{id}", params={"include_tag": include_tag}
-        )
+        return self._request_gamma(path=f"markets/{id}", params={"include_tag": include_tag})
 
     def get_market_by_slug(self, slug: str, include_tag: bool | None = None) -> dict:
         """Fetch a single market by its URL slug.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-markets
         """
-        return self._request_gamma(
-            path=f"markets/slug/{slug}", params={"include_tag": include_tag}
-        )
+        return self._request_gamma(path=f"markets/slug/{slug}", params={"include_tag": include_tag})
 
     def get_market_tags(self, id: int) -> pd.DataFrame:
         """Fetch tags associated with a market by its numeric ID.
@@ -271,9 +266,7 @@ class GammaMixin:
 
         See: https://docs.polymarket.com/api-reference/gamma/get-tags
         """
-        return self._request_gamma(
-            path=f"tags/{id}", params={"include_template": include_template}
-        )
+        return self._request_gamma(path=f"tags/{id}", params={"include_template": include_template})
 
     def get_tag_by_slug(self, slug: str, include_template: bool | None = None) -> dict:
         """Fetch a single tag by its URL slug.

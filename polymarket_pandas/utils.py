@@ -1,10 +1,9 @@
 import inspect
+import time
 from functools import wraps
 
 import orjson
 import pandas as pd
-import time
-
 
 __all__ = [
     "expand_column_lists",
@@ -37,24 +36,21 @@ def preprocess_dataframe(
     bool_columns: list,
     drop_columns: list,
     json_columns: list,
+    int_datetime_unit: str = "s",
 ) -> pd.DataFrame:
     df = snake_columns_to_camel(df)
     df = df.drop(columns=drop_columns, errors="ignore")
     columns = df.columns
-    numeric_to_convert = [
-        x for x in columns if x in numeric_columns + int_datetime_columns
-    ]
+    numeric_to_convert = [x for x in columns if x in numeric_columns + int_datetime_columns]
     int_datetime_to_convert = [x for x in columns if x in int_datetime_columns]
     str_datetime_to_convert = [x for x in columns if x in str_datetime_columns]
     bool_to_convert = [x for x in columns if x in bool_columns]
     json_to_convert = [x for x in columns if x in json_columns]
     if numeric_to_convert:
-        df[numeric_to_convert] = df[numeric_to_convert].apply(
-            pd.to_numeric, errors="coerce"
-        )
+        df[numeric_to_convert] = df[numeric_to_convert].apply(pd.to_numeric, errors="coerce")
     if int_datetime_to_convert:
         df[int_datetime_to_convert] = df[int_datetime_to_convert].apply(
-            pd.to_datetime, utc=True, unit="s", errors="coerce"
+            pd.to_datetime, utc=True, unit=int_datetime_unit, errors="coerce"
         )
     if str_datetime_to_convert:
         df[str_datetime_to_convert] = df[str_datetime_to_convert].apply(
@@ -63,9 +59,7 @@ def preprocess_dataframe(
     if bool_to_convert:
         df[bool_to_convert] = df[bool_to_convert].astype(bool)
     for column in json_to_convert:
-        df[column] = df[column].apply(
-            lambda x: orjson.loads(x) if pd.notnull(x) else x
-        )
+        df[column] = df[column].apply(lambda x: orjson.loads(x) if pd.notnull(x) else x)
     return df
 
 
@@ -79,7 +73,9 @@ def filter_params(params: dict | None) -> dict:
                 new_params[key] = value
         elif pd.notnull(value):
             if isinstance(value, pd.Timestamp):
-                value = value.tz_convert("UTC").isoformat() if value.tzinfo else value.isoformat() + "Z"
+                value = (
+                    value.tz_convert("UTC").isoformat() if value.tzinfo else value.isoformat() + "Z"
+                )
             new_params[key] = value
     return new_params
 
@@ -117,7 +113,7 @@ _EXPAND_PREFIXES = ("events", "eventsTags", "markets", "eventsSeries")
 
 
 def expand_column_lists(base: tuple, prefixes: tuple = _EXPAND_PREFIXES) -> list:
-    """Return base columns (camelCased) plus prefixed camelCase variants for nested expand fields."""
+    """Return base columns plus prefixed camelCase variants for nested expand fields."""
     result = [snake_to_camel(x) for x in base]
     for prefix in prefixes:
         result += [snake_to_camel(f"{prefix}_{x}") for x in base]
@@ -128,14 +124,10 @@ def autopage(param_limit: str = "limit", param_offset: str = "offset"):
     def _decorator(func):
         sig = inspect.signature(func)
         default_limit = (
-            sig.parameters[param_limit].default
-            if param_limit in sig.parameters
-            else 500
+            sig.parameters[param_limit].default if param_limit in sig.parameters else 500
         )
         default_offset = (
-            sig.parameters[param_offset].default
-            if param_offset in sig.parameters
-            else 0
+            sig.parameters[param_offset].default if param_offset in sig.parameters else 0
         )
 
         @wraps(func)

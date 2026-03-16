@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import signal
 import sys
 
@@ -46,10 +47,21 @@ def on_comment(comment: dict) -> None:
 
 # Subscribe to crypto price feeds and comments
 subscriptions = [
-    {"topic": "crypto_prices","type": "update"},
-    {"topic": "crypto_prices_chainlink",       "type": "*",
-      "filters": ""},
-    # {"topic": "comments"},
+    # {
+    #     "topic": "crypto_prices",
+    #     "type": "update",
+    #     "filters": ",".join(["solusdt", "btcusdt", "ethusdt"]),
+    #     "filters": ["solusdt", "btcusdt", "ethusdt"],
+    # },
+    {
+        "topic": "crypto_prices_chainlink",
+        "type": "*",
+        "filters": json.dumps({"symbol": "eth/usd"})
+    },
+    # {
+    #     "topic": "comments",
+    #     "type": "comment_created"
+    # },
 ]
 
 print("Listening for RTDS updates (Ctrl+C to quit) ...")
@@ -71,5 +83,4 @@ def _shutdown(_sig, _frame):
 
 
 signal.signal(signal.SIGINT, _shutdown)
-
 session.run_forever()

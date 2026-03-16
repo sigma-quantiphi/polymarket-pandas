@@ -1,4 +1,5 @@
 """Bridge API endpoints mixin."""
+
 from __future__ import annotations
 
 import pandas as pd

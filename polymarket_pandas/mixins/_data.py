@@ -1,4 +1,5 @@
 """Data API endpoints mixin."""
+
 from __future__ import annotations
 
 import io
@@ -352,10 +353,7 @@ class DataMixin:
         )
         response.raise_for_status()
         with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
-            return {
-                name.removesuffix(".csv"): pd.read_csv(zf.open(name))
-                for name in zf.namelist()
-            }
+            return {name.removesuffix(".csv"): pd.read_csv(zf.open(name)) for name in zf.namelist()}
 
     def get_live_volume(self, id: int) -> dict:
         """Fetch live trading volume for an event.

@@ -4,13 +4,13 @@ Integration tests for PolymarketPandas — hit live APIs, no mocking.
 Run with:
     pytest tests/test_integration.py -v
 """
+
 import time
 
 import pandas as pd
 import pytest
 
 from polymarket_pandas import PolymarketPandas
-
 
 # ---------------------------------------------------------------------------
 # Session-scoped fixtures — expensive API calls run once per test session
@@ -51,9 +51,7 @@ def markets(client: PolymarketPandas, crypto_slugs: list[str]) -> pd.DataFrame:
 @pytest.fixture(scope="session")
 def events(client: PolymarketPandas, crypto_slugs: list[str]) -> pd.DataFrame:
     time.sleep(1)
-    df = client.get_events(
-        slug=crypto_slugs, expand_markets=True, expand_clob_token_ids=True
-    )
+    df = client.get_events(slug=crypto_slugs, expand_markets=True, expand_clob_token_ids=True)
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     return df
@@ -133,9 +131,7 @@ def test_get_orderbook(client: PolymarketPandas, token: str) -> None:
     assert set(df["side"].unique()).issubset({"bids", "asks"})
 
 
-def test_get_orderbooks(
-    client: PolymarketPandas, active_token_ids: pd.DataFrame
-) -> None:
+def test_get_orderbooks(client: PolymarketPandas, active_token_ids: pd.DataFrame) -> None:
     df = client.get_orderbooks(data=active_token_ids)
     assert isinstance(df, pd.DataFrame)
     assert not df.empty

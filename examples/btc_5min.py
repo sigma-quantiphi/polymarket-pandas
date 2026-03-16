@@ -35,9 +35,7 @@ series = client.get_series(
     expand_events=True,
     closed=False,
 )
-series = series.loc[series["eventsEndDate"] >= now].sort_values(
-    "eventsEndDate", ignore_index=True
-)
+series = series.loc[series["eventsEndDate"] >= now].sort_values("eventsEndDate", ignore_index=True)
 if series.empty:
     print("No active BTC 5-min events found.")
     sys.exit(1)
@@ -68,12 +66,16 @@ current = (
 
 asset_ids = current["clobTokenIds"].unique().tolist()
 
-print(f"\n{'='*60}")
-print(current[["question", "endDate", "conditionId", "clobTokenIds", "outcomes", "outcomePrices"]].to_string(index=False))
+print(f"\n{'=' * 60}")
+print(
+    current[
+        ["question", "endDate", "conditionId", "clobTokenIds", "outcomes", "outcomePrices"]
+    ].to_string(index=False)
+)
 
 # ── 2. REST snapshot: orderbook + recent trades ─────────────────────────────
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print("Orderbook Snapshot")
 print("=" * 60)
 
@@ -84,7 +86,7 @@ for tid in asset_ids:
     mid = client.get_midpoint_price(tid)
     print(f"  Midpoint: {mid:.4f}  Spread: {spread:.4f}")
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print("Recent Trades")
 print("=" * 60)
 
@@ -97,7 +99,7 @@ else:
 
 # ── 3. WebSocket: live book + trade stream ──────────────────────────────────
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print("Streaming live updates (Ctrl+C to quit) ...")
 print("=" * 60)
 

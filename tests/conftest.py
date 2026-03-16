@@ -1,5 +1,7 @@
 """Shared pytest fixtures for the unit test suite."""
+
 import pytest
+
 from polymarket_pandas import PolymarketPandas
 
 

@@ -1,4 +1,5 @@
 """CLOB public API endpoints mixin (market data, sampling, builder trades, rebates)."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -82,9 +83,8 @@ class ClobPublicMixin:
             pd.DataFrame: Combined orderbook rows for all requested tokens.
         """
         from polymarket_pandas.client import markets_to_dict
-        data = self._request_clob(
-            path="books", method="POST", data=markets_to_dict(data)
-        )
+
+        data = self._request_clob(path="books", method="POST", data=markets_to_dict(data))
         return self.orderbook_to_dataframe(data)
 
     def get_market_price(self, token_id: str, side: str) -> float:
@@ -98,9 +98,7 @@ class ClobPublicMixin:
         Returns:
             float: The market price.
         """
-        data = self._request_clob(
-            path="price", params={"token_id": token_id, "side": side}
-        )
+        data = self._request_clob(path="price", params={"token_id": token_id, "side": side})
         return float(self._extract(data, "price"))
 
     def get_market_prices(self, token_sides: list[dict]) -> pd.DataFrame:
@@ -121,9 +119,8 @@ class ClobPublicMixin:
         Retrieves market prices for specified tokens and sides via a POST request.
         """
         from polymarket_pandas.client import markets_to_dict
-        data = self._request_clob(
-            path="prices", method="POST", data=markets_to_dict(data)
-        )
+
+        data = self._request_clob(path="prices", method="POST", data=markets_to_dict(data))
         df = []
         for k, v in data.items():
             for sub_k, sub_v in v.items():
@@ -154,9 +151,7 @@ class ClobPublicMixin:
         Returns:
             pd.DataFrame: Rows with ``tokenId`` and ``mid`` columns.
         """
-        data = self._request_clob(
-            path="midpoints", params={"token_ids": ",".join(token_ids)}
-        )
+        data = self._request_clob(path="midpoints", params={"token_ids": ",".join(token_ids)})
         rows = [{"tokenId": k, "mid": v} for k, v in data.items()]
         return self.response_to_dataframe(rows)
 
@@ -172,9 +167,8 @@ class ClobPublicMixin:
             pd.DataFrame: Rows with ``tokenId`` and ``mid`` columns.
         """
         from polymarket_pandas.client import markets_to_dict
-        result = self._request_clob(
-            path="midpoints", method="POST", data=markets_to_dict(data)
-        )
+
+        result = self._request_clob(path="midpoints", method="POST", data=markets_to_dict(data))
         rows = [{"tokenId": k, "mid": v} for k, v in result.items()]
         return self.response_to_dataframe(rows)
 
@@ -197,9 +191,8 @@ class ClobPublicMixin:
         Retrieves bid-ask spreads for multiple tokens via a POST request.
         """
         from polymarket_pandas.client import markets_to_dict
-        data = self._request_clob(
-            path="spreads", method="POST", data=markets_to_dict(data)
-        )
+
+        data = self._request_clob(path="spreads", method="POST", data=markets_to_dict(data))
         return {k: float(v) for k, v in data.items()}
 
     def get_last_trade_price(self, token_id: str) -> dict:
@@ -213,9 +206,7 @@ class ClobPublicMixin:
         Returns:
             dict: Response containing the last trade price.
         """
-        return self._request_clob(
-            path="last-trade-price", params={"token_id": token_id}
-        )
+        return self._request_clob(path="last-trade-price", params={"token_id": token_id})
 
     def get_last_trade_prices(self, data: pd.DataFrame) -> pd.DataFrame:
         """Get last traded prices for multiple tokens.
@@ -229,6 +220,7 @@ class ClobPublicMixin:
             pd.DataFrame: Last trade price rows for each token.
         """
         from polymarket_pandas.client import markets_to_dict
+
         result = self._request_clob(
             path="last-trades-prices", method="POST", data=markets_to_dict(data)
         )
@@ -249,7 +241,8 @@ class ClobPublicMixin:
             market (str): The CLOB token ID for which to fetch price history.
             startTs (int | None): The start time, as a Unix UTC timestamp.
             endTs (int | None): The end time, as a Unix UTC timestamp.
-            interval (str | None): A duration string ending at the current time. Options: "1m", "1w", "1d", "6h", "1h", "max".
+            interval (str | None): A duration string ending at the current time.
+                Options: "1m", "1w", "1d", "6h", "1h", "max".
             fidelity (int | None): The resolution of the data, in minutes.
 
         Returns:
@@ -287,9 +280,7 @@ class ClobPublicMixin:
         Returns:
             dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
         """
-        raw = self._request_clob(
-            path="sampling-markets", params={"next_cursor": next_cursor}
-        )
+        raw = self._request_clob(path="sampling-markets", params={"next_cursor": next_cursor})
         raw["data"] = self.preprocess_dataframe(pd.DataFrame(raw.get("data", [])))
         return raw
 
@@ -310,9 +301,7 @@ class ClobPublicMixin:
         Returns:
             dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
         """
-        raw = self._request_clob(
-            path="simplified-markets", params={"next_cursor": next_cursor}
-        )
+        raw = self._request_clob(path="simplified-markets", params={"next_cursor": next_cursor})
         raw["data"] = self.preprocess_dataframe(pd.DataFrame(raw.get("data", [])))
         return raw
 

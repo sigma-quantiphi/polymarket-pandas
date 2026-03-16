@@ -52,7 +52,7 @@ def on_order(df: pd.DataFrame) -> None:
 
 # ── Start ────────────────────────────────────────────────────────────────────
 
-print(f"Listening for user updates (Ctrl+C to quit) ...")
+print("Listening for user updates (Ctrl+C to quit) ...")
 if condition_ids:
     print(f"  Markets: {condition_ids}")
 else:

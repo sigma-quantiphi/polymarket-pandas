@@ -1,4 +1,5 @@
 """CLOB private API endpoints mixin (L2 auth required)."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -95,9 +96,7 @@ class ClobPrivateMixin:
         Returns:
             True if the order is being scored, False otherwise.
         """
-        data = self._request_clob_private(
-            path="order-scoring", params={"order_id": order_id}
-        )
+        data = self._request_clob_private(path="order-scoring", params={"order_id": order_id})
         return bool(self._extract(data, "scoring"))
 
     def place_order(self, order: dict, owner: str, orderType: str) -> dict:
@@ -208,9 +207,7 @@ class ClobPrivateMixin:
             dict: The derived API key credentials (apiKey, secret, passphrase).
         """
         headers = self._build_l1_headers(private_key=self.private_key, nonce=nonce)
-        response = self._client.get(
-            f"{self.clob_url}auth/derive-api-key", headers=headers
-        )
+        response = self._client.get(f"{self.clob_url}auth/derive-api-key", headers=headers)
         response.raise_for_status()
         return response.json()
 

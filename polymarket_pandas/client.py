@@ -9,9 +9,9 @@ from typing import Self
 
 import httpx
 import pandas as pd
-from tqdm import tqdm
 from eth_account import Account
 from eth_account.messages import encode_typed_data
+from tqdm import tqdm
 
 from polymarket_pandas.exceptions import (
     PolymarketAPIError,
@@ -30,6 +30,8 @@ from polymarket_pandas.utils import (
     expand_column_lists,
     filter_params,
     orderbook_meta,
+)
+from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
 )
 
@@ -64,24 +66,16 @@ class PolymarketPandas(
     relayer_url: str = field(default="https://relayer-v2.polymarket.com/", repr=False)
     bridge_url: str = field(default="https://bridge.polymarket.com/", repr=False)
     address: str | None = field(default=os.getenv("POLYMARKET_ADDRESS"), repr=False)
-    private_funder_key: str | None = field(
-        default=os.getenv("POLYMARKET_FUNDER"), repr=False
-    )
-    private_key: str | None = field(
-        default=os.getenv("POLYMARKET_PRIVATE_KEY"), repr=False
-    )
+    private_funder_key: str | None = field(default=os.getenv("POLYMARKET_FUNDER"), repr=False)
+    private_key: str | None = field(default=os.getenv("POLYMARKET_PRIVATE_KEY"), repr=False)
     signature_type: int | None = field(default=1, repr=False)
     chain_id: int = field(default=137, repr=False)
     max_pages: int = field(default=100, repr=False)
     tqdm_description: str = field(default="", repr=True)
     use_tqdm: bool = field(default=True, repr=True)
     _api_key: str | None = field(default=os.getenv("POLYMARKET_API_KEY"), repr=False)
-    _api_secret: str | None = field(
-        default=os.getenv("POLYMARKET_API_SECRET"), repr=False
-    )
-    _api_passphrase: str | None = field(
-        default=os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False
-    )
+    _api_secret: str | None = field(default=os.getenv("POLYMARKET_API_SECRET"), repr=False)
+    _api_passphrase: str | None = field(default=os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False)
     _builder_api_key: str | None = field(
         default=os.getenv("POLYMARKET_BUILDER_API_KEY"), repr=False
     )
@@ -200,12 +194,12 @@ class PolymarketPandas(
 
     def __post_init__(self) -> None:
         self._client = httpx.Client()
-        self._numeric_columns      = expand_column_lists(self.numeric_columns)
+        self._numeric_columns = expand_column_lists(self.numeric_columns)
         self._str_datetime_columns = expand_column_lists(self.str_datetime_columns)
         self._int_datetime_columns = expand_column_lists(self.int_datetime_columns)
-        self._bool_columns         = expand_column_lists(self.bool_columns)
-        self._drop_columns         = expand_column_lists(self.drop_columns)
-        self._json_columns         = expand_column_lists(self.json_columns)
+        self._bool_columns = expand_column_lists(self.bool_columns)
+        self._drop_columns = expand_column_lists(self.drop_columns)
+        self._json_columns = expand_column_lists(self.json_columns)
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""
@@ -380,9 +374,7 @@ class PolymarketPandas(
 
     def _require_builder_auth(self) -> None:
         if not (
-            self._builder_api_key
-            and self._builder_api_secret
-            and self._builder_api_passphrase
+            self._builder_api_key and self._builder_api_secret and self._builder_api_passphrase
         ):
             raise PolymarketAuthError(
                 detail=(
@@ -496,9 +488,7 @@ class PolymarketPandas(
         data: dict | list | None = None,
     ) -> dict:
         self._require_builder_auth()
-        headers = self._build_builder_headers(
-            method=method, request_path=f"/{path}", body=data
-        )
+        headers = self._build_builder_headers(method=method, request_path=f"/{path}", body=data)
         response = self._client.request(
             method=method,
             url=f"{self.clob_url}{path}",

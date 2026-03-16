@@ -1,4 +1,5 @@
 """Relayer API endpoints mixin."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -18,9 +19,7 @@ class RelayerMixin:
             pd.DataFrame: Rows with columns ``apiKey``, ``address``,
             ``createdAt``, ``updatedAt``.
         """
-        data = self._request_relayer(
-            "relayer/api/keys", auth_headers=self._relayer_auth_headers()
-        )
+        data = self._request_relayer("relayer/api/keys", auth_headers=self._relayer_auth_headers())
         return self.response_to_dataframe(data)
 
     # ── Relayer API ──────────────────────────────────────────────────────
@@ -61,9 +60,7 @@ class RelayerMixin:
         Returns:
             str: The current nonce as a string.
         """
-        data = self._request_relayer(
-            "nonce", params={"address": address, "type": type}
-        )
+        data = self._request_relayer("nonce", params={"address": address, "type": type})
         return self._extract(data, "nonce")
 
     def get_relayer_transactions(self) -> pd.DataFrame:
@@ -73,9 +70,7 @@ class RelayerMixin:
         Requires ``POLYMARKET_RELAYER_API_KEY`` and
         ``POLYMARKET_RELAYER_API_KEY_ADDRESS`` to be set.
         """
-        data = self._request_relayer(
-            "transactions", auth_headers=self._relayer_auth_headers()
-        )
+        data = self._request_relayer("transactions", auth_headers=self._relayer_auth_headers())
         return self.response_to_dataframe(data)
 
     def get_relay_payload(self, address: str, type: str) -> dict:
@@ -90,9 +85,7 @@ class RelayerMixin:
         Returns:
             dict: ``{"address": str, "nonce": str}``.
         """
-        return self._request_relayer(
-            "relay-payload", params={"address": address, "type": type}
-        )
+        return self._request_relayer("relay-payload", params={"address": address, "type": type})
 
     def submit_transaction(
         self,
