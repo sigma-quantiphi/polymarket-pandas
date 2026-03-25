@@ -6,6 +6,12 @@ import orjson
 import pandas as pd
 
 __all__ = [
+    "DEFAULT_BOOL_COLUMNS",
+    "DEFAULT_DROP_COLUMNS",
+    "DEFAULT_INT_DATETIME_COLUMNS",
+    "DEFAULT_JSON_COLUMNS",
+    "DEFAULT_NUMERIC_COLUMNS",
+    "DEFAULT_STR_DATETIME_COLUMNS",
     "expand_column_lists",
     "expand_dataframe",
     "filter_params",
@@ -14,6 +20,105 @@ __all__ = [
     "snake_columns_to_camel",
     "snake_to_camel",
 ]
+
+# ── Shared column-type defaults ──────────────────────────────────────
+# Used by both PolymarketPandas and PolymarketWebSocket as dataclass field defaults.
+
+DEFAULT_NUMERIC_COLUMNS = (
+    "bestAsk",
+    "bestBid",
+    "best_ask",
+    "best_bid",
+    "fee_rate_bps",
+    "full_accuracy_value",
+    "lastTradePrice",
+    "liquidity",
+    "liquidityAmm",
+    "liquidityNum",
+    "lowerBound",
+    "matched_amount",
+    "min_order_size",
+    "new_tick_size",
+    "old_tick_size",
+    "oneDayPriceChange",
+    "oneHourPriceChange",
+    "oneMonthPriceChange",
+    "oneWeekPriceChange",
+    "oneYearPriceChange",
+    "original_size",
+    "price",
+    "rewardsMaxSpread",
+    "rewardsMinSize",
+    "size",
+    "spread",
+    "tick_size",
+    "upperBound",
+    "volume",
+    "volume1mo",
+    "volume1moAmm",
+    "volume1moClob",
+    "volume1wk",
+    "volume1wkAmm",
+    "volume1wkClob",
+    "volume1yr",
+    "volume1yrAmm",
+    "volume1yrClob",
+    "volume24hr",
+    "volumeNum",
+)
+
+DEFAULT_STR_DATETIME_COLUMNS = (
+    "acceptingOrdersTimestamp",
+    "closedTime",
+    "createdAt",
+    "creationDate",
+    "deployingTimestamp",
+    "endDate",
+    "endDateIso",
+    "eventStartTime",
+    "expiration",
+    "gameStartTime",
+    "matchTime",
+    "matchtime",
+    "last_update",
+    "startDate",
+    "startDateIso",
+    "startTime",
+    "umaEndDate",
+    "updatedAt",
+)
+
+DEFAULT_INT_DATETIME_COLUMNS = ("timestamp",)
+
+DEFAULT_BOOL_COLUMNS = (
+    "active",
+    "approved",
+    "archived",
+    "clearBookOnStart",
+    "closed",
+    "competitive",
+    "cyom",
+    "deploying",
+    "feesEnabled",
+    "fpmmLive",
+    "funded",
+    "hasReviewedDates",
+    "holdingRewardsEnabled",
+    "manualActivation",
+    "negRiskOther",
+    "notificationsEnabled",
+    "pagerDutyNotificationEnabled",
+    "pendingDeployment",
+    "ready",
+    "readyForCron",
+    "restricted",
+    "rfqEnabled",
+    "wideFormat",
+)
+
+DEFAULT_DROP_COLUMNS = ("icon", "image")
+
+DEFAULT_JSON_COLUMNS = ("clobTokenIds", "outcomes", "outcomePrices")
 
 
 orderbook_meta = [

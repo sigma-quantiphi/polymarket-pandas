@@ -593,3 +593,262 @@ def test_rtds_channel_pong_ignored(ws: PolymarketWebSocket):
     )
     _get_on_message(session)(MagicMock(), "PONG")
     assert received == []
+
+
+# ── CTF Mixin ───────────────────────────────────────────────────────────────
+
+STUB_CONDITION_ID = "0x" + "ab" * 32
+
+
+@pytest.fixture
+def ctf_client() -> PolymarketPandas:
+    """Client with a private key for CTF operation tests."""
+    return PolymarketPandas(
+        use_tqdm=False,
+        address="0xDEADBEEFdeadbeefDEADBEEFdeadbeef00000000",
+        private_key="0x" + "ab" * 32,
+    )
+
+
+def test_ctf_requires_private_key(client: PolymarketPandas):
+    """CTF methods raise PolymarketAuthError when private_key is not set."""
+    with pytest.raises(PolymarketAuthError, match="private_key"):
+        client.split_position(STUB_CONDITION_ID, 1_000_000)
+
+
+def test_ctf_requires_web3_import(ctf_client: PolymarketPandas, monkeypatch):
+    """CTF methods raise ImportError with install hint when web3 is absent."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == "web3":
+            raise ImportError("No module named 'web3'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", mock_import)
+    # Clear any cached _w3 from a prior call
+    if hasattr(ctf_client, "_w3"):
+        delattr(ctf_client, "_w3")
+
+    with pytest.raises(ImportError, match="pip install polymarket-pandas\\[ctf\\]"):
+        ctf_client.split_position(STUB_CONDITION_ID, 1_000_000)
+
+
+def test_to_bytes32_hex_string():
+    """_to_bytes32 normalises a hex string to 32 bytes."""
+    from polymarket_pandas.mixins._ctf import CTFMixin
+
+    result = CTFMixin._to_bytes32("0x" + "ab" * 32)
+    assert result == b"\xab" * 32
+    assert len(result) == 32
+
+
+def test_to_bytes32_no_prefix():
+    """_to_bytes32 works without 0x prefix."""
+    from polymarket_pandas.mixins._ctf import CTFMixin
+
+    result = CTFMixin._to_bytes32("ab" * 32)
+    assert result == b"\xab" * 32
+
+
+def test_to_bytes32_passthrough_bytes():
+    """_to_bytes32 passes bytes through unchanged."""
+    from polymarket_pandas.mixins._ctf import CTFMixin
+
+    raw = b"\xcd" * 32
+    assert CTFMixin._to_bytes32(raw) is raw
+
+
+def _mock_web3(ctf_client, monkeypatch):
+    """Inject a mock web3 instance and contracts into a CTF client."""
+    mock_w3 = MagicMock()
+    mock_w3.eth.get_transaction_count.return_value = 0
+    mock_w3.eth.gas_price = 30_000_000_000
+    mock_w3.eth.estimate_gas.return_value = 200_000
+    mock_w3.to_checksum_address = lambda a: a
+
+    mock_receipt = {
+        "blockNumber": 12345,
+        "status": 1,
+        "gasUsed": 150_000,
+    }
+    mock_w3.eth.wait_for_transaction_receipt.return_value = mock_receipt
+
+    mock_signed = MagicMock()
+    mock_signed.raw_transaction = b"\x00"
+    mock_w3.eth.account.from_key.return_value.sign_transaction.return_value = mock_signed
+    mock_w3.eth.send_raw_transaction.return_value = b"\x01" * 32
+
+    ct = MagicMock()
+    nr = MagicMock()
+    usdc = MagicMock()
+
+    # Make build_transaction return a plain dict
+    for contract in (ct, nr, usdc):
+        for fn_name in ("splitPosition", "mergePositions", "redeemPositions", "approve"):
+            fn = getattr(contract.functions, fn_name, MagicMock())
+            fn.return_value.build_transaction.return_value = {"data": "0x"}
+
+    ctf_client._w3 = mock_w3
+    ctf_client._ct_contract = ct
+    ctf_client._nr_contract = nr
+    ctf_client._usdc_contract = usdc
+    return ct, nr, usdc
+
+
+def test_split_position_standard(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.split_position(STUB_CONDITION_ID, 1_000_000)
+    ct.functions.splitPosition.assert_called_once()
+    nr.functions.splitPosition.assert_not_called()
+    assert result["status"] == 1
+    assert "txHash" in result
+
+
+def test_split_position_neg_risk(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.split_position(STUB_CONDITION_ID, 1_000_000, neg_risk=True)
+    nr.functions.splitPosition.assert_called_once()
+    ct.functions.splitPosition.assert_not_called()
+    assert result["status"] == 1
+
+
+def test_merge_positions_standard(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.merge_positions(STUB_CONDITION_ID, 1_000_000)
+    ct.functions.mergePositions.assert_called_once()
+    nr.functions.mergePositions.assert_not_called()
+    assert result["status"] == 1
+
+
+def test_merge_positions_neg_risk(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.merge_positions(STUB_CONDITION_ID, 1_000_000, neg_risk=True)
+    nr.functions.mergePositions.assert_called_once()
+    ct.functions.mergePositions.assert_not_called()
+    assert result["status"] == 1
+
+
+def test_redeem_positions(ctf_client: PolymarketPandas, monkeypatch):
+    ct, _, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.redeem_positions(STUB_CONDITION_ID)
+    ct.functions.redeemPositions.assert_called_once()
+    assert result["status"] == 1
+
+
+def test_approve_collateral_max(ctf_client: PolymarketPandas, monkeypatch):
+    _, _, usdc = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.approve_collateral()
+    usdc.functions.approve.assert_called_once()
+    args = usdc.functions.approve.call_args[0]
+    assert args[1] == 2**256 - 1
+    assert result["status"] == 1
+
+
+def test_approve_collateral_specific(ctf_client: PolymarketPandas, monkeypatch):
+    _, _, usdc = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.approve_collateral(amount=5_000_000)
+    args = usdc.functions.approve.call_args[0]
+    assert args[1] == 5_000_000
+    assert result["status"] == 1
+
+
+def test_send_ctf_tx_no_wait(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.split_position(STUB_CONDITION_ID, 1_000_000, wait=False)
+    assert "txHash" in result
+    assert "blockNumber" not in result
+
+
+# ── build_order ─────────────────────────────────────────────────────────────
+
+def test_submit_order_requires_auth(client: PolymarketPandas):
+    """submit_order raises PolymarketAuthError when credentials are missing."""
+    with pytest.raises(PolymarketAuthError, match="CLOB API credentials"):
+        client.submit_order("123", 0.5, 1.0, "BUY")
+
+
+# ── Order amount calculation helpers ─────────────────────────────────────
+
+from polymarket_pandas.client import (
+    _decimal_places,
+    _round_down,
+    _round_normal,
+    _round_up,
+    _to_token_decimals,
+)
+
+
+def test_round_normal_matches_clob():
+    """_round_normal uses integer-arithmetic rounding, not banker's rounding."""
+    # Python round(0.5) == 0 (banker's), but round(0.5 * 10) / 10 == 1.0
+    assert _round_normal(0.85, 1) == 0.9
+    assert _round_normal(0.86, 2) == 0.86
+    assert _round_normal(0.001, 3) == 0.001
+
+
+def test_round_up():
+    """_round_up matches py-clob-client's ceil-based rounding."""
+    assert _round_up(4.30001, 4) == 4.3001
+    assert _round_up(1.0, 2) == 1.0
+    assert _round_up(1.001, 2) == 1.01
+
+
+def test_round_down():
+    assert _round_down(1.999, 2) == 1.99
+    assert _round_down(5.0, 0) == 5.0
+
+
+def test_decimal_places():
+    """_decimal_places uses Decimal for precision."""
+    assert _decimal_places(1.0) == 1
+    assert _decimal_places(1.23) == 2
+    assert _decimal_places(1.230) == 2
+    assert _decimal_places(100) == 0
+
+
+def test_to_token_decimals():
+    assert _to_token_decimals(1.0) == 1_000_000
+    assert _to_token_decimals(0.5) == 500_000
+    assert _to_token_decimals(0.123456) == 123_456
+
+
+def test_get_order_amounts_buy():
+    """BUY amounts match py-clob-client for a standard order."""
+    side_int, maker, taker = PolymarketPandas._get_order_amounts(
+        "BUY", 0.50, 10.0, "0.01"
+    )
+    assert side_int == 0
+    assert taker == 10_000_000  # 10 shares
+    assert maker == 5_000_000   # 10 * 0.5 = 5 USDC
+
+
+def test_get_order_amounts_sell():
+    """SELL amounts match py-clob-client for a standard order."""
+    side_int, maker, taker = PolymarketPandas._get_order_amounts(
+        "SELL", 0.50, 10.0, "0.01"
+    )
+    assert side_int == 1
+    assert maker == 10_000_000  # 10 shares
+    assert taker == 5_000_000   # 10 * 0.5 = 5 USDC
+
+
+def test_build_order_salt_is_int(authed_client: PolymarketPandas):
+    """build_order returns salt as int, not str (CLOB API requires numeric)."""
+    authed_client.private_key = "0x" + "ab" * 32  # dummy key for signing
+    authed_client.address = "0x" + "00" * 20
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+    )
+    assert isinstance(order["salt"], int), f"salt should be int, got {type(order['salt'])}"
+    assert isinstance(order["signatureType"], int)
+    # These should be strings per CLOB API
+    assert isinstance(order["makerAmount"], str)
+    assert isinstance(order["takerAmount"], str)
+    assert isinstance(order["tokenId"], str)

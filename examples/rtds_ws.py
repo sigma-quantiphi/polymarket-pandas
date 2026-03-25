@@ -47,17 +47,18 @@ def on_comment(comment: dict) -> None:
 
 # Subscribe to crypto price feeds and comments
 subscriptions = [
-    # {
-    #     "topic": "crypto_prices",
-    #     "type": "update",
-    #     "filters": ",".join(["solusdt", "btcusdt", "ethusdt"]),
-    #     "filters": ["solusdt", "btcusdt", "ethusdt"],
-    # },
     {
-        "topic": "crypto_prices_chainlink",
-        "type": "*",
-        "filters": json.dumps({"symbol": "eth/usd"})
+        "topic": "crypto_prices",
+        "type": "update",
+        # "filters": ",".join(["solusdt", "btcusdt", "ethusdt"]),
+        # "filters": json.dumps(["solusdt", "btcusdt", "ethusdt"]),
+        # "filters": ["solusdt", "btcusdt", "ethusdt"],
     },
+    # {
+    #     "topic": "crypto_prices_chainlink",
+    #     "type": "*",
+    #     "filters": json.dumps({"symbol": "eth/usd"})
+    # },
     # {
     #     "topic": "comments",
     #     "type": "comment_created"

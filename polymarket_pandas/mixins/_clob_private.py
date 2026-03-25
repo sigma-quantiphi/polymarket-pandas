@@ -52,7 +52,7 @@ class ClobPrivateMixin:
                 "after": after,
             },
         )
-        return self.response_to_dataframe(data)
+        return self.response_to_dataframe(data["data"])
 
     def get_order(self, order_id: str) -> dict:
         """
@@ -191,7 +191,7 @@ class ClobPrivateMixin:
         Returns:
             dict: The created API key credentials (apiKey, secret, passphrase).
         """
-        headers = self._build_l1_headers(private_key=self.private_key, nonce=nonce)
+        headers = self._build_l1_headers(nonce=nonce)
         response = self._client.post(f"{self.clob_url}auth/api-key", headers=headers)
         response.raise_for_status()
         return response.json()
@@ -206,7 +206,7 @@ class ClobPrivateMixin:
         Returns:
             dict: The derived API key credentials (apiKey, secret, passphrase).
         """
-        headers = self._build_l1_headers(private_key=self.private_key, nonce=nonce)
+        headers = self._build_l1_headers(nonce=nonce)
         response = self._client.get(f"{self.clob_url}auth/derive-api-key", headers=headers)
         response.raise_for_status()
         return response.json()

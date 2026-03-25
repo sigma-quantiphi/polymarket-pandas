@@ -11,6 +11,12 @@ import pandas as pd
 from websocket import WebSocketApp
 
 from polymarket_pandas.utils import (
+    DEFAULT_BOOL_COLUMNS,
+    DEFAULT_DROP_COLUMNS,
+    DEFAULT_INT_DATETIME_COLUMNS,
+    DEFAULT_JSON_COLUMNS,
+    DEFAULT_NUMERIC_COLUMNS,
+    DEFAULT_STR_DATETIME_COLUMNS,
     expand_column_lists,
     orderbook_meta,
 )
@@ -122,101 +128,12 @@ class PolymarketWebSocket:
     api_passphrase: str | None = field(
         default_factory=lambda: os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False
     )
-    numeric_columns: tuple = field(
-        default=(
-            "bestAsk",
-            "bestBid",
-            "best_ask",
-            "best_bid",
-            "fee_rate_bps",
-            "full_accuracy_value",
-            "lastTradePrice",
-            "liquidity",
-            "liquidityAmm",
-            "liquidityNum",
-            "lowerBound",
-            "matched_amount",
-            "min_order_size",
-            "new_tick_size",
-            "old_tick_size",
-            "oneDayPriceChange",
-            "oneHourPriceChange",
-            "oneMonthPriceChange",
-            "oneWeekPriceChange",
-            "oneYearPriceChange",
-            "original_size",
-            "price",
-            "rewardsMaxSpread",
-            "rewardsMinSize",
-            "size",
-            "spread",
-            "tick_size",
-            "upperBound",
-            "volume",
-            "volume1mo",
-            "volume1moAmm",
-            "volume1moClob",
-            "volume1wk",
-            "volume1wkAmm",
-            "volume1wkClob",
-            "volume1yr",
-            "volume1yrAmm",
-            "volume1yrClob",
-            "volume24hr",
-            "volumeNum",
-        )
-    )
-    str_datetime_columns: tuple = field(
-        default=(
-            "acceptingOrdersTimestamp",
-            "closedTime",
-            "createdAt",
-            "creationDate",
-            "deployingTimestamp",
-            "endDate",
-            "endDateIso",
-            "eventStartTime",
-            "expiration",
-            "gameStartTime",
-            "matchtime",
-            "last_update",
-            "startDate",
-            "startDateIso",
-            "startTime",
-            "umaEndDate",
-            "updatedAt",
-        )
-    )
-    int_datetime_columns: tuple = field(default=("timestamp",))
-    bool_columns: tuple = field(
-        default=(
-            "active",
-            "approved",
-            "archived",
-            "clearBookOnStart",
-            "closed",
-            "competitive",
-            "cyom",
-            "deploying",
-            "feesEnabled",
-            "fpmmLive",
-            "funded",
-            "hasReviewedDates",
-            "holdingRewardsEnabled",
-            "manualActivation",
-            "negRiskOther",
-            "notificationsEnabled",
-            "pagerDutyNotificationEnabled",
-            "pendingDeployment",
-            "ready",
-            "readyForCron",
-            "restricted",
-            "rfqEnabled",
-            "wideFormat",
-        )
-    )
-    drop_columns: tuple = field(default=("icon", "image"))
-    json_columns: tuple = field(default=("clobTokenIds", "outcomes", "outcomePrices"))
+    numeric_columns: tuple = field(default=DEFAULT_NUMERIC_COLUMNS)
+    str_datetime_columns: tuple = field(default=DEFAULT_STR_DATETIME_COLUMNS)
+    int_datetime_columns: tuple = field(default=DEFAULT_INT_DATETIME_COLUMNS)
+    bool_columns: tuple = field(default=DEFAULT_BOOL_COLUMNS)
+    drop_columns: tuple = field(default=DEFAULT_DROP_COLUMNS)
+    json_columns: tuple = field(default=DEFAULT_JSON_COLUMNS)
 
     def __post_init__(self) -> None:
         self._numeric_columns = expand_column_lists(self.numeric_columns)
@@ -522,18 +439,14 @@ class PolymarketWebSocket:
                 payload["source"] = "binance"
                 df = self._preprocess(pd.DataFrame([payload]), int_datetime_unit="ms")
                 self._dispatch(on_crypto_prices, on_message, topic, df)
-
             elif topic == "crypto_prices_chainlink":
                 payload["source"] = "chainlink"
                 df = self._preprocess(pd.DataFrame([payload]), int_datetime_unit="ms")
                 self._dispatch(on_crypto_prices_chainlink, on_message, topic, df)
-
             elif topic == "comments":
                 self._dispatch(on_comment, on_message, topic, payload)
-
             elif on_message is not None:
                 on_message(topic, msg)
-
         app = WebSocketApp(
             _RTDS_URL,
             on_open=_on_open,

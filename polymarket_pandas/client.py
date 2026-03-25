@@ -1,8 +1,11 @@
+import base64
 import hashlib
 import hmac
 import inspect
 import json
+import math
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Self
@@ -22,11 +25,18 @@ from polymarket_pandas.mixins import (
     BridgeMixin,
     ClobPrivateMixin,
     ClobPublicMixin,
+    CTFMixin,
     DataMixin,
     GammaMixin,
     RelayerMixin,
 )
 from polymarket_pandas.utils import (
+    DEFAULT_BOOL_COLUMNS,
+    DEFAULT_DROP_COLUMNS,
+    DEFAULT_INT_DATETIME_COLUMNS,
+    DEFAULT_JSON_COLUMNS,
+    DEFAULT_NUMERIC_COLUMNS,
+    DEFAULT_STR_DATETIME_COLUMNS,
     expand_column_lists,
     filter_params,
     orderbook_meta,
@@ -34,6 +44,45 @@ from polymarket_pandas.utils import (
 from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
 )
+
+# ── CTF Exchange contract addresses (Polygon mainnet) ────────────────
+CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
+NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+# Tick-size → (price_decimals, size_decimals, amount_decimals)
+_TICK_SIZES = {
+    "0.1": (1, 2, 3),
+    "0.01": (2, 2, 4),
+    "0.001": (3, 2, 5),
+    "0.0001": (4, 2, 6),
+}
+
+
+def _round_down(v: float, decimals: int) -> float:
+    factor = 10**decimals
+    return math.floor(v * factor) / factor
+
+
+def _round_normal(v: float, decimals: int) -> float:
+    from decimal import ROUND_HALF_UP, Decimal
+
+    return float(Decimal(str(v)).quantize(Decimal(10) ** -decimals, rounding=ROUND_HALF_UP))
+
+
+def _round_up(v: float, decimals: int) -> float:
+    factor = 10**decimals
+    return math.ceil(v * factor) / factor
+
+
+def _decimal_places(v: float) -> int:
+    from decimal import Decimal
+
+    return abs(Decimal(str(v)).as_tuple().exponent)
+
+
+def _to_token_decimals(v: float) -> int:
+    return int(round(v * 1e6))
 
 
 def markets_to_dict(data: pd.DataFrame) -> list:
@@ -50,6 +99,7 @@ class PolymarketPandas(
     ClobPrivateMixin,
     RelayerMixin,
     BridgeMixin,
+    CTFMixin,
 ):
     """Polymarket HTTP client that returns preprocessed pandas DataFrames.
 
@@ -65,141 +115,69 @@ class PolymarketPandas(
     clob_url: str = "https://clob.polymarket.com/"
     relayer_url: str = field(default="https://relayer-v2.polymarket.com/", repr=False)
     bridge_url: str = field(default="https://bridge.polymarket.com/", repr=False)
-    address: str | None = field(default=os.getenv("POLYMARKET_ADDRESS"), repr=False)
-    private_funder_key: str | None = field(default=os.getenv("POLYMARKET_FUNDER"), repr=False)
-    private_key: str | None = field(default=os.getenv("POLYMARKET_PRIVATE_KEY"), repr=False)
+    rpc_url: str | None = field(default=None, repr=False)
+    proxy_url: str | None = field(default=None, repr=False)
+    address: str | None = field(default=None, repr=False)
+    private_funder_key: str | None = field(default=None, repr=False)
+    private_key: str | None = field(default=None, repr=False)
     signature_type: int | None = field(default=1, repr=False)
     chain_id: int = field(default=137, repr=False)
+    timeout: int = field(default=30, repr=False)
     max_pages: int = field(default=100, repr=False)
     tqdm_description: str = field(default="", repr=True)
     use_tqdm: bool = field(default=True, repr=True)
-    _api_key: str | None = field(default=os.getenv("POLYMARKET_API_KEY"), repr=False)
-    _api_secret: str | None = field(default=os.getenv("POLYMARKET_API_SECRET"), repr=False)
-    _api_passphrase: str | None = field(default=os.getenv("POLYMARKET_API_PASSPHRASE"), repr=False)
-    _builder_api_key: str | None = field(
-        default=os.getenv("POLYMARKET_BUILDER_API_KEY"), repr=False
+    _api_key: str | None = field(default=None, repr=False)
+    _api_secret: str | None = field(default=None, repr=False)
+    _api_passphrase: str | None = field(default=None, repr=False)
+    _builder_api_key: str | None = field(default=None, repr=False)
+    _builder_api_secret: str | None = field(default=None, repr=False)
+    _builder_api_passphrase: str | None = field(default=None, repr=False)
+    _relayer_api_key: str | None = field(default=None, repr=False)
+    _relayer_api_key_address: str | None = field(default=None, repr=False)
+    numeric_columns: tuple = field(default=DEFAULT_NUMERIC_COLUMNS)
+    str_datetime_columns: tuple = field(default=DEFAULT_STR_DATETIME_COLUMNS)
+    int_datetime_columns: tuple = field(default=DEFAULT_INT_DATETIME_COLUMNS)
+    bool_columns: tuple = field(default=DEFAULT_BOOL_COLUMNS)
+    drop_columns: tuple = field(default=DEFAULT_DROP_COLUMNS)
+    json_columns: tuple = field(default=DEFAULT_JSON_COLUMNS)
+
+    # Mapping: (field_name, env_var, fallback)
+    _ENV_DEFAULTS: dict = field(
+        default_factory=lambda: {
+            "rpc_url": ("POLYMARKET_RPC_URL", "https://polygon-rpc.com"),
+            "proxy_url": ("FIXIE_URL", None),
+            "address": ("POLYMARKET_ADDRESS", None),
+            "private_funder_key": ("POLYMARKET_FUNDER", None),
+            "private_key": ("POLYMARKET_PRIVATE_KEY", None),
+            "_api_key": ("POLYMARKET_API_KEY", None),
+            "_api_secret": ("POLYMARKET_API_SECRET", None),
+            "_api_passphrase": ("POLYMARKET_API_PASSPHRASE", None),
+            "_builder_api_key": ("POLYMARKET_BUILDER_API_KEY", None),
+            "_builder_api_secret": ("POLYMARKET_BUILDER_API_SECRET", None),
+            "_builder_api_passphrase": ("POLYMARKET_BUILDER_API_PASSPHRASE", None),
+            "_relayer_api_key": ("POLYMARKET_RELAYER_API_KEY", None),
+            "_relayer_api_key_address": ("POLYMARKET_RELAYER_API_KEY_ADDRESS", None),
+        },
+        repr=False,
     )
-    _builder_api_secret: str | None = field(
-        default=os.getenv("POLYMARKET_BUILDER_API_SECRET"), repr=False
-    )
-    _builder_api_passphrase: str | None = field(
-        default=os.getenv("POLYMARKET_BUILDER_API_PASSPHRASE"), repr=False
-    )
-    _relayer_api_key: str | None = field(
-        default=os.getenv("POLYMARKET_RELAYER_API_KEY"), repr=False
-    )
-    _relayer_api_key_address: str | None = field(
-        default=os.getenv("POLYMARKET_RELAYER_API_KEY_ADDRESS"), repr=False
-    )
-    numeric_columns: tuple = field(
-        default=(
-            "bestAsk",
-            "bestBid",
-            "best_ask",
-            "best_bid",
-            "fee_rate_bps",
-            "full_accuracy_value",
-            "lastTradePrice",
-            "liquidity",
-            "liquidityAmm",
-            "liquidityNum",
-            "lowerBound",
-            "matched_amount",
-            "min_order_size",
-            "new_tick_size",
-            "old_tick_size",
-            "oneDayPriceChange",
-            "oneHourPriceChange",
-            "oneMonthPriceChange",
-            "oneWeekPriceChange",
-            "oneYearPriceChange",
-            "original_size",
-            "price",
-            "rewardsMaxSpread",
-            "rewardsMinSize",
-            "size",
-            "spread",
-            "tick_size",
-            "upperBound",
-            "volume",
-            "volume1mo",
-            "volume1moAmm",
-            "volume1moClob",
-            "volume1wk",
-            "volume1wkAmm",
-            "volume1wkClob",
-            "volume1yr",
-            "volume1yrAmm",
-            "volume1yrClob",
-            "volume24hr",
-            "volumeNum",
-        )
-    )
-    str_datetime_columns: tuple = field(
-        default=(
-            "acceptingOrdersTimestamp",
-            "closedTime",
-            "createdAt",
-            "creationDate",
-            "deployingTimestamp",
-            "endDate",
-            "endDateIso",
-            "eventStartTime",
-            "expiration",
-            "gameStartTime",
-            "matchtime",
-            "last_update",
-            "startDate",
-            "startDateIso",
-            "startTime",
-            "umaEndDate",
-            "updatedAt",
-        )
-    )
-    int_datetime_columns: tuple = field(default=("timestamp",))
-    bool_columns: tuple = field(
-        default=(
-            "active",
-            "approved",
-            "archived",
-            "clearBookOnStart",
-            "closed",
-            "competitive",
-            "cyom",
-            "deploying",
-            "feesEnabled",
-            "fpmmLive",
-            "funded",
-            "hasReviewedDates",
-            "holdingRewardsEnabled",
-            "manualActivation",
-            "negRiskOther",
-            "notificationsEnabled",
-            "pagerDutyNotificationEnabled",
-            "pendingDeployment",
-            "ready",
-            "readyForCron",
-            "restricted",
-            "rfqEnabled",
-            "wideFormat",
-        )
-    )
-    drop_columns: tuple = field(
-        default=(
-            "icon",
-            "image",
-        )
-    )
-    json_columns: tuple = field(default=("clobTokenIds", "outcomes", "outcomePrices"))
 
     def __post_init__(self) -> None:
-        self._client = httpx.Client()
+        # Resolve env vars at runtime (after load_dotenv has had a chance to run)
+        for attr, (env_var, fallback) in self._ENV_DEFAULTS.items():
+            if getattr(self, attr) is None:
+                setattr(self, attr, os.getenv(env_var, fallback))
+
+        self._client = httpx.Client(proxy=self.proxy_url, timeout=self.timeout)
         self._numeric_columns = expand_column_lists(self.numeric_columns)
         self._str_datetime_columns = expand_column_lists(self.str_datetime_columns)
         self._int_datetime_columns = expand_column_lists(self.int_datetime_columns)
         self._bool_columns = expand_column_lists(self.bool_columns)
         self._drop_columns = expand_column_lists(self.drop_columns)
         self._json_columns = expand_column_lists(self.json_columns)
+
+        # Derive EOA address from private key if not explicitly set
+        if self.private_key and not self.address:
+            self.address = Account.from_key(self.private_key).address
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool."""
@@ -257,7 +235,6 @@ class PolymarketPandas(
     def _build_l1_headers(
         self,
         *,
-        private_key: str,
         nonce: int = 0,
         server_timestamp: str | None = None,
         message: str = "This message attests that I control the given wallet",
@@ -266,6 +243,9 @@ class PolymarketPandas(
         Build EIP-712 L1 headers (POLY_SIGNATURE is an EIP-712 sig).
         Only needed for /auth/api-key (create) and /auth/derive-api-key.
         """
+        # L1 auth always uses the EOA address (derived from private_key),
+        # NOT self.address which may be the proxy wallet.
+        eoa = Account.from_key(self.private_key).address
         domain = {"name": "ClobAuthDomain", "version": "1", "chainId": self.chain_id}
         types = {
             "ClobAuth": [
@@ -277,7 +257,7 @@ class PolymarketPandas(
         }
         ts = server_timestamp or str(int(time.time()))
         value = {
-            "address": self.address,
+            "address": eoa,
             "timestamp": ts,
             "nonce": nonce,
             "message": message,
@@ -290,10 +270,9 @@ class PolymarketPandas(
                 "message": value,
             }
         )
-        Account.from_key(private_key)
-        sig = Account.sign_message(signable, private_key=private_key).signature.hex()
+        sig = "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
         return {
-            "POLY_ADDRESS": self.address,
+            "POLY_ADDRESS": eoa,
             "POLY_SIGNATURE": sig,
             "POLY_TIMESTAMP": ts,
             "POLY_NONCE": str(nonce),
@@ -305,23 +284,25 @@ class PolymarketPandas(
         method: str,
         request_path: str,
         body: dict | list | None = None,
-        timestamp_ms: int | None = None,
+        timestamp: int | None = None,
     ) -> dict:
         """
         Build Polymarket L2 headers for private CLOB endpoints.
         """
-        ts = str(timestamp_ms if timestamp_ms is not None else int(time.time() * 1000))
-        body_str = ""
+        addr = self.address
+        if self.private_key:
+            addr = Account.from_key(self.private_key).address
+        ts = str(timestamp if timestamp is not None else int(time.time()))
+        msg = f"{ts}{method.upper()}{request_path}"
         if body is not None:
             body_str = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
-        msg = f"{ts}{method.upper()}{request_path}{body_str}"
-        sig = hmac.new(
-            key=self._api_secret.encode("utf-8"),
-            msg=msg.encode("utf-8"),
-            digestmod=hashlib.sha256,
-        ).hexdigest()
+            msg += body_str
+        secret_bytes = base64.urlsafe_b64decode(self._api_secret)
+        sig = base64.urlsafe_b64encode(
+            hmac.new(secret_bytes, msg.encode("utf-8"), hashlib.sha256).digest()
+        ).decode("utf-8")
         return {
-            "POLY_ADDRESS": self.address,
+            "POLY_ADDRESS": addr,
             "POLY_SIGNATURE": sig,
             "POLY_TIMESTAMP": ts,
             "POLY_API_KEY": self._api_key,
@@ -363,6 +344,16 @@ class PolymarketPandas(
 
     def _require_l2_auth(self) -> None:
         if not (self._api_key and self._api_secret and self._api_passphrase):
+            # Lazy auto-derive: try derive then create on first L2 call
+            if self.private_key:
+                try:
+                    creds = self.derive_api_key()
+                except Exception:
+                    creds = self.create_api_key()
+                self._api_key = creds["apiKey"]
+                self._api_secret = creds["secret"]
+                self._api_passphrase = creds["passphrase"]
+                return
             raise PolymarketAuthError(
                 detail=(
                     "CLOB API credentials not set. "
@@ -461,18 +452,16 @@ class PolymarketPandas(
         method: str,
         request_path: str,
         body: dict | list | None = None,
-        timestamp_ms: int | None = None,
+        timestamp: int | None = None,
     ) -> dict:
-        ts = str(timestamp_ms if timestamp_ms is not None else int(time.time() * 1000))
-        body_str = ""
+        ts = str(timestamp if timestamp is not None else int(time.time()))
+        msg = f"{ts}{method.upper()}{request_path}"
         if body is not None:
-            body_str = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
-        msg = f"{ts}{method.upper()}{request_path}{body_str}"
-        sig = hmac.new(
-            key=self._builder_api_secret.encode("utf-8"),
-            msg=msg.encode("utf-8"),
-            digestmod=hashlib.sha256,
-        ).hexdigest()
+            msg += json.dumps(body, separators=(",", ":"), ensure_ascii=False)
+        secret_bytes = base64.urlsafe_b64decode(self._builder_api_secret)
+        sig = base64.urlsafe_b64encode(
+            hmac.new(secret_bytes, msg.encode("utf-8"), hashlib.sha256).digest()
+        ).decode("utf-8")
         return {
             "POLY_BUILDER_API_KEY": self._builder_api_key,
             "POLY_BUILDER_PASSPHRASE": self._builder_api_passphrase,
@@ -621,3 +610,213 @@ class PolymarketPandas(
     def get_sampling_simplified_markets_all(self, **kwargs) -> pd.DataFrame:
         """Auto-page through all sampling simplified markets and return a single DataFrame."""
         return self._autopage_cursor(self.get_sampling_simplified_markets, **kwargs)
+
+    # ── Order building & submission ─────────────────────────────────────
+
+    @staticmethod
+    def _get_order_amounts(
+        side: str, price: float, size: float, tick_size: str
+    ) -> tuple[int, int, int]:
+        """Calculate makerAmount and takerAmount from price/size.
+
+        Returns (side_int, maker_amount, taker_amount) in 6-decimal base units.
+        """
+        if tick_size not in _TICK_SIZES:
+            raise ValueError(f"Invalid tick_size={tick_size!r}. Must be one of {list(_TICK_SIZES)}")
+        price_dec, size_dec, amount_dec = _TICK_SIZES[tick_size]
+        raw_price = _round_normal(price, price_dec)
+
+        side_upper = side.upper()
+        if side_upper == "BUY":
+            raw_taker = _round_down(size, size_dec)
+            raw_maker = raw_taker * raw_price
+            if _decimal_places(raw_maker) > amount_dec:
+                raw_maker = _round_up(raw_maker, amount_dec + 4)
+                if _decimal_places(raw_maker) > amount_dec:
+                    raw_maker = _round_down(raw_maker, amount_dec)
+            return 0, _to_token_decimals(raw_maker), _to_token_decimals(raw_taker)
+        elif side_upper == "SELL":
+            raw_maker = _round_down(size, size_dec)
+            raw_taker = raw_maker * raw_price
+            if _decimal_places(raw_taker) > amount_dec:
+                raw_taker = _round_up(raw_taker, amount_dec + 4)
+                if _decimal_places(raw_taker) > amount_dec:
+                    raw_taker = _round_down(raw_taker, amount_dec)
+            return 1, _to_token_decimals(raw_maker), _to_token_decimals(raw_taker)
+        else:
+            raise ValueError(f"side must be 'BUY' or 'SELL', got {side!r}")
+
+    def build_order(
+        self,
+        token_id: str,
+        price: float,
+        size: float,
+        side: str,
+        *,
+        fee_rate_bps: int = 0,
+        expiration: int = 0,
+        nonce: int = 0,
+        neg_risk: bool = False,
+        tick_size: str = "0.01",
+    ) -> dict:
+        """Build and sign a CLOB order, ready for :meth:`place_order`.
+
+        Args:
+            token_id: CLOB token ID (ERC-1155 conditional token).
+            price: Limit price per share (0–1).
+            size: Number of shares (conditional tokens).
+            side: ``"BUY"`` or ``"SELL"``.
+            fee_rate_bps: Fee rate in basis points (default 0).
+            expiration: Unix timestamp for GTD orders, ``0`` = no expiry.
+            nonce: Order nonce for on-chain cancellation (default 0).
+            neg_risk: ``True`` if the market is neg-risk.
+            tick_size: Market tick size (``"0.1"``, ``"0.01"``, ``"0.001"``,
+                or ``"0.0001"``).
+
+        Returns:
+            dict: Signed order dict with all fields expected by :meth:`place_order`.
+        """
+        if not self.private_key:
+            raise PolymarketAuthError(detail="private_key is required to build orders.")
+
+        side_int, maker_amount, taker_amount = self._get_order_amounts(
+            side, price, size, tick_size
+        )
+
+        # EOA signs; maker is the funder (proxy wallet or EOA)
+        eoa = Account.from_key(self.private_key).address
+        maker = self.address or eoa
+        exchange = NEG_RISK_CTF_EXCHANGE if neg_risk else CTF_EXCHANGE
+        salt = round(time.time() * random.random())
+        sig_type = self.signature_type if self.signature_type is not None else 0
+
+        # EIP-712 signing
+        domain = {
+            "name": "Polymarket CTF Exchange",
+            "version": "1",
+            "chainId": self.chain_id,
+            "verifyingContract": exchange,
+        }
+        types = {
+            "Order": [
+                {"name": "salt", "type": "uint256"},
+                {"name": "maker", "type": "address"},
+                {"name": "signer", "type": "address"},
+                {"name": "taker", "type": "address"},
+                {"name": "tokenId", "type": "uint256"},
+                {"name": "makerAmount", "type": "uint256"},
+                {"name": "takerAmount", "type": "uint256"},
+                {"name": "expiration", "type": "uint256"},
+                {"name": "nonce", "type": "uint256"},
+                {"name": "feeRateBps", "type": "uint256"},
+                {"name": "side", "type": "uint8"},
+                {"name": "signatureType", "type": "uint8"},
+            ],
+        }
+        message = {
+            "salt": salt,
+            "maker": maker,
+            "signer": eoa,
+            "taker": ZERO_ADDRESS,
+            "tokenId": int(token_id),
+            "makerAmount": maker_amount,
+            "takerAmount": taker_amount,
+            "expiration": expiration,
+            "nonce": nonce,
+            "feeRateBps": fee_rate_bps,
+            "side": side_int,
+            "signatureType": sig_type,
+        }
+        signable = encode_typed_data(
+            full_message={
+                "domain": domain,
+                "types": types,
+                "primaryType": "Order",
+                "message": message,
+            }
+        )
+        sig = "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
+
+        return {
+            "salt": salt,
+            "maker": maker,
+            "signer": eoa,
+            "taker": ZERO_ADDRESS,
+            "tokenId": token_id,
+            "makerAmount": str(maker_amount),
+            "takerAmount": str(taker_amount),
+            "expiration": str(expiration),
+            "nonce": str(nonce),
+            "feeRateBps": str(fee_rate_bps),
+            "side": side.upper(),
+            "signatureType": sig_type,
+            "signature": sig,
+        }
+
+    def submit_order(
+        self,
+        token_id: str,
+        price: float,
+        size: float,
+        side: str,
+        order_type: str = "GTC",
+        **kwargs,
+    ) -> dict:
+        """Build, sign, and place an order in a single call.
+
+        Args:
+            token_id: CLOB token ID (ERC-1155 conditional token).
+            price: Limit price per share (0–1).
+            size: Number of shares (conditional tokens).
+            side: ``"BUY"`` or ``"SELL"``.
+            order_type: ``"GTC"`` (default), ``"FOK"``, ``"GTD"``, or ``"FAK"``.
+            **kwargs: Forwarded to :meth:`build_order` (``neg_risk``,
+                ``tick_size``, ``fee_rate_bps``, ``expiration``, ``nonce``).
+
+        Returns:
+            dict: API response from the CLOB order endpoint.
+        """
+        self._require_l2_auth()
+        order = self.build_order(token_id, price, size, side, **kwargs)
+        return self.place_order(order=order, owner=self._api_key, orderType=order_type)
+
+    def submit_orders(
+        self,
+        orders: list[dict],
+        *,
+        neg_risk: bool = False,
+        tick_size: str = "0.01",
+    ) -> list:
+        """Build, sign, and place multiple orders.
+
+        Args:
+            orders: List of dicts with ``token_id``, ``price``, ``size``,
+                ``side``, and optionally ``order_type`` (default ``"GTC"``),
+                ``fee_rate_bps``, ``expiration``, ``nonce``.
+            neg_risk: Applies to all orders.
+            tick_size: Applies to all orders.
+
+        Returns:
+            list: API responses for each order.
+        """
+        self._require_l2_auth()
+        results = []
+        for o in orders:
+            order = self.build_order(
+                token_id=o["token_id"],
+                price=o["price"],
+                size=o["size"],
+                side=o["side"],
+                fee_rate_bps=o.get("fee_rate_bps", 0),
+                expiration=o.get("expiration", 0),
+                nonce=o.get("nonce", 0),
+                neg_risk=neg_risk,
+                tick_size=tick_size,
+            )
+            resp = self.place_order(
+                order=order,
+                owner=self._api_key,
+                orderType=o.get("order_type", "GTC"),
+            )
+            results.append(resp)
+        return results
