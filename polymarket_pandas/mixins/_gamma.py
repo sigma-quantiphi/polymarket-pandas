@@ -96,16 +96,24 @@ class GammaMixin:
     def get_market_by_id(self, id: int, include_tag: bool | None = None) -> dict:
         """Fetch a single market by its numeric ID.
 
+        JSON-string fields (``clobTokenIds``, ``outcomes``, ``outcomePrices``)
+        are automatically parsed into Python lists.
+
         See: https://docs.polymarket.com/api-reference/gamma/get-markets
         """
-        return self._request_gamma(path=f"markets/{id}", params={"include_tag": include_tag})
+        data = self._request_gamma(path=f"markets/{id}", params={"include_tag": include_tag})
+        return self.preprocess_dict(data)
 
     def get_market_by_slug(self, slug: str, include_tag: bool | None = None) -> dict:
         """Fetch a single market by its URL slug.
 
+        JSON-string fields (``clobTokenIds``, ``outcomes``, ``outcomePrices``)
+        are automatically parsed into Python lists.
+
         See: https://docs.polymarket.com/api-reference/gamma/get-markets
         """
-        return self._request_gamma(path=f"markets/slug/{slug}", params={"include_tag": include_tag})
+        data = self._request_gamma(path=f"markets/slug/{slug}", params={"include_tag": include_tag})
+        return self.preprocess_dict(data)
 
     def get_market_tags(self, id: int) -> pd.DataFrame:
         """Fetch tags associated with a market by its numeric ID.

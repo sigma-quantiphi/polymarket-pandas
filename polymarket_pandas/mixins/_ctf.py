@@ -160,6 +160,17 @@ class CTFMixin:
             return bytes.fromhex(value.removeprefix("0x"))
         return value
 
+    @staticmethod
+    def _resolve_amount(amount: int | None, amount_usdc: float | None) -> int:
+        """Resolve amount from either base units or USDC float."""
+        if amount is not None and amount_usdc is not None:
+            raise ValueError("Provide either amount or amount_usdc, not both.")
+        if amount_usdc is not None:
+            return int(amount_usdc * 1_000_000)
+        if amount is None:
+            raise ValueError("Provide either amount or amount_usdc.")
+        return amount
+
     def _eoa_address(self) -> str:
         """Return the checksummed EOA address derived from private_key."""
         from eth_account import Account
@@ -243,8 +254,9 @@ class CTFMixin:
     def split_position(
         self,
         condition_id: str | bytes,
-        amount: int,
+        amount: int | None = None,
         *,
+        amount_usdc: float | None = None,
         neg_risk: bool = False,
         wait: bool = True,
         timeout: int = 120,
@@ -255,6 +267,8 @@ class CTFMixin:
             condition_id: Market condition ID (hex string or bytes32).
             amount: USDC.e amount in base units (6 decimals).
                 E.g. ``1_000_000`` = 1.00 USDC.
+            amount_usdc: Convenience alternative — amount in USDC
+                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
             neg_risk: ``True`` for neg-risk (multi-outcome) markets
                 (uses NegRiskAdapter); ``False`` for standard binary
                 markets (uses ConditionalTokens).
@@ -267,6 +281,7 @@ class CTFMixin:
         """
         self._require_ctf_auth()
         self._require_web3()
+        amount = self._resolve_amount(amount, amount_usdc)
         cid = self._to_bytes32(condition_id)
 
         if neg_risk:
@@ -286,8 +301,9 @@ class CTFMixin:
     def merge_positions(
         self,
         condition_id: str | bytes,
-        amount: int,
+        amount: int | None = None,
         *,
+        amount_usdc: float | None = None,
         neg_risk: bool = False,
         wait: bool = True,
         timeout: int = 120,
@@ -297,6 +313,8 @@ class CTFMixin:
         Args:
             condition_id: Market condition ID (hex string or bytes32).
             amount: Token amount in base units (6 decimals).
+            amount_usdc: Convenience alternative — amount in USDC
+                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
             neg_risk: ``True`` for neg-risk markets (NegRiskAdapter);
                 ``False`` for standard binary markets (ConditionalTokens).
             wait: Wait for the transaction receipt.
@@ -308,6 +326,7 @@ class CTFMixin:
         """
         self._require_ctf_auth()
         self._require_web3()
+        amount = self._resolve_amount(amount, amount_usdc)
         cid = self._to_bytes32(condition_id)
 
         if neg_risk:

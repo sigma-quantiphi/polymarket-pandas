@@ -189,9 +189,18 @@ class ClobPrivateMixin:
 
     # ── CLOB API: API Keys ───────────────────────────────────────────────
 
+    def _apply_api_creds(self, creds: dict) -> dict:
+        """Set L2 credentials on the client from an API key response."""
+        self._api_key = creds["apiKey"]
+        self._api_secret = creds["secret"]
+        self._api_passphrase = creds["passphrase"]
+        return creds
+
     def create_api_key(self, nonce: int = 0) -> dict:
-        """
-        Create a new API key using an L1 (EIP-712) signature.
+        """Create a new API key using an L1 (EIP-712) signature.
+
+        Automatically sets the returned credentials on this client
+        so subsequent L2-authenticated calls work immediately.
 
         Args:
             nonce (int): Nonce value for the signature. Default is 0.
@@ -202,11 +211,13 @@ class ClobPrivateMixin:
         headers = self._build_l1_headers(nonce=nonce)
         response = self._client.post(f"{self.clob_url}auth/api-key", headers=headers)
         response.raise_for_status()
-        return response.json()
+        return self._apply_api_creds(response.json())
 
     def derive_api_key(self, nonce: int = 0) -> dict:
-        """
-        Derive an existing API key using an L1 (EIP-712) signature.
+        """Derive an existing API key using an L1 (EIP-712) signature.
+
+        Automatically sets the returned credentials on this client
+        so subsequent L2-authenticated calls work immediately.
 
         Args:
             nonce (int): Nonce value for the signature. Default is 0.
@@ -217,7 +228,7 @@ class ClobPrivateMixin:
         headers = self._build_l1_headers(nonce=nonce)
         response = self._client.get(f"{self.clob_url}auth/derive-api-key", headers=headers)
         response.raise_for_status()
-        return response.json()
+        return self._apply_api_creds(response.json())
 
     def get_api_keys(self) -> pd.DataFrame:
         """Get all API keys for the authenticated user (L2 auth)."""

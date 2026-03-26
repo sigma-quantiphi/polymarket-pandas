@@ -9,6 +9,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.3.0] — 2026-03-26
+
+### Added
+- **`AsyncPolymarketPandas`** — async version of the HTTP client using
+  composition + `ThreadPoolExecutor`. All 98 public methods auto-generated
+  as `async def` wrappers. Supports `async with` context manager.
+- **`AsyncPolymarketWebSocket`** — native async WebSocket client using
+  `websockets` library. Supports `async for event_type, payload in session:`
+  iteration, auto-reconnection with exponential backoff, and async
+  `subscribe()`/`unsubscribe()`.
+- **`amount_usdc` parameter** on `split_position()` and `merge_positions()` —
+  convenience alternative to raw base-unit `amount` (e.g. `amount_usdc=1.0`
+  instead of `amount=1_000_000`).
+- **Auto-set credentials** — `derive_api_key()` and `create_api_key()` now
+  automatically set `_api_key`, `_api_secret`, `_api_passphrase` on the client.
+- **`preprocess_dict()`** — full type coercion (numeric, datetime, bool, JSON)
+  for single-dict responses. Applied to `get_market_by_id()` and
+  `get_market_by_slug()` so JSON-string fields like `clobTokenIds` are
+  automatically parsed to Python lists.
+- `websockets>=13.0` added to core dependencies.
+- `pytest-asyncio` added to dev dependencies.
+- 16 new async unit tests (`tests/test_async_unit.py`).
+
+---
+
 ## [0.2.0] — 2026-03-26
 
 ### Added

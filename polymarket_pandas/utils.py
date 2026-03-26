@@ -152,6 +152,68 @@ DEFAULT_BOOL_COLUMNS = (
 DEFAULT_DROP_COLUMNS = ("icon", "image")
 DEFAULT_JSON_COLUMNS = ("clobTokenIds", "outcomes", "outcomePrices")
 
+
+def preprocess_dict(
+    data: dict,
+    *,
+    numeric_columns: tuple = DEFAULT_NUMERIC_COLUMNS,
+    str_datetime_columns: tuple = DEFAULT_STR_DATETIME_COLUMNS,
+    int_datetime_columns: tuple = DEFAULT_INT_DATETIME_COLUMNS,
+    bool_columns: tuple = DEFAULT_BOOL_COLUMNS,
+    drop_columns: tuple = DEFAULT_DROP_COLUMNS,
+    json_columns: tuple = DEFAULT_JSON_COLUMNS,
+) -> dict:
+    """Apply the same type coercion as ``preprocess_dataframe`` to a single dict.
+
+    Converts numeric strings to ``float``, ISO-8601 timestamps to
+    ``pd.Timestamp``, boolean-ish strings to ``bool``, and JSON-encoded
+    strings to Python objects. Drops ``icon``/``image`` keys.
+    """
+    # snake_case → camelCase keys
+    data = {snake_to_camel(k): v for k, v in data.items()}
+
+    for key in drop_columns:
+        data.pop(key, None)
+
+    for key, val in data.items():
+        if not isinstance(val, str):
+            continue
+        if key in json_columns:
+            try:
+                data[key] = orjson.loads(val)
+            except Exception:
+                pass
+        elif key in numeric_columns or key in int_datetime_columns:
+            try:
+                data[key] = float(val)
+            except (ValueError, TypeError):
+                pass
+        elif key in str_datetime_columns:
+            try:
+                data[key] = pd.Timestamp(val, tz="UTC")
+            except Exception:
+                pass
+        elif key in bool_columns:
+            data[key] = val.lower() not in ("false", "0", "")
+
+    # Convert int timestamps to pd.Timestamp
+    for key in int_datetime_columns:
+        val = data.get(key)
+        if isinstance(val, (int, float)):
+            try:
+                data[key] = pd.Timestamp(val, unit="s", tz="UTC")
+            except Exception:
+                pass
+
+    # Convert remaining bool values (non-string bools pass through above)
+    for key in bool_columns:
+        val = data.get(key)
+        if isinstance(val, str):
+            data[key] = val.lower() not in ("false", "0", "")
+
+    return data
+
+
 orderbook_meta = [
     "market",
     "asset_id",

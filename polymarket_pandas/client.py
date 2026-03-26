@@ -44,6 +44,9 @@ from polymarket_pandas.utils import (
 from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
 )
+from polymarket_pandas.utils import (
+    preprocess_dict as _preprocess_dict,
+)
 
 # ── CTF Exchange contract addresses (Polygon mainnet) ────────────────
 CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
@@ -539,6 +542,18 @@ class PolymarketPandas(
             bool_columns=self._bool_columns,
             drop_columns=self._drop_columns,
             json_columns=self._json_columns,
+        )
+
+    def preprocess_dict(self, data: dict) -> dict:
+        """Apply type coercion to a single dict (same rules as preprocess_dataframe)."""
+        return _preprocess_dict(
+            data,
+            numeric_columns=self.numeric_columns,
+            str_datetime_columns=self.str_datetime_columns,
+            int_datetime_columns=self.int_datetime_columns,
+            bool_columns=self.bool_columns,
+            drop_columns=self.drop_columns,
+            json_columns=self.json_columns,
         )
 
     def response_to_dataframe(self, data: dict | list) -> pd.DataFrame:
