@@ -1023,6 +1023,67 @@ session.run_forever()
 
 ---
 
+## Async Client
+
+`AsyncPolymarketPandas` wraps the sync client, running each method in a thread
+pool for non-blocking behavior in asyncio contexts. All 100+ public methods are
+available as `async def`.
+
+```python
+from polymarket_pandas import AsyncPolymarketPandas
+
+async with AsyncPolymarketPandas() as client:
+    markets = await client.get_markets(closed=False, limit=100)
+    book = await client.get_orderbook(token_id)
+    tick = await client.get_tick_size(token_id)
+
+    # Order building and submission work the same way
+    result = await client.submit_order(
+        token_id=token_id, price=0.55, size=10, side="BUY"
+    )
+```
+
+Accepts the same constructor arguments as `PolymarketPandas`, plus
+`max_workers` (default 10) for the thread pool size.
+
+---
+
+## Async WebSocket
+
+`AsyncPolymarketWebSocket` uses the `websockets` library for native async I/O
+with `async for` iteration and automatic reconnection.
+
+```python
+from polymarket_pandas import AsyncPolymarketWebSocket
+
+ws = AsyncPolymarketWebSocket.from_client(client)  # works with sync or async client
+
+session = ws.market_channel(asset_ids=["15871..."])
+async with session:
+    async for event_type, payload in session:
+        if event_type == "book":
+            print(payload[["price", "size", "side"]])
+        elif event_type == "price_change":
+            print(payload)
+```
+
+### Features
+
+- **`async for`** iteration over parsed messages
+- **Auto-reconnection** with exponential backoff (configurable via `reconnect=True`)
+- **Async subscribe/unsubscribe** on live connections
+- **Async context manager** (`async with session:`)
+- Channels: `market_channel`, `user_channel`, `sports_channel`, `rtds_channel`
+
+```python
+# Dynamic subscription management
+async with session:
+    await session.subscribe(["99182..."])
+    await session.unsubscribe(["15871..."])
+```
+
+---
+
 ## Pagination Helpers
 
 ### Offset-based (`_autopage`)
