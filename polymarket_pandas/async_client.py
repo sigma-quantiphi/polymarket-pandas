@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import inspect
 from concurrent.futures import ThreadPoolExecutor
 from typing import Self
 
