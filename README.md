@@ -12,6 +12,12 @@ pip install polymarket-pandas
 uv add polymarket-pandas
 ```
 
+For on-chain CTF operations (merge, split, redeem positions):
+
+```bash
+pip install "polymarket-pandas[ctf]"
+```
+
 ---
 
 ## Quick Start
@@ -50,6 +56,8 @@ You can also pass them directly as constructor arguments.
 | `POLYMARKET_BUILDER_API_PASSPHRASE` | `_builder_api_passphrase` | Builder API passphrase |
 | `POLYMARKET_RELAYER_API_KEY` | `_relayer_api_key` | Relayer API key |
 | `POLYMARKET_RELAYER_API_KEY_ADDRESS` | `_relayer_api_key_address` | Address owning the relayer key |
+| `POLYMARKET_RPC_URL` | `rpc_url` | Polygon RPC URL (default: `https://polygon-rpc.com`) |
+| `FIXIE_URL` | `proxy_url` | HTTP proxy URL |
 
 ```python
 # Explicit credentials
@@ -580,6 +588,86 @@ automatic cancellation.
 
 ---
 
+### Order Building & Submission
+
+Build, sign (EIP-712), and place orders. Market parameters (`neg_risk`, `tick_size`,
+`fee_rate_bps`) are **auto-fetched** from the CLOB API and cached per `token_id` —
+you only need to provide `token_id`, `price`, `size`, and `side`.
+
+Caching: `get_tick_size` uses a 300-second TTL (tick sizes can change mid-market);
+`get_neg_risk` and `get_fee_rate` are cached permanently.
+
+#### `build_order(token_id, price, size, side, **kwargs) → dict`
+
+Build and EIP-712-sign a CLOB order. Returns a dict ready for `place_order()`.
+
+```python
+order = client.build_order(
+    token_id="15871154585880...",
+    price=0.55,
+    size=10.0,
+    side="BUY",
+    # All optional — auto-fetched if omitted:
+    # neg_risk=False,
+    # tick_size="0.01",
+    # fee_rate_bps=1000,
+    # expiration=0,       # 0 = no expiry (GTC)
+    # nonce=0,
+)
+```
+
+#### `submit_order(token_id, price, size, side, order_type="GTC", **kwargs) → dict`
+
+Build, sign, and place a single order in one call.
+
+```python
+result = client.submit_order(
+    token_id="15871154585880...",
+    price=0.55,
+    size=10.0,
+    side="BUY",
+    order_type="GTC",  # "GTC", "GTD", "FOK", "FAK"
+)
+# result: {"orderID": "0x...", "status": "matched", "takingAmount": "10", ...}
+```
+
+#### `submit_orders(orders: pd.DataFrame) → pd.DataFrame`
+
+Build, sign, and batch-submit orders from a DataFrame. Orders are sent in groups
+of 15 (the CLOB batch limit) via the `/orders` endpoint.
+
+```python
+import pandas as pd
+
+orders_df = pd.DataFrame({
+    "token_id": [up_token_id, down_token_id],
+    "price": [0.55, 0.45],
+    "size": [10, 10],
+    "side": ["BUY", "BUY"],
+})
+responses = client.submit_orders(orders_df)
+```
+
+<details>
+<summary>DataFrame columns</summary>
+
+| Column | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `token_id` | Yes | — | CLOB token ID |
+| `price` | Yes | — | Limit price (0–1) |
+| `size` | Yes | — | Number of shares |
+| `side` | Yes | — | `"BUY"` or `"SELL"` |
+| `order_type` | No | `"GTC"` | `"GTC"`, `"GTD"`, `"FOK"`, `"FAK"` |
+| `neg_risk` | No | auto | Fetched from CLOB API |
+| `tick_size` | No | auto | Fetched from CLOB API |
+| `fee_rate_bps` | No | auto | Fetched from CLOB API |
+| `expiration` | No | `0` | Unix timestamp (0 = no expiry) |
+| `nonce` | No | `0` | Order nonce |
+
+</details>
+
+---
+
 ### CLOB API — Builder Trades (builder auth required)
 
 Requires `_builder_api_key`, `_builder_api_secret`, `_builder_api_passphrase`.
@@ -772,6 +860,64 @@ status = client.get_bridge_transaction_status("0xDepositAddress...")
 
 ---
 
+## CTF — On-Chain Operations
+
+On-chain merge, split, and redeem via Polymarket's Conditional Token Framework
+contracts on Polygon. Requires the `[ctf]` extra: `pip install "polymarket-pandas[ctf]"`.
+
+All methods require `private_key` (for signing transactions) and a funded EOA
+wallet (MATIC for gas). Amounts are in USDC.e base units (6 decimals):
+`1_000_000` = 1.00 USDC.
+
+#### `split_position(condition_id, amount, neg_risk=False, wait=True, timeout=120) → dict`
+
+Split USDC.e collateral into Yes + No outcome tokens.
+
+```python
+result = client.split_position(
+    condition_id="0x4aee6d11...",
+    amount=1_000_000,       # 1.00 USDC
+    neg_risk=False,         # True for neg-risk (multi-outcome) markets
+)
+# result: {"txHash": "0x...", "status": 1, "blockNumber": 12345, "gasUsed": 150000}
+```
+
+#### `merge_positions(condition_id, amount, neg_risk=False, wait=True, timeout=120) → dict`
+
+Merge equal amounts of Yes + No tokens back into USDC.e.
+
+```python
+result = client.merge_positions(
+    condition_id="0x4aee6d11...",
+    amount=1_000_000,
+)
+```
+
+#### `redeem_positions(condition_id, index_sets=None, wait=True, timeout=120) → dict`
+
+Redeem winning outcome tokens for USDC.e after market resolution.
+
+```python
+result = client.redeem_positions(condition_id="0x4aee6d11...")
+```
+
+#### `approve_collateral(spender=None, amount=None, wait=True, timeout=120) → dict`
+
+Approve a CTF contract to spend USDC.e. Required before `split_position` or
+`merge_positions`. Defaults to unlimited approval for the ConditionalTokens contract.
+
+```python
+from polymarket_pandas.mixins._ctf import CONDITIONAL_TOKENS, NEG_RISK_ADAPTER
+
+# For standard binary markets
+client.approve_collateral(spender=CONDITIONAL_TOKENS)
+
+# For neg-risk markets
+client.approve_collateral(spender=NEG_RISK_ADAPTER)
+```
+
+---
+
 ## WebSocket API
 
 ```python
@@ -920,6 +1066,19 @@ Parse a raw order book dict (with `bids` / `asks` arrays) into a flat DataFrame.
 
 ---
 
+## Examples
+
+See the [`examples/`](examples/) directory for runnable scripts:
+
+| Script | Description |
+|--------|-------------|
+| [`btc_5min.py`](examples/btc_5min.py) | Find BTC 5-min market, fetch orderbook and prices |
+| [`btc_5min_trade_merge.py`](examples/btc_5min_trade_merge.py) | Full trading flow: `submit_orders` (DataFrame), cancel, buy both sides, merge positions |
+| [`rtds_ws.py`](examples/rtds_ws.py) | Real-Time Data Streams — live crypto prices via WebSocket |
+| [`user_ws.py`](examples/user_ws.py) | Private user channel — live order and trade events |
+
+---
+
 ## Environment Variables Reference
 
 ```dotenv
@@ -941,6 +1100,10 @@ POLYMARKET_BUILDER_API_PASSPHRASE=your-builder-passphrase
 # Relayer API
 POLYMARKET_RELAYER_API_KEY=your-relayer-key
 POLYMARKET_RELAYER_API_KEY_ADDRESS=0xAddressThatOwnsRelayerKey
+
+# Network
+POLYMARKET_RPC_URL=https://polygon-bor-rpc.publicnode.com  # Polygon RPC for CTF ops
+FIXIE_URL=http://proxy:8080                                # HTTP proxy (optional)
 ```
 
 ---
