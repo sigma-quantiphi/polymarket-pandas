@@ -653,11 +653,11 @@ class PolymarketPandas(
         size: float,
         side: str,
         *,
-        fee_rate_bps: int = 0,
+        fee_rate_bps: int | None = None,
         expiration: int = 0,
         nonce: int = 0,
-        neg_risk: bool = False,
-        tick_size: str = "0.01",
+        neg_risk: bool | None = None,
+        tick_size: str | None = None,
     ) -> dict:
         """Build and sign a CLOB order, ready for :meth:`place_order`.
 
@@ -666,18 +666,28 @@ class PolymarketPandas(
             price: Limit price per share (0–1).
             size: Number of shares (conditional tokens).
             side: ``"BUY"`` or ``"SELL"``.
-            fee_rate_bps: Fee rate in basis points (default 0).
+            fee_rate_bps: Fee rate in basis points. Auto-fetched from the CLOB
+                API if not provided.
             expiration: Unix timestamp for GTD orders, ``0`` = no expiry.
             nonce: Order nonce for on-chain cancellation (default 0).
-            neg_risk: ``True`` if the market is neg-risk.
+            neg_risk: ``True`` if the market is neg-risk. Auto-fetched if not
+                provided.
             tick_size: Market tick size (``"0.1"``, ``"0.01"``, ``"0.001"``,
-                or ``"0.0001"``).
+                or ``"0.0001"``). Auto-fetched if not provided.
 
         Returns:
             dict: Signed order dict with all fields expected by :meth:`place_order`.
         """
         if not self.private_key:
             raise PolymarketAuthError(detail="private_key is required to build orders.")
+
+        # Auto-fetch market params from CLOB API (cached per token_id)
+        if neg_risk is None:
+            neg_risk = self.get_neg_risk(token_id)
+        if tick_size is None:
+            tick_size = str(self.get_tick_size(token_id))
+        if fee_rate_bps is None:
+            fee_rate_bps = self.get_fee_rate(token_id)
 
         side_int, maker_amount, taker_amount = self._get_order_amounts(
             side, price, size, tick_size
@@ -780,43 +790,58 @@ class PolymarketPandas(
         order = self.build_order(token_id, price, size, side, **kwargs)
         return self.place_order(order=order, owner=self._api_key, orderType=order_type)
 
+    _BATCH_SIZE = 15  # CLOB API max orders per /orders call
+
     def submit_orders(
         self,
-        orders: list[dict],
-        *,
-        neg_risk: bool = False,
-        tick_size: str = "0.01",
-    ) -> list:
-        """Build, sign, and place multiple orders.
+        orders: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Build, sign, and place multiple orders from a DataFrame.
+
+        Required columns: ``token_id``, ``price``, ``size``, ``side``.
+
+        Optional columns: ``order_type`` (default ``"GTC"``), ``expiration``,
+        ``nonce``, ``neg_risk``, ``tick_size``, ``fee_rate_bps``.
+
+        Market parameters (``neg_risk``, ``tick_size``, ``fee_rate_bps``) are
+        auto-fetched from the CLOB API (and cached) when not provided.
+
+        Orders are batched in groups of 15 (the CLOB limit) and submitted
+        via the ``/orders`` endpoint.
 
         Args:
-            orders: List of dicts with ``token_id``, ``price``, ``size``,
-                ``side``, and optionally ``order_type`` (default ``"GTC"``),
-                ``fee_rate_bps``, ``expiration``, ``nonce``.
-            neg_risk: Applies to all orders.
-            tick_size: Applies to all orders.
+            orders: DataFrame with one row per order.
 
         Returns:
-            list: API responses for each order.
+            pd.DataFrame: API responses for each batch.
         """
         self._require_l2_auth()
-        results = []
-        for o in orders:
+
+        # Build and sign each order
+        signed = []
+        for row in orders.itertuples(index=False):
             order = self.build_order(
-                token_id=o["token_id"],
-                price=o["price"],
-                size=o["size"],
-                side=o["side"],
-                fee_rate_bps=o.get("fee_rate_bps", 0),
-                expiration=o.get("expiration", 0),
-                nonce=o.get("nonce", 0),
-                neg_risk=neg_risk,
-                tick_size=tick_size,
+                token_id=str(row.token_id),
+                price=row.price,
+                size=row.size,
+                side=row.side,
+                fee_rate_bps=getattr(row, "fee_rate_bps", None),
+                expiration=getattr(row, "expiration", 0),
+                nonce=getattr(row, "nonce", 0),
+                neg_risk=getattr(row, "neg_risk", None),
+                tick_size=getattr(row, "tick_size", None),
             )
-            resp = self.place_order(
-                order=order,
-                owner=self._api_key,
-                orderType=o.get("order_type", "GTC"),
-            )
+            order["owner"] = self._api_key
+            order["orderType"] = getattr(row, "order_type", "GTC") or "GTC"
+            signed.append(order)
+
+        # Batch submit via /orders endpoint (max 15 per call)
+        results = []
+        for i in range(0, len(signed), self._BATCH_SIZE):
+            batch_df = pd.DataFrame(signed[i : i + self._BATCH_SIZE])
+            resp = self.place_orders(batch_df)
             results.append(resp)
-        return results
+
+        if results:
+            return pd.concat(results, ignore_index=True)
+        return pd.DataFrame()

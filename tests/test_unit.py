@@ -676,9 +676,12 @@ def _mock_web3(ctf_client, monkeypatch):
     }
     mock_w3.eth.wait_for_transaction_receipt.return_value = mock_receipt
 
+    mock_account = MagicMock()
+    mock_account.address = "0x" + "ab" * 20
     mock_signed = MagicMock()
     mock_signed.raw_transaction = b"\x00"
-    mock_w3.eth.account.from_key.return_value.sign_transaction.return_value = mock_signed
+    mock_account.sign_transaction.return_value = mock_signed
+    mock_w3.eth.account.from_key.return_value = mock_account
     mock_w3.eth.send_raw_transaction.return_value = b"\x01" * 32
 
     ct = MagicMock()
@@ -845,6 +848,8 @@ def test_build_order_salt_is_int(authed_client: PolymarketPandas):
         size=10.0,
         side="BUY",
         tick_size="0.01",
+        neg_risk=False,
+        fee_rate_bps=0,
     )
     assert isinstance(order["salt"], int), f"salt should be int, got {type(order['salt'])}"
     assert isinstance(order["signatureType"], int)
@@ -852,3 +857,97 @@ def test_build_order_salt_is_int(authed_client: PolymarketPandas):
     assert isinstance(order["makerAmount"], str)
     assert isinstance(order["takerAmount"], str)
     assert isinstance(order["tokenId"], str)
+
+
+# ── submit_orders (DataFrame) ──────────────────────────────────────────
+
+
+def test_submit_orders_dataframe(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    """submit_orders accepts a DataFrame and batch-submits via /orders."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+
+    # Mock the market-param endpoints (auto-fetched by build_order)
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=11111111111111111111",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=11111111111111111111",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/fee-rate?token_id=11111111111111111111",
+        json={"base_fee": 1000},
+    )
+    # Mock the batch /orders endpoint
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/orders",
+        json=[{"orderID": "0xabc", "status": "matched"}],
+    )
+
+    orders_df = pd.DataFrame({
+        "token_id": ["11111111111111111111", "11111111111111111111"],
+        "price": [0.50, 0.60],
+        "size": [10.0, 5.0],
+        "side": ["BUY", "SELL"],
+    })
+    result = authed_client.submit_orders(orders_df)
+    assert isinstance(result, pd.DataFrame)
+    assert not result.empty
+
+    # Verify /orders was called (not /order)
+    requests = httpx_mock.get_requests()
+    orders_requests = [r for r in requests if r.url.path == "/orders"]
+    assert len(orders_requests) == 1
+    body = orjson.loads(orders_requests[0].content)
+    assert len(body) == 2
+    assert "order" in body[0]
+    assert body[0]["orderType"] == "GTC"
+
+
+def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    """submit_orders splits >15 orders into multiple /orders calls."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=22222222222222222222",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=22222222222222222222",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/fee-rate?token_id=22222222222222222222",
+        json={"base_fee": 0},
+    )
+    # Two batch responses
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/orders",
+        json=[{"orderID": f"0x{i:04x}", "status": "live"} for i in range(15)],
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/orders",
+        json=[{"orderID": "0x000f", "status": "live"}],
+    )
+
+    orders_df = pd.DataFrame({
+        "token_id": ["22222222222222222222"] * 16,
+        "price": [0.50] * 16,
+        "size": [1.0] * 16,
+        "side": ["BUY"] * 16,
+    })
+    result = authed_client.submit_orders(orders_df)
+    assert isinstance(result, pd.DataFrame)
+
+    # Should have made 2 batch calls: 15 + 1
+    orders_requests = [
+        r for r in httpx_mock.get_requests() if r.url.path == "/orders"
+    ]
+    assert len(orders_requests) == 2
+    first_batch = orjson.loads(orders_requests[0].content)
+    second_batch = orjson.loads(orders_requests[1].content)
+    assert len(first_batch) == 15
+    assert len(second_batch) == 1

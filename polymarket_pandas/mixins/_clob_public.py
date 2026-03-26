@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from polymarket_pandas.utils import instance_cache
+
 
 class ClobPublicMixin:
     # ── CLOB API: Market Data ────────────────────────────────────────────
@@ -17,9 +19,12 @@ class ClobPublicMixin:
         """
         return self._request_clob(path="time")
 
+    @instance_cache(ttl=300)
     def get_tick_size(self, token_id: str) -> float:
         """
         Get the minimum tick size for a token.
+
+        Results are cached per token_id for the lifetime of this client.
 
         Args:
             token_id (str): The CLOB token ID.
@@ -30,9 +35,12 @@ class ClobPublicMixin:
         data = self._request_clob(path="tick-size", params={"token_id": token_id})
         return float(self._extract(data, "minimum_tick_size"))
 
+    @instance_cache
     def get_neg_risk(self, token_id: str) -> bool:
         """
         Check whether a token is neg-risk.
+
+        Results are cached per token_id for the lifetime of this client.
 
         Args:
             token_id (str): The CLOB token ID.
@@ -43,8 +51,11 @@ class ClobPublicMixin:
         data = self._request_clob(path="neg-risk", params={"token_id": token_id})
         return bool(self._extract(data, "neg_risk"))
 
+    @instance_cache
     def get_fee_rate(self, token_id: str | None = None) -> int:
         """Get the base fee rate, optionally for a specific token.
+
+        Results are cached per token_id for the lifetime of this client.
 
         https://docs.polymarket.com/api-reference/clob/fee-rate
 

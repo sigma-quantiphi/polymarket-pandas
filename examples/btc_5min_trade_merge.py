@@ -1,12 +1,14 @@
 """
-BTC 5-Minute Up/Down — Buy Both Sides + Merge
+BTC 5-Minute Up/Down — Submit Orders, Cancel, Buy + Merge
 
 End-to-end trading flow on a BTC 1d binary market:
   1. Find the current active BTC 1d Up/Down market
-  2. Buy minimum amount of "Up" (Yes) at market price (FOK)
-  3. Buy minimum amount of "Down" (No) at market price (FOK)
-  4. Read back recent user trades
-  5. Merge the Yes + No tokens back into USDC.e
+  2. Submit limit orders for both sides at min price via submit_orders (DataFrame)
+  3. Sleep 30s, then cancel the limit orders
+  4. Buy minimum "Up" at market price via submit_order
+  5. Buy minimum "Down" at market price via submit_order
+  6. Read back recent user trades
+  7. Merge the Yes + No tokens back into USDC.e
 
 Requirements:
     pip install "polymarket-pandas[ctf]"
@@ -25,7 +27,9 @@ Usage:
 
 from __future__ import annotations
 
+import math
 import sys
+import time
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -78,7 +82,7 @@ def main() -> None:
         .drop_duplicates(subset=["clobTokenIds", "outcomes"])
         .reset_index(drop=True)
     )
-    current['outcomePrices'] = pd.to_numeric(current['outcomePrices'])
+    current["outcomePrices"] = pd.to_numeric(current["outcomePrices"])
 
     up_row = current.loc[current["outcomes"] == "Up"].iloc[0]
     down_row = current.loc[current["outcomes"] == "Down"].iloc[0]
@@ -87,15 +91,68 @@ def main() -> None:
     min_size = up_row["orderMinSize"]
     tick_size = up_row["orderPriceMinTickSize"]
     neg_risk = up_row["negRisk"]
+    min_notional = 1.50  # buffer above the $1 CLOB minimum to survive rounding
 
     print(f"Market:       {up_row['question']}")
     print(f"Condition ID: {condition_id}")
     print(f"Neg-risk:     {neg_risk}")
     print(f"Tick size:    {tick_size}")
-    print(f"Up  token:    {up_row['clobTokenIds']}  bid/ask {up_row['bestBid']:.2f}/{up_row['bestAsk']:.2f}")
-    print(f"Down token:   {down_row['clobTokenIds']}  bid/ask {down_row['bestBid']:.2f}/{down_row['bestAsk']:.2f}")
+    print(f"Up  token:    {up_row['clobTokenIds']}  price={up_row['outcomePrices']:.3f}")
+    print(f"Down token:   {down_row['clobTokenIds']}  price={down_row['outcomePrices']:.3f}")
 
-    # ── 4. Read user trades ──────────────────────────────────────────────
+    # ── 2. Submit limit orders at min price via DataFrame ──────────────
+    #   Place cheap limit orders (unlikely to fill) to demo submit_orders.
+
+    up_limit = tick_size  # lowest possible price
+    down_limit = tick_size
+
+    orders_df = pd.DataFrame({
+        "token_id": [up_row["clobTokenIds"], down_row["clobTokenIds"]],
+        "price": [up_limit, down_limit],
+        "size": [min_size, min_size],
+        "side": ["BUY", "BUY"],
+    })
+    print(f"\n── Submitting limit orders via submit_orders(DataFrame) ──")
+    print(orders_df.to_string(index=False))
+    limit_resp = client.submit_orders(orders_df)
+    print(f"Responses:\n{limit_resp}")
+
+    # ── 3. Sleep 30s, then cancel all orders on this market ──────────
+
+    print(f"\nSleeping 30s before cancelling ...")
+    time.sleep(30)
+    print("Cancelling all orders on Up + Down tokens ...")
+    resp = client.cancel_orders_from_market(market=condition_id)
+    print(resp)
+
+    # ── 4. Buy "Up" (Yes) at market price ──────────────────────────────
+
+    up_price = up_row["outcomePrices"] + tick_size
+    print(f"\nBuying {min_size} Up @ ${up_price:.3f} ...")
+    up_resp = client.submit_order(
+        token_id=up_row["clobTokenIds"],
+        price=up_price,
+        size=min_size,
+        side="BUY",
+        order_type="GTC",
+    )
+    print(f"Up buy response: {up_resp}")
+
+    # ── 5. Buy "Down" (No) at market price ─────────────────────────────
+
+    down_price = down_row["outcomePrices"] + tick_size
+    print(f"\nBuying {min_size} Down @ ${down_price:.3f} ...")
+    down_resp = client.submit_order(
+        token_id=down_row["clobTokenIds"],
+        price=down_price,
+        size=min_size,
+        side="BUY",
+        order_type="GTC",
+    )
+    print(f"Down buy response: {down_resp}")
+
+    # ── 6. Read user trades ────────────────────────────────────────────
+
     print("\nRecent user trades:")
     trades = client.get_user_trades()
     if not trades.empty:
@@ -103,42 +160,17 @@ def main() -> None:
     else:
         print("(no trades yet)")
 
-    # ── 2. Buy "Up" (Yes) at market price (FOK) ─────────────────────────
+    # ── 7. Merge Yes + No tokens back into USDC.e ─────────────────────
+    #   Can only merge the minimum of the two positions (need equal amounts).
 
-    up_price = up_row["outcomePrices"] + tick_size
-    print(f"\nBuying {min_size} Up @ ${up_price:.2f} (FOK) ...")
-    up_resp = client.submit_order(
-        token_id=up_row["clobTokenIds"],
-        price=up_price,
-        size=min_size,
-        side="BUY",
-        order_type="GTC",
-        neg_risk=neg_risk,
-        tick_size=str(tick_size),
-    )
-    print(f"Up buy response: {up_resp}")
+    merge_shares = min(up_size, down_size)
+    merge_amount = int(merge_shares * 1e6)
 
-    # ── 3. Buy "Down" (No) at market price (FOK) ────────────────────────
-    down_price = down_row["outcomePrices"] - tick_size
-    print(f"\nBuying {min_size} Down @ ${down_price:.2f} (FOK) ...")
-    down_resp = client.submit_order(
-        token_id=down_row["clobTokenIds"],
-        price=down_price,
-        size=min_size,
-        side="BUY",
-        order_type="GTC",
-        neg_risk=neg_risk,
-        tick_size=str(tick_size),
-    )
-    print(f"Down buy response: {down_resp}")
-
-    # ── 5. Merge Yes + No tokens back into USDC.e ────────────────────────
     spender = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
     print(f"\nApproving USDC.e for {spender[:10]}... (if needed)")
     client.approve_collateral(spender=spender)
 
-    merge_amount = int(min_size * 1e6)
-    print(f"Merging {merge_amount} base units ...")
+    print(f"Merging {merge_shares} shares ({merge_amount} base units) ...")
     merge_result = client.merge_positions(
         condition_id=condition_id,
         amount=merge_amount,

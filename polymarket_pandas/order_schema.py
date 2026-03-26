@@ -14,7 +14,7 @@ class OrderSchema(pa.DataFrameModel):
     expiration: str = pa.Field(description="Unix expiration timestamp")
     nonce: str = pa.Field(description="Maker’s exchange nonce of the order is associated")
     feeRateBps: str = pa.Field(description="Fee rate basis points as required by the operator")
-    side: str = pa.Field(isin=["buy", "sell"], description="Buy or sell enum index")
+    side: str = pa.Field(isin=["BUY", "SELL"], description="Buy or sell enum index")
     signatureType: int = pa.Field(ge=0, description="Signature type enum index")
     signature: str = pa.Field(description="Hex encoded signature")
 

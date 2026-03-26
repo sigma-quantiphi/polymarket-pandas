@@ -7,7 +7,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.2.0] — 2026-03-26
+
 ### Added
+- **CTFMixin** — on-chain merge, split, redeem positions via Polymarket's
+  Conditional Token Framework contracts on Polygon. Requires optional `web3`
+  dependency: `pip install polymarket-pandas[ctf]`.
+- **Order signing** — `build_order()` with full EIP-712 signing, tick-size-aware
+  amount calculation, and automatic market parameter resolution.
+- **`submit_order` / `submit_orders`** — high-level convenience methods that
+  auto-fetch `neg_risk`, `tick_size`, `fee_rate_bps` from the CLOB API (cached).
+- `submit_orders` accepts a **pandas DataFrame** and batch-submits via the
+  `/orders` endpoint (groups of 15).
+- **`instance_cache`** decorator (`utils.py`) backed by `cachetools` — per-instance
+  method caching with optional TTL. Used for `get_tick_size` (300s TTL),
+  `get_neg_risk`, and `get_fee_rate` (permanent).
+- `_ENV_DEFAULTS` dict — env var resolution deferred to `__post_init__`, so
+  `load_dotenv()` can run before client construction.
+- Auto-derive `address` from `private_key` when not explicitly set.
+- `proxy_url`, `rpc_url`, `timeout` fields on the client dataclass.
+- Column default tuples extracted to `utils.py` constants
+  (`DEFAULT_NUMERIC_COLUMNS`, etc.).
+- `LICENSE` file (Apache-2.0).
+- `CONTRIBUTING.md` with development setup and PR guidelines.
+- PyPI publish workflow (`.github/workflows/release.yml`) — triggered on
+  GitHub release, uses trusted publisher (OIDC).
 - Custom exception hierarchy: `PolymarketError`, `PolymarketAPIError`,
   `PolymarketAuthError`, `PolymarketRateLimitError` — all exported from the
   top-level package.
@@ -38,7 +64,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `sports_channel`, `rtds_channel`.
 - `PolymarketWebSocket.from_client` class method to share column config with an
   existing HTTP client.
-- Unit test suite (`tests/test_unit.py`) with 33 tests, using `pytest-httpx`
+- Unit test suite (`tests/test_unit.py`) with 75+ tests, using `pytest-httpx`
   for HTTP mocking — no live API calls required.
 - CI workflow (`.github/workflows/ci.yml`): lint, typecheck, unit tests.
 - `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]` in `pyproject.toml`.
@@ -47,20 +73,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - PyPI classifiers and keywords.
 
 ### Fixed
+- `_round_normal` now uses `Decimal` with `ROUND_HALF_UP` to avoid float
+  representation bugs (e.g. `round(0.85 * 10) = 8` instead of 9).
+- `cancel_orders_from_market` now sends params as JSON body (was query string,
+  causing "Invalid order payload" errors).
+- CTF `build_transaction` calls now pass `from` address (was zero-address,
+  causing "approve from the zero address" reverts).
+- POA middleware injected for Polygon compatibility in CTF operations.
+- EIP-1559 / legacy gas field conflict resolved in `_send_ctf_tx`.
 - `filter_params(None)` now returns `{}` instead of `None`, preventing a silent
   `TypeError` in callers.
 - `filter_params` no longer calls `pd.notnull` on list values (previously raised
   `ValueError: The truth value of an empty array is ambiguous` for empty lists).
-- `__post_init__` expansion loop used `"series"` as a prefix, generating column
-  names (`seriesEndDate`, etc.) that were never produced by any `expand_dataframe`
-  call.
+- `OrderSchema` side validation aligned to uppercase `"BUY"` / `"SELL"` to match
+  `build_order` output.
 
 ### Removed
 - `load_dotenv()` at module import time — this was silently mutating `os.environ`
   for any application that imported the library. Callers who relied on `.env`
   loading should call `load_dotenv()` themselves before constructing a client.
-- Unused dependencies `cachetools`, `pydantic`, `python-dateutil` from
-  `pyproject.toml`.
 - Overly tight upper-bound version pins on `eth-account` and `httpx`.
 
 ---

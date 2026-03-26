@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pandas as pd
-from pandas import DataFrame
 
 
 class ClobPrivateMixin:
@@ -117,21 +116,30 @@ class ClobPrivateMixin:
             data={"order": order, "owner": owner, "orderType": orderType},
         )
 
-    def place_orders(self, orders: pd.DataFrame) -> DataFrame:
+    def place_orders(self, orders: pd.DataFrame) -> pd.DataFrame:
+        """Place multiple signed orders in a batch (up to 15 per call).
+
+        The DataFrame must contain signed order fields (from
+        :meth:`~polymarket_pandas.PolymarketPandas.build_order`) plus
+        ``owner`` and ``orderType`` columns.
+
+        Args:
+            orders: DataFrame of signed orders.
+
+        Returns:
+            pd.DataFrame: API responses.
         """
-        Place multiple orders in a batch (up to 15 orders).
-        """
+        order_cols = [
+            c for c in orders.columns if c not in ("owner", "orderType")
+        ]
         orders_data = []
-        data = orders.copy()
-        data["expiration"] = data["expiration"].astype(int)
-        for [owner, orderType], sub_orders in data.groupby(["owner", "orderType"]):
-            for x in sub_orders.to_dict("records"):
-                order = {
-                    "order": x,
-                    "owner": owner,
-                    "orderType": orderType,
-                }
-                orders_data.append(order.copy())
+        for row in orders.itertuples(index=False):
+            order_dict = {c: getattr(row, c) for c in order_cols}
+            orders_data.append({
+                "order": order_dict,
+                "owner": row.owner,
+                "orderType": row.orderType,
+            })
         response = self._request_clob_private(
             path="orders",
             method="POST",
@@ -160,16 +168,18 @@ class ClobPrivateMixin:
         return self._request_clob_private(path="cancel-all", method="DELETE")
 
     def cancel_orders_from_market(
-        self, market: str | None = None, asset_id: str | None = None
+        self, market: str = "", asset_id: str = ""
     ) -> dict:
-        """Cancel orders from a specific market or asset."""
+        """Cancel orders from a specific market or asset.
+
+        Args:
+            market: Condition ID of the market.
+            asset_id: CLOB token ID (asset) to cancel orders for.
+        """
         return self._request_clob_private(
             path="cancel-market-orders",
             method="DELETE",
-            params={
-                "market": market,
-                "asset_id": asset_id,
-            },
+            data={"market": market, "asset_id": asset_id},
         )
 
     def send_heartbeat(self) -> dict:

@@ -126,8 +126,11 @@ class CTFMixin:
                 "Install it with: pip install polymarket-pandas[ctf]"
             ) from None
 
+        from web3.middleware import ExtraDataToPOAMiddleware
+
         rpc_url = getattr(self, "rpc_url", DEFAULT_RPC_URL)
         self._w3 = Web3(Web3.HTTPProvider(rpc_url))
+        self._w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
         self._ct_contract = self._w3.eth.contract(
             address=Web3.to_checksum_address(CONDITIONAL_TOKENS),
             abi=_CONDITIONAL_TOKENS_ABI,
@@ -157,6 +160,18 @@ class CTFMixin:
             return bytes.fromhex(value.removeprefix("0x"))
         return value
 
+    def _eoa_address(self) -> str:
+        """Return the checksummed EOA address derived from private_key."""
+        from web3 import Web3
+
+        return Web3.to_checksum_address(
+            self._w3.eth.account.from_key(self.private_key).address
+        )
+
+    def _tx_params(self) -> dict:
+        """Base transaction params with ``from`` set to the EOA address."""
+        return {"from": self._eoa_address()}
+
     def _send_ctf_tx(
         self,
         tx_data: dict,
@@ -175,7 +190,8 @@ class CTFMixin:
 
         if "gas" not in tx_data:
             tx_data["gas"] = self._w3.eth.estimate_gas(tx_data)
-        if "gasPrice" not in tx_data:
+        # Don't add gasPrice if EIP-1559 fields already present
+        if "maxFeePerGas" not in tx_data and "gasPrice" not in tx_data:
             tx_data["gasPrice"] = self._w3.eth.gas_price
 
         signed = account.sign_transaction(tx_data)
@@ -223,7 +239,7 @@ class CTFMixin:
             amount = 2**256 - 1
         tx = self._usdc_contract.functions.approve(
             self._w3.to_checksum_address(spender), amount
-        ).build_transaction({})
+        ).build_transaction(self._tx_params())
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def split_position(
@@ -258,7 +274,7 @@ class CTFMixin:
         if neg_risk:
             tx = self._nr_contract.functions.splitPosition(
                 cid, amount
-            ).build_transaction({})
+            ).build_transaction(self._tx_params())
         else:
             tx = self._ct_contract.functions.splitPosition(
                 self._w3.to_checksum_address(USDC_E),
@@ -266,7 +282,7 @@ class CTFMixin:
                 cid,
                 DEFAULT_PARTITION,
                 amount,
-            ).build_transaction({})
+            ).build_transaction(self._tx_params())
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def merge_positions(
@@ -299,7 +315,7 @@ class CTFMixin:
         if neg_risk:
             tx = self._nr_contract.functions.mergePositions(
                 cid, amount
-            ).build_transaction({})
+            ).build_transaction(self._tx_params())
         else:
             tx = self._ct_contract.functions.mergePositions(
                 self._w3.to_checksum_address(USDC_E),
@@ -307,7 +323,7 @@ class CTFMixin:
                 cid,
                 DEFAULT_PARTITION,
                 amount,
-            ).build_transaction({})
+            ).build_transaction(self._tx_params())
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def redeem_positions(
@@ -342,5 +358,5 @@ class CTFMixin:
             PARENT_COLLECTION_ID,
             cid,
             index_sets,
-        ).build_transaction({})
+        ).build_transaction(self._tx_params())
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)

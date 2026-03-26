@@ -15,15 +15,48 @@ __all__ = [
     "expand_column_lists",
     "expand_dataframe",
     "filter_params",
+    "instance_cache",
     "orderbook_meta",
     "preprocess_dataframe",
     "snake_columns_to_camel",
     "snake_to_camel",
 ]
 
+
+def instance_cache(method=None, *, ttl: float | None = None, maxsize: int = 256):
+    """Cache results of an instance method, keyed by arguments.
+
+    Wraps :func:`cachetools.cachedmethod`, storing a per-method cache on the
+    instance as ``_cache_{method_name}``.
+
+    Usage::
+
+        @instance_cache            # permanent cache
+        def get_neg_risk(self, token_id): ...
+
+        @instance_cache(ttl=300)   # expires after 300 seconds
+        def get_tick_size(self, token_id): ...
+    """
+    from cachetools import Cache, TTLCache, cachedmethod
+
+    def decorator(fn):
+        attr = f"_cache_{fn.__name__}"
+
+        def _get_cache(self):
+            cache = getattr(self, attr, None)
+            if cache is None:
+                cache = TTLCache(maxsize=maxsize, ttl=ttl) if ttl else Cache(maxsize=maxsize)
+                setattr(self, attr, cache)
+            return cache
+
+        return cachedmethod(_get_cache)(fn)
+
+    if method is not None:
+        return decorator(method)
+    return decorator
+
 # ── Shared column-type defaults ──────────────────────────────────────
 # Used by both PolymarketPandas and PolymarketWebSocket as dataclass field defaults.
-
 DEFAULT_NUMERIC_COLUMNS = (
     "bestAsk",
     "bestBid",
@@ -87,7 +120,6 @@ DEFAULT_STR_DATETIME_COLUMNS = (
     "umaEndDate",
     "updatedAt",
 )
-
 DEFAULT_INT_DATETIME_COLUMNS = ("timestamp",)
 
 DEFAULT_BOOL_COLUMNS = (
@@ -117,9 +149,7 @@ DEFAULT_BOOL_COLUMNS = (
 )
 
 DEFAULT_DROP_COLUMNS = ("icon", "image")
-
 DEFAULT_JSON_COLUMNS = ("clobTokenIds", "outcomes", "outcomePrices")
-
 
 orderbook_meta = [
     "market",

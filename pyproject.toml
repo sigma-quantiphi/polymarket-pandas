@@ -1,6 +1,6 @@
 [project]
 name = "polymarket-pandas"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pandas API client to Polymarket"
 authors = [
     {name = "Sigma Quantiphi", email = "contact@sqphi.com"}
@@ -23,6 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "cachetools>=5.3",
     "eth-account>=0.13.7",
     "httpx>=0.28.1",
     "orjson>=3.11.0",
