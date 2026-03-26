@@ -949,3 +949,161 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
     second_batch = orjson.loads(orders_requests[1].content)
     assert len(first_batch) == 15
     assert len(second_batch) == 1
+
+
+# ── Rewards: Public endpoints ────────────────────────────────────────────────
+
+
+def test_get_rewards_markets_current(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/markets/current",
+        json={
+            "limit": 500,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "condition_id": "0xabc",
+                    "rewards_max_spread": 0.05,
+                    "rewards_min_size": 50,
+                    "rewards_config": [],
+                }
+            ],
+        },
+    )
+    result = client.get_rewards_markets_current()
+    assert isinstance(result["data"], pd.DataFrame)
+    assert result["next_cursor"] == "LTE="
+    assert len(result["data"]) == 1
+
+
+def test_get_rewards_markets_multi(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/markets/multi",
+        json={
+            "limit": 100,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "condition_id": "0xabc",
+                    "market_id": "m1",
+                    "question": "Test?",
+                    "rewards_max_spread": 0.05,
+                    "rewards_min_size": 50,
+                }
+            ],
+        },
+    )
+    result = client.get_rewards_markets_multi()
+    assert isinstance(result["data"], pd.DataFrame)
+    assert len(result["data"]) == 1
+
+
+def test_get_rewards_market(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/markets/0xabc123",
+        json={
+            "limit": 500,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "condition_id": "0xabc123",
+                    "question": "Test market?",
+                    "rewards_max_spread": 0.03,
+                    "rewards_min_size": 100,
+                }
+            ],
+        },
+    )
+    result = client.get_rewards_market("0xabc123")
+    assert isinstance(result["data"], pd.DataFrame)
+    assert len(result["data"]) == 1
+
+
+# ── Rewards: Private endpoints ───────────────────────────────────────────────
+
+
+def test_get_rewards_earnings(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/user?date=2025-01-01",
+        json={
+            "limit": 100,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "date": "2025-01-01",
+                    "condition_id": "0xabc",
+                    "asset_address": "0xdef",
+                    "maker_address": "0x123",
+                    "earnings": 1.5,
+                    "asset_rate": 100.0,
+                }
+            ],
+        },
+    )
+    result = authed_client.get_rewards_earnings(date="2025-01-01")
+    assert isinstance(result["data"], pd.DataFrame)
+    assert len(result["data"]) == 1
+
+
+def test_get_rewards_earnings_total(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/user/total?date=2025-01-01",
+        json=[
+            {
+                "date": "2025-01-01",
+                "asset_address": "0xdef",
+                "maker_address": "0x123",
+                "earnings": 10.5,
+                "asset_rate": 100.0,
+            }
+        ],
+    )
+    result = authed_client.get_rewards_earnings_total(date="2025-01-01")
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 1
+
+
+def test_get_rewards_percentages(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/user/percentages",
+        json={"0xabc": 20, "0xdef": 15},
+    )
+    result = authed_client.get_rewards_percentages()
+    assert isinstance(result, dict)
+    assert result["0xabc"] == 20
+    assert result["0xdef"] == 15
+
+
+def test_get_rewards_user_markets(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/user/markets",
+        json={
+            "limit": 100,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "condition_id": "0xabc",
+                    "market_id": "m1",
+                    "question": "Test?",
+                    "earning_percentage": 5.0,
+                    "earnings": [],
+                }
+            ],
+        },
+    )
+    result = authed_client.get_rewards_user_markets()
+    assert isinstance(result["data"], pd.DataFrame)
+    assert len(result["data"]) == 1
+
+
+def test_get_rewards_earnings_requires_auth(client: PolymarketPandas):
+    """Private rewards endpoints require L2 auth."""
+    from polymarket_pandas import PolymarketAuthError
+
+    with pytest.raises(PolymarketAuthError):
+        client.get_rewards_earnings(date="2025-01-01")

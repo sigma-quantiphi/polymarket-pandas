@@ -29,6 +29,7 @@ from polymarket_pandas.mixins import (
     DataMixin,
     GammaMixin,
     RelayerMixin,
+    RewardsMixin,
 )
 from polymarket_pandas.utils import (
     DEFAULT_BOOL_COLUMNS,
@@ -103,6 +104,7 @@ class PolymarketPandas(
     RelayerMixin,
     BridgeMixin,
     CTFMixin,
+    RewardsMixin,
 ):
     """Polymarket HTTP client that returns preprocessed pandas DataFrames.
 
@@ -625,6 +627,22 @@ class PolymarketPandas(
     def get_sampling_simplified_markets_all(self, **kwargs) -> pd.DataFrame:
         """Auto-page through all sampling simplified markets and return a single DataFrame."""
         return self._autopage_cursor(self.get_sampling_simplified_markets, **kwargs)
+
+    def get_rewards_markets_current_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all current reward configs and return a single DataFrame."""
+        return self._autopage_cursor(self.get_rewards_markets_current, **kwargs)
+
+    def get_rewards_markets_multi_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all reward markets and return a single DataFrame."""
+        return self._autopage_cursor(self.get_rewards_markets_multi, **kwargs)
+
+    def get_rewards_earnings_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all user earnings and return a single DataFrame."""
+        return self._autopage_cursor(self.get_rewards_earnings, **kwargs)
+
+    def get_rewards_user_markets_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all user reward markets and return a single DataFrame."""
+        return self._autopage_cursor(self.get_rewards_user_markets, **kwargs)
 
     # ── Order building & submission ─────────────────────────────────────
 

@@ -48,12 +48,13 @@ polymarket_pandas/
   order_schema.py      # pandera DataFrameModel for validating place_orders input
   py.typed             # PEP 561 marker
   mixins/
-    __init__.py        # Re-exports all 7 mixin classes
+    __init__.py        # Re-exports all 8 mixin classes
     _gamma.py          # GammaMixin   — markets, events, tags, series, sports, comments, search, profiles
     _data.py           # DataMixin    — positions, trades, leaderboard, accounting snapshot, builders
     _clob_public.py    # ClobPublicMixin — orderbook, prices, midpoints, spreads, price history,
     #                                      sampling/simplified markets, builder trades, rebates
     _clob_private.py   # ClobPrivateMixin — user trades, orders (get/place/cancel), heartbeat, API keys
+    _rewards.py        # RewardsMixin  — reward configs, earnings, percentages, user reward markets
     _relayer.py        # RelayerMixin — Safe deployment, nonces, transactions, relay payload, submit
     _bridge.py         # BridgeMixin  — deposit/withdrawal addresses, quotes, supported assets, status
     _ctf.py            # CTFMixin     — on-chain merge, split, redeem positions (requires web3)
@@ -63,7 +64,7 @@ polymarket_pandas/
 
 ### `PolymarketPandas` — HTTP client
 
-A `@dataclass` that inherits from all 7 mixins. `client.py` contains infrastructure, order building, and pagination; all endpoint methods live in the mixins. The class has six base URLs:
+A `@dataclass` that inherits from all 8 mixins. `client.py` contains infrastructure, order building, and pagination; all endpoint methods live in the mixins. The class has six base URLs:
 
 | Field | Base URL | Auth |
 |---|---|---|
