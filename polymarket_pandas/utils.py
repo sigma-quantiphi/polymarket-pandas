@@ -55,6 +55,7 @@ def instance_cache(method=None, *, ttl: float | None = None, maxsize: int = 256)
         return decorator(method)
     return decorator
 
+
 # ── Shared column-type defaults ──────────────────────────────────────
 # Used by both PolymarketPandas and PolymarketWebSocket as dataclass field defaults.
 DEFAULT_NUMERIC_COLUMNS = (

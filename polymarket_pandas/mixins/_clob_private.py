@@ -129,17 +129,17 @@ class ClobPrivateMixin:
         Returns:
             pd.DataFrame: API responses.
         """
-        order_cols = [
-            c for c in orders.columns if c not in ("owner", "orderType")
-        ]
+        order_cols = [c for c in orders.columns if c not in ("owner", "orderType")]
         orders_data = []
         for row in orders.itertuples(index=False):
             order_dict = {c: getattr(row, c) for c in order_cols}
-            orders_data.append({
-                "order": order_dict,
-                "owner": row.owner,
-                "orderType": row.orderType,
-            })
+            orders_data.append(
+                {
+                    "order": order_dict,
+                    "owner": row.owner,
+                    "orderType": row.orderType,
+                }
+            )
         response = self._request_clob_private(
             path="orders",
             method="POST",
@@ -167,9 +167,7 @@ class ClobPrivateMixin:
         """Cancel all orders."""
         return self._request_clob_private(path="cancel-all", method="DELETE")
 
-    def cancel_orders_from_market(
-        self, market: str = "", asset_id: str = ""
-    ) -> dict:
+    def cancel_orders_from_market(self, market: str = "", asset_id: str = "") -> dict:
         """Cancel orders from a specific market or asset.
 
         Args:

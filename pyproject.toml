@@ -43,6 +43,7 @@ dev = [
     "ruff>=0.9",
     "mypy>=1.11",
     "pandas-stubs>=2.2",
+    "types-cachetools>=5.3",
 ]
 
 [project.urls]

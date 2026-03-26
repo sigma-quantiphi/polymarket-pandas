@@ -774,6 +774,7 @@ def test_send_ctf_tx_no_wait(ctf_client: PolymarketPandas, monkeypatch):
 
 # ── build_order ─────────────────────────────────────────────────────────────
 
+
 def test_submit_order_requires_auth(client: PolymarketPandas):
     """submit_order raises PolymarketAuthError when credentials are missing."""
     with pytest.raises(PolymarketAuthError, match="CLOB API credentials"):
@@ -819,22 +820,18 @@ def test_to_token_decimals():
 
 def test_get_order_amounts_buy():
     """BUY amounts match py-clob-client for a standard order."""
-    side_int, maker, taker = PolymarketPandas._get_order_amounts(
-        "BUY", 0.50, 10.0, "0.01"
-    )
+    side_int, maker, taker = PolymarketPandas._get_order_amounts("BUY", 0.50, 10.0, "0.01")
     assert side_int == 0
     assert taker == 10_000_000  # 10 shares
-    assert maker == 5_000_000   # 10 * 0.5 = 5 USDC
+    assert maker == 5_000_000  # 10 * 0.5 = 5 USDC
 
 
 def test_get_order_amounts_sell():
     """SELL amounts match py-clob-client for a standard order."""
-    side_int, maker, taker = PolymarketPandas._get_order_amounts(
-        "SELL", 0.50, 10.0, "0.01"
-    )
+    side_int, maker, taker = PolymarketPandas._get_order_amounts("SELL", 0.50, 10.0, "0.01")
     assert side_int == 1
     assert maker == 10_000_000  # 10 shares
-    assert taker == 5_000_000   # 10 * 0.5 = 5 USDC
+    assert taker == 5_000_000  # 10 * 0.5 = 5 USDC
 
 
 def test_build_order_salt_is_int(authed_client: PolymarketPandas):
@@ -885,12 +882,14 @@ def test_submit_orders_dataframe(authed_client: PolymarketPandas, httpx_mock: HT
         json=[{"orderID": "0xabc", "status": "matched"}],
     )
 
-    orders_df = pd.DataFrame({
-        "token_id": ["11111111111111111111", "11111111111111111111"],
-        "price": [0.50, 0.60],
-        "size": [10.0, 5.0],
-        "side": ["BUY", "SELL"],
-    })
+    orders_df = pd.DataFrame(
+        {
+            "token_id": ["11111111111111111111", "11111111111111111111"],
+            "price": [0.50, 0.60],
+            "size": [10.0, 5.0],
+            "side": ["BUY", "SELL"],
+        }
+    )
     result = authed_client.submit_orders(orders_df)
     assert isinstance(result, pd.DataFrame)
     assert not result.empty
@@ -932,19 +931,19 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
         json=[{"orderID": "0x000f", "status": "live"}],
     )
 
-    orders_df = pd.DataFrame({
-        "token_id": ["22222222222222222222"] * 16,
-        "price": [0.50] * 16,
-        "size": [1.0] * 16,
-        "side": ["BUY"] * 16,
-    })
+    orders_df = pd.DataFrame(
+        {
+            "token_id": ["22222222222222222222"] * 16,
+            "price": [0.50] * 16,
+            "size": [1.0] * 16,
+            "side": ["BUY"] * 16,
+        }
+    )
     result = authed_client.submit_orders(orders_df)
     assert isinstance(result, pd.DataFrame)
 
     # Should have made 2 batch calls: 15 + 1
-    orders_requests = [
-        r for r in httpx_mock.get_requests() if r.url.path == "/orders"
-    ]
+    orders_requests = [r for r in httpx_mock.get_requests() if r.url.path == "/orders"]
     assert len(orders_requests) == 2
     first_batch = orjson.loads(orders_requests[0].content)
     second_batch = orjson.loads(orders_requests[1].content)

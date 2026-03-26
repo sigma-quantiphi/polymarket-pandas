@@ -164,9 +164,7 @@ class CTFMixin:
         """Return the checksummed EOA address derived from private_key."""
         from web3 import Web3
 
-        return Web3.to_checksum_address(
-            self._w3.eth.account.from_key(self.private_key).address
-        )
+        return Web3.to_checksum_address(self._w3.eth.account.from_key(self.private_key).address)
 
     def _tx_params(self) -> dict:
         """Base transaction params with ``from`` set to the EOA address."""
@@ -272,9 +270,9 @@ class CTFMixin:
         cid = self._to_bytes32(condition_id)
 
         if neg_risk:
-            tx = self._nr_contract.functions.splitPosition(
-                cid, amount
-            ).build_transaction(self._tx_params())
+            tx = self._nr_contract.functions.splitPosition(cid, amount).build_transaction(
+                self._tx_params()
+            )
         else:
             tx = self._ct_contract.functions.splitPosition(
                 self._w3.to_checksum_address(USDC_E),
@@ -313,9 +311,9 @@ class CTFMixin:
         cid = self._to_bytes32(condition_id)
 
         if neg_risk:
-            tx = self._nr_contract.functions.mergePositions(
-                cid, amount
-            ).build_transaction(self._tx_params())
+            tx = self._nr_contract.functions.mergePositions(cid, amount).build_transaction(
+                self._tx_params()
+            )
         else:
             tx = self._ct_contract.functions.mergePositions(
                 self._w3.to_checksum_address(USDC_E),

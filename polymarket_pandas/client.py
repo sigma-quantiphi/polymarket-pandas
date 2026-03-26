@@ -689,9 +689,7 @@ class PolymarketPandas(
         if fee_rate_bps is None:
             fee_rate_bps = self.get_fee_rate(token_id)
 
-        side_int, maker_amount, taker_amount = self._get_order_amounts(
-            side, price, size, tick_size
-        )
+        side_int, maker_amount, taker_amount = self._get_order_amounts(side, price, size, tick_size)
 
         # EOA signs; maker is the funder (proxy wallet or EOA)
         eoa = Account.from_key(self.private_key).address

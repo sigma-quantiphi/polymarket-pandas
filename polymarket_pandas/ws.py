@@ -447,6 +447,7 @@ class PolymarketWebSocket:
                 self._dispatch(on_comment, on_message, topic, payload)
             elif on_message is not None:
                 on_message(topic, msg)
+
         app = WebSocketApp(
             _RTDS_URL,
             on_open=_on_open,

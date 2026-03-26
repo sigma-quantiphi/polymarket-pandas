@@ -103,12 +103,14 @@ def main() -> None:
     up_limit = tick_size  # lowest possible price
     down_limit = tick_size
 
-    orders_df = pd.DataFrame({
-        "token_id": [up_row["clobTokenIds"], down_row["clobTokenIds"]],
-        "price": [up_limit, down_limit],
-        "size": [min_size, min_size],
-        "side": ["BUY", "BUY"],
-    })
+    orders_df = pd.DataFrame(
+        {
+            "token_id": [up_row["clobTokenIds"], down_row["clobTokenIds"]],
+            "price": [up_limit, down_limit],
+            "size": [min_size, min_size],
+            "side": ["BUY", "BUY"],
+        }
+    )
     print("\n── Submitting limit orders via submit_orders(DataFrame) ──")
     print(orders_df.to_string(index=False))
     limit_resp = client.submit_orders(orders_df)
