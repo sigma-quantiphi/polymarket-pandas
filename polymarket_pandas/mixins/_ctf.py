@@ -162,9 +162,9 @@ class CTFMixin:
 
     def _eoa_address(self) -> str:
         """Return the checksummed EOA address derived from private_key."""
-        from web3 import Web3
+        from eth_account import Account
 
-        return Web3.to_checksum_address(self._w3.eth.account.from_key(self.private_key).address)
+        return Account.from_key(self.private_key).address
 
     def _tx_params(self) -> dict:
         """Base transaction params with ``from`` set to the EOA address."""
