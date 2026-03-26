@@ -27,7 +27,6 @@ Usage:
 
 from __future__ import annotations
 
-import math
 import sys
 import time
 
@@ -91,8 +90,6 @@ def main() -> None:
     min_size = up_row["orderMinSize"]
     tick_size = up_row["orderPriceMinTickSize"]
     neg_risk = up_row["negRisk"]
-    min_notional = 1.50  # buffer above the $1 CLOB minimum to survive rounding
-
     print(f"Market:       {up_row['question']}")
     print(f"Condition ID: {condition_id}")
     print(f"Neg-risk:     {neg_risk}")
@@ -112,14 +109,14 @@ def main() -> None:
         "size": [min_size, min_size],
         "side": ["BUY", "BUY"],
     })
-    print(f"\n── Submitting limit orders via submit_orders(DataFrame) ──")
+    print("\n── Submitting limit orders via submit_orders(DataFrame) ──")
     print(orders_df.to_string(index=False))
     limit_resp = client.submit_orders(orders_df)
     print(f"Responses:\n{limit_resp}")
 
     # ── 3. Sleep 30s, then cancel all orders on this market ──────────
 
-    print(f"\nSleeping 30s before cancelling ...")
+    print("\nSleeping 30s before cancelling ...")
     time.sleep(30)
     print("Cancelling all orders on Up + Down tokens ...")
     resp = client.cancel_orders_from_market(market=condition_id)
@@ -163,7 +160,7 @@ def main() -> None:
     # ── 7. Merge Yes + No tokens back into USDC.e ─────────────────────
     #   Can only merge the minimum of the two positions (need equal amounts).
 
-    merge_shares = min(up_size, down_size)
+    merge_shares = min_size
     merge_amount = int(merge_shares * 1e6)
 
     spender = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS

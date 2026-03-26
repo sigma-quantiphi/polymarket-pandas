@@ -76,6 +76,9 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+"examples/*.py" = ["E402"]  # imports after load_dotenv() is intentional
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true

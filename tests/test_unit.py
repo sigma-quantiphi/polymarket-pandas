@@ -14,6 +14,13 @@ from polymarket_pandas import (
     PolymarketRateLimitError,
     PolymarketWebSocket,
 )
+from polymarket_pandas.client import (
+    _decimal_places,
+    _round_down,
+    _round_normal,
+    _round_up,
+    _to_token_decimals,
+)
 from polymarket_pandas.utils import (
     expand_column_lists,
     filter_params,
@@ -774,14 +781,6 @@ def test_submit_order_requires_auth(client: PolymarketPandas):
 
 
 # ── Order amount calculation helpers ─────────────────────────────────────
-
-from polymarket_pandas.client import (
-    _decimal_places,
-    _round_down,
-    _round_normal,
-    _round_up,
-    _to_token_decimals,
-)
 
 
 def test_round_normal_matches_clob():
