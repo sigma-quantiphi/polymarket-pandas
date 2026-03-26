@@ -97,14 +97,16 @@ class AsyncPolymarketPandas:
 
 
 def _populate_async_methods():
-    for name, method in inspect.getmembers(PolymarketPandas, predicate=inspect.isfunction):
+    for name in dir(PolymarketPandas):
         if name.startswith("_") or name in _SKIP:
+            continue
+        attr = getattr(PolymarketPandas, name, None)
+        if not callable(attr):
             continue
         if hasattr(AsyncPolymarketPandas, name):
             continue  # don't overwrite explicitly defined methods
         wrapper = _make_async_wrapper(name)
-        # Copy docstring from sync method
-        wrapper.__doc__ = method.__doc__
+        wrapper.__doc__ = getattr(attr, "__doc__", None)
         setattr(AsyncPolymarketPandas, name, wrapper)
 
 
