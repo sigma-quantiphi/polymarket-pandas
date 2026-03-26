@@ -26,19 +26,25 @@ uv run ruff format polymarket_pandas/
 # Type check
 uv run mypy polymarket_pandas/
 
+# Run async tests
+uv run pytest tests/test_async_unit.py -v
+
 # Import sanity check
-uv run python -c "from polymarket_pandas import PolymarketPandas, PolymarketWebSocket"
+uv run python -c "from polymarket_pandas import PolymarketPandas, AsyncPolymarketPandas, PolymarketWebSocket, AsyncPolymarketWebSocket"
 ```
 
 ## Package structure
 
 ```
 polymarket_pandas/
-  __init__.py          # Public exports (3 classes + 4 exceptions)
+  __init__.py          # Public exports (6 classes + 4 exceptions)
   client.py            # PolymarketPandas dataclass — core infra + build_order
+  async_client.py      # AsyncPolymarketPandas — async wrapper via composition + ThreadPoolExecutor
   exceptions.py        # PolymarketError hierarchy
-  utils.py             # Stateless helpers: preprocess_dataframe, filter_params, etc.
-  ws.py                # PolymarketWebSocket + PolymarketWebSocketSession
+  utils.py             # Stateless helpers: preprocess_dataframe, preprocess_dict, filter_params,
+  #                      instance_cache, etc.
+  ws.py                # PolymarketWebSocket + PolymarketWebSocketSession (sync, websocket-client)
+  async_ws.py          # AsyncPolymarketWebSocket + AsyncPolymarketWebSocketSession (async, websockets)
   order_schema.py      # pandera DataFrameModel for validating place_orders input
   py.typed             # PEP 561 marker
   mixins/
@@ -127,8 +133,8 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 
 | Method | Description |
 |---|---|
-| `split_position(condition_id, amount, neg_risk=False)` | Split USDC.e into Yes + No outcome tokens |
-| `merge_positions(condition_id, amount, neg_risk=False)` | Merge Yes + No tokens back into USDC.e |
+| `split_position(condition_id, amount=None, amount_usdc=None, neg_risk=False)` | Split USDC.e into Yes + No outcome tokens |
+| `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False)` | Merge Yes + No tokens back into USDC.e |
 | `redeem_positions(condition_id, index_sets=None)` | Redeem winning tokens after market resolution |
 | `approve_collateral(spender=None, amount=None)` | Approve USDC.e spending for a CTF contract |
 
@@ -164,9 +170,52 @@ Two patterns:
 
 Cursor-paginated single-page methods (`get_sampling_markets`, `get_simplified_markets`, `get_sampling_simplified_markets`, `get_builder_trades`) return `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}` instead of a bare DataFrame.
 
-### `PolymarketWebSocket`
+### `AsyncPolymarketPandas` — Async HTTP client (`async_client.py`)
 
-`@dataclass` in `ws.py`. `from_client(client)` is the idiomatic constructor — shares column config with an existing `PolymarketPandas` instance. Each channel method (`market_channel`, `user_channel`, `sports_channel`, `rtds_channel`) returns a `PolymarketWebSocketSession` that wraps `websocket.WebSocketApp`. A daemon ping thread keeps the connection alive.
+Wraps the sync `PolymarketPandas` via composition. Creates an internal sync instance and runs each method in a `ThreadPoolExecutor` (default 10 workers). All 102 public methods are auto-generated as `async def` wrappers at class creation time via `_populate_async_methods()`, which iterates `dir(PolymarketPandas)` and creates wrappers using `loop.run_in_executor()`.
+
+**Why composition, not inheritance:** The mixins call `self._request_*()` synchronously. Making them truly async would require rewriting all 77+ mixin methods. The executor pattern gives non-blocking behavior with zero sync code changes.
+
+**Note:** `_populate_async_methods` uses `callable()` not `inspect.isfunction` — the latter misses `cachetools.cachedmethod` descriptors (e.g. `get_tick_size`).
+
+### `PolymarketWebSocket` (sync) and `AsyncPolymarketWebSocket` (async)
+
+**Sync** (`ws.py`): `@dataclass` using `websocket-client`. `from_client(client)` shares column config. Each channel method returns a `PolymarketWebSocketSession` wrapping `WebSocketApp`. A daemon ping thread keeps the connection alive.
+
+**Async** (`async_ws.py`): `@dataclass` using `websockets` library (native async). Channel methods return `AsyncPolymarketWebSocketSession` supporting:
+- `async for event_type, payload in session:` iteration
+- `async with session:` context manager
+- Auto-reconnection with exponential backoff
+- Async `subscribe()`/`unsubscribe()` on live connections
+- `asyncio.Task`-based ping (not threading)
+
+Both share the same message parsing logic (DataFrame construction, `_preprocess`) and column config via `from_client()`.
+
+### `instance_cache` (`utils.py`)
+
+Decorator for per-instance method caching, backed by `cachetools.cachedmethod`. Stores a `Cache` or `TTLCache` on the instance as `_cache_{method_name}`.
+
+```python
+@instance_cache(ttl=300)   # TTLCache, re-fetched every 5 min
+def get_tick_size(self, token_id): ...
+
+@instance_cache            # permanent Cache
+def get_neg_risk(self, token_id): ...
+```
+
+Used by `get_tick_size`, `get_neg_risk`, `get_fee_rate` in `_clob_public.py`. These are auto-fetched by `build_order()` when market params aren't provided.
+
+### `preprocess_dict` (`utils.py`)
+
+Same type coercion as `preprocess_dataframe` but for single dict responses: snake→camel key rename, numeric/datetime/bool/JSON-string parsing, drop icon/image. Applied to `get_market_by_id()` and `get_market_by_slug()` via `self.preprocess_dict()` on the client.
+
+### Auto-set credentials
+
+`derive_api_key()` and `create_api_key()` in `_clob_private.py` auto-set `_api_key`, `_api_secret`, `_api_passphrase` on the client via `_apply_api_creds()`. No manual credential wiring needed after key derivation.
+
+### `amount_usdc` convenience parameter
+
+`split_position()` and `merge_positions()` accept `amount_usdc: float` as an alternative to `amount: int`. Converts via `int(amount_usdc * 1_000_000)`. Mutually exclusive — raises `ValueError` if both provided.
 
 ### `filter_params` (`utils.py`)
 
@@ -174,15 +223,20 @@ All `_request_*` helpers pass `params` through `filter_params` before sending. I
 
 ### `OrderSchema` (`order_schema.py`)
 
-A `pandera.DataFrameModel` for validating order DataFrames before passing them to `place_orders`. Fields match the CLOB signed-order struct.
+A `pandera.DataFrameModel` for validating order DataFrames before passing them to `place_orders`. Fields match the CLOB signed-order struct. Side validation: uppercase `"BUY"` / `"SELL"`.
 
 ## Tests
 
-`tests/test_unit.py` — 69 unit tests, all HTTP mocked via `pytest-httpx` or unittest.mock. No live API calls. `tests/conftest.py` provides `client` (unauthenticated), `authed_client` (stub L2 credentials), and `ctf_client` (stub private key) fixtures.
+- `tests/test_unit.py` — 75 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
+- `tests/test_async_unit.py` — 16 async tests using `pytest-asyncio`.
+- `tests/test_integration.py` — 13 integration tests (live API, optional).
+- `tests/conftest.py` — `client` (unauthenticated), `authed_client` (stub L2 credentials), and `ctf_client` (stub private key) fixtures.
 
 Test categories:
 - Utility functions (snake_to_camel, filter_params, expand_column_lists)
 - HTTP endpoint responses (mocked via pytest-httpx)
 - WebSocket channels (market, user, sports, RTDS)
-- CTF operations (auth guards, web3 import guard, contract routing, tx wait/no-wait)
-- Order building (buy/sell amounts, neg-risk signing, validation)
+- CTF operations (auth guards, web3 import guard, contract routing, tx wait/no-wait, amount_usdc)
+- Order building (buy/sell amounts, neg-risk signing, validation, DataFrame submit_orders)
+- Async client (methods exist, HTTP calls work, auth errors, properties)
+- Async WebSocket (from_client, channel creation, credential validation)
