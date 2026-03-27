@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 import pandas as pd
+import pandera.pandas as pa
 
+from polymarket_pandas.schemas import (
+    OrderbookSchema,
+    PriceHistorySchema,
+    RebateSchema,
+)
+from polymarket_pandas.types import CursorPage, LastTradePrice
 from polymarket_pandas.utils import instance_cache
 
 
@@ -68,7 +75,7 @@ class ClobPublicMixin:
         data = self._request_clob(path="fee-rate", params={"token_id": token_id})
         return int(self._extract(data, "base_fee"))
 
-    def get_orderbook(self, token_id: str) -> pd.DataFrame:
+    def get_orderbook(self, token_id: str) -> pa.DataFrame[OrderbookSchema]:
         """Get the L2 orderbook for a token.
 
         https://docs.polymarket.com/api-reference/clob/get-order-book
@@ -82,7 +89,7 @@ class ClobPublicMixin:
         data = self._request_clob(path="book", params=dict(token_id=token_id))
         return self.orderbook_to_dataframe(data)
 
-    def get_orderbooks(self, data: pd.DataFrame) -> pd.DataFrame:
+    def get_orderbooks(self, data: pd.DataFrame) -> pa.DataFrame[OrderbookSchema]:
         """Get orderbooks for multiple tokens in a single request.
 
         https://docs.polymarket.com/api-reference/clob/get-order-books
@@ -206,7 +213,7 @@ class ClobPublicMixin:
         data = self._request_clob(path="spreads", method="POST", data=markets_to_dict(data))
         return {k: float(v) for k, v in data.items()}
 
-    def get_last_trade_price(self, token_id: str) -> dict:
+    def get_last_trade_price(self, token_id: str) -> LastTradePrice:
         """Get the last traded price for a token.
 
         https://docs.polymarket.com/api-reference/clob/get-last-trade-price
@@ -244,7 +251,7 @@ class ClobPublicMixin:
         endTs: int | None = None,
         interval: str | None = None,
         fidelity: int | None = None,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[PriceHistorySchema]:
         """
         Fetches historical price data for a specific market token.
 
@@ -273,7 +280,7 @@ class ClobPublicMixin:
 
     # ── CLOB API: Sampling / Simplified Markets ──────────────────────────
 
-    def get_sampling_markets(self, next_cursor: str | None = None) -> dict:
+    def get_sampling_markets(self, next_cursor: str | None = None) -> CursorPage:
         """
         Get markets that are currently eligible for liquidity-provider rewards.
 
@@ -295,7 +302,7 @@ class ClobPublicMixin:
         raw["data"] = self.preprocess_dataframe(pd.DataFrame(raw.get("data", [])))
         return raw
 
-    def get_simplified_markets(self, next_cursor: str | None = None) -> dict:
+    def get_simplified_markets(self, next_cursor: str | None = None) -> CursorPage:
         """
         Get a lightweight snapshot of all CLOB markets (condition IDs, token prices,
         reward rates).
@@ -316,7 +323,7 @@ class ClobPublicMixin:
         raw["data"] = self.preprocess_dataframe(pd.DataFrame(raw.get("data", [])))
         return raw
 
-    def get_sampling_simplified_markets(self, next_cursor: str | None = None) -> dict:
+    def get_sampling_simplified_markets(self, next_cursor: str | None = None) -> CursorPage:
         """
         Intersection of sampling markets and simplified markets.
 
@@ -349,7 +356,7 @@ class ClobPublicMixin:
         before: str | None = None,
         after: str | None = None,
         next_cursor: str | None = None,
-    ) -> dict:
+    ) -> CursorPage:
         """
         Get trades attributed to a builder (requires builder API key credentials).
 
@@ -393,7 +400,7 @@ class ClobPublicMixin:
 
     # ── CLOB API: Rebates ────────────────────────────────────────────────
 
-    def get_rebates(self, date: str, maker_address: str) -> pd.DataFrame:
+    def get_rebates(self, date: str, maker_address: str) -> pa.DataFrame[RebateSchema]:
         """
         Get the current rebated fees for a maker on a given date.
 

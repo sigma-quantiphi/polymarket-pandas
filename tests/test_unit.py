@@ -218,10 +218,11 @@ def test_private_endpoint_with_creds_calls_api(
 ):
     httpx_mock.add_response(
         url="https://clob.polymarket.com/data/orders",
-        json=[],
+        json={"data": [], "next_cursor": "LTE=", "count": 0, "limit": 100},
     )
     result = authed_client.get_active_orders()
-    assert isinstance(result, pd.DataFrame)
+    assert isinstance(result, dict)
+    assert isinstance(result["data"], pd.DataFrame)
 
 
 # ── Context manager ──────────────────────────────────────────────────────────
@@ -1107,3 +1108,218 @@ def test_get_rewards_earnings_requires_auth(client: PolymarketPandas):
 
     with pytest.raises(PolymarketAuthError):
         client.get_rewards_earnings(date="2025-01-01")
+
+
+# ── to_unix_timestamp ────────────────────────────────────────────────────────
+
+
+def test_to_unix_timestamp_int_passthrough():
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    assert to_unix_timestamp(0) == 0
+    assert to_unix_timestamp(1700000000) == 1700000000
+
+
+def test_to_unix_timestamp_float_passthrough():
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    assert to_unix_timestamp(1700000000.5) == 1700000000
+
+
+def test_to_unix_timestamp_from_pd_timestamp():
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    ts = pd.Timestamp("2024-01-01T00:00:00Z")
+    assert to_unix_timestamp(ts) == 1704067200
+
+
+def test_to_unix_timestamp_from_naive_pd_timestamp():
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    ts = pd.Timestamp("2024-01-01T00:00:00")
+    assert to_unix_timestamp(ts) == 1704067200
+
+
+def test_to_unix_timestamp_from_string():
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    assert to_unix_timestamp("2024-01-01T00:00:00Z") == 1704067200
+
+
+def test_to_unix_timestamp_from_datetime():
+    from datetime import datetime, timezone
+
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    assert to_unix_timestamp(dt) == 1704067200
+
+
+def test_to_unix_timestamp_invalid_type():
+    from polymarket_pandas.utils import to_unix_timestamp
+
+    with pytest.raises(TypeError, match="Cannot convert"):
+        to_unix_timestamp([1, 2, 3])
+
+
+# ── Schema smoke tests ───────────────────────────────────────────────────────
+
+
+def test_market_schema_validates_good_data():
+    from polymarket_pandas.schemas import MarketSchema
+
+    df = pd.DataFrame(
+        [
+            {
+                "id": "123",
+                "conditionId": "0xabc",
+                "slug": "test-market",
+                "question": "Will it rain?",
+                "volume": 1000.0,
+                "liquidity": 500.0,
+                "active": True,
+                "closed": False,
+            }
+        ]
+    )
+    validated = MarketSchema.validate(df)
+    assert len(validated) == 1
+
+
+def test_orderbook_schema_validates_good_data():
+    from polymarket_pandas.schemas import OrderbookSchema
+
+    df = pd.DataFrame([{"price": 0.5, "size": 100.0}, {"price": 0.6, "size": 200.0}])
+    validated = OrderbookSchema.validate(df)
+    assert len(validated) == 2
+
+
+def test_schema_allows_extra_columns():
+    """strict=False means extra columns don't cause validation errors."""
+    from polymarket_pandas.schemas import PriceHistorySchema
+
+    df = pd.DataFrame([{"t": 1700000000, "p": 0.5, "extra_col": "hello"}])
+    validated = PriceHistorySchema.validate(df)
+    assert "extra_col" in validated.columns
+
+
+# ── TypedDict type assertions ────────────────────────────────────────────────
+
+
+def test_typed_imports():
+    """All TypedDicts and schemas are importable from the top-level package."""
+    from polymarket_pandas import (
+        ActiveOrderSchema,
+        ApiCredentials,
+        BalanceAllowance,
+        BridgeAddress,
+        CancelOrdersResponse,
+        CursorPage,
+        EventSchema,
+        LastTradePrice,
+        LeaderboardSchema,
+        MarketSchema,
+        OrderbookSchema,
+        OrdersCursorPage,
+        PositionSchema,
+        PriceHistorySchema,
+        RelayPayload,
+        SendOrderResponse,
+        SignedOrder,
+        SubmitTransactionResponse,
+        TransactionReceipt,
+        UserTradesCursorPage,
+    )
+
+    # Ensure they're all types (not None)
+    for t in [
+        ActiveOrderSchema,
+        ApiCredentials,
+        BalanceAllowance,
+        BridgeAddress,
+        CancelOrdersResponse,
+        CursorPage,
+        EventSchema,
+        LastTradePrice,
+        LeaderboardSchema,
+        MarketSchema,
+        OrderbookSchema,
+        OrdersCursorPage,
+        PositionSchema,
+        PriceHistorySchema,
+        RelayPayload,
+        SendOrderResponse,
+        SignedOrder,
+        SubmitTransactionResponse,
+        TransactionReceipt,
+        UserTradesCursorPage,
+    ]:
+        assert t is not None
+
+
+# ── get_active_orders returns CursorPage ─────────────────────────────────────
+
+
+def test_get_active_orders_returns_cursor_page(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/data/orders",
+        json={
+            "data": [
+                {
+                    "id": "order-1",
+                    "market": "0xabc",
+                    "asset_id": "tok-1",
+                    "side": "BUY",
+                    "price": "0.5",
+                    "original_size": "100",
+                    "size_matched": "0",
+                    "status": "live",
+                    "outcome": "Yes",
+                    "order_type": "GTC",
+                }
+            ],
+            "next_cursor": "LTE=",
+            "count": 1,
+            "limit": 100,
+        },
+    )
+    result = authed_client.get_active_orders()
+    assert isinstance(result, dict)
+    assert "data" in result
+    assert "next_cursor" in result
+    assert isinstance(result["data"], pd.DataFrame)
+    assert len(result["data"]) == 1
+
+
+# ── get_user_trades returns CursorPage ───────────────────────────────────────
+
+
+def test_get_user_trades_returns_cursor_page(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/data/trades",
+        json={
+            "data": [
+                {
+                    "id": "trade-1",
+                    "market": "0xabc",
+                    "asset_id": "tok-1",
+                    "side": "BUY",
+                    "size": "10",
+                    "price": "0.5",
+                }
+            ],
+            "next_cursor": "LTE=",
+            "count": 1,
+            "limit": 100,
+        },
+    )
+    result = authed_client.get_user_trades()
+    assert isinstance(result, dict)
+    assert "data" in result
+    assert "next_cursor" in result
+    assert isinstance(result["data"], pd.DataFrame)
+    assert len(result["data"]) == 1

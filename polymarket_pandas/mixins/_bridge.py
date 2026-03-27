@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import pandas as pd
 
+from polymarket_pandas.types import BridgeAddress
+
 
 class BridgeMixin:
     # ── Bridge API ───────────────────────────────────────────────────────
 
-    def create_deposit_address(self, address: str) -> dict:
+    def create_deposit_address(self, address: str) -> BridgeAddress:
         """
         Create deposit addresses for bridging funds into a Polymarket wallet.
 
@@ -27,7 +29,7 @@ class BridgeMixin:
         to_chain_id: str,
         to_token_address: str,
         recipient_addr: str,
-    ) -> dict:
+    ) -> BridgeAddress:
         """
         Create withdrawal addresses for bridging funds out of a Polymarket wallet.
 

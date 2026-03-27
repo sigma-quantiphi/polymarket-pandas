@@ -31,6 +31,7 @@ from polymarket_pandas.mixins import (
     RelayerMixin,
     RewardsMixin,
 )
+from polymarket_pandas.types import SendOrderResponse, SignedOrder
 from polymarket_pandas.utils import (
     DEFAULT_BOOL_COLUMNS,
     DEFAULT_DROP_COLUMNS,
@@ -41,6 +42,7 @@ from polymarket_pandas.utils import (
     expand_column_lists,
     filter_params,
     orderbook_meta,
+    to_unix_timestamp,
 )
 from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
@@ -644,6 +646,14 @@ class PolymarketPandas(
         """Auto-page through all user reward markets and return a single DataFrame."""
         return self._autopage_cursor(self.get_rewards_user_markets, **kwargs)
 
+    def get_user_trades_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all user trades and return a single DataFrame."""
+        return self._autopage_cursor(self.get_user_trades, **kwargs)
+
+    def get_active_orders_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all active orders and return a single DataFrame."""
+        return self._autopage_cursor(self.get_active_orders, **kwargs)
+
     # ── Order building & submission ─────────────────────────────────────
 
     @staticmethod
@@ -687,11 +697,11 @@ class PolymarketPandas(
         side: str,
         *,
         fee_rate_bps: int | None = None,
-        expiration: int = 0,
+        expiration: int | pd.Timestamp | str = 0,
         nonce: int = 0,
         neg_risk: bool | None = None,
         tick_size: str | None = None,
-    ) -> dict:
+    ) -> SignedOrder:
         """Build and sign a CLOB order, ready for :meth:`place_order`.
 
         Args:
@@ -701,7 +711,8 @@ class PolymarketPandas(
             side: ``"BUY"`` or ``"SELL"``.
             fee_rate_bps: Fee rate in basis points. Auto-fetched from the CLOB
                 API if not provided.
-            expiration: Unix timestamp for GTD orders, ``0`` = no expiry.
+            expiration: Unix timestamp, ``pd.Timestamp``, or ISO-8601 string
+                for GTD orders. ``0`` = no expiry.
             nonce: Order nonce for on-chain cancellation (default 0).
             neg_risk: ``True`` if the market is neg-risk. Auto-fetched if not
                 provided.
@@ -721,6 +732,8 @@ class PolymarketPandas(
             tick_size = str(self.get_tick_size(token_id))
         if fee_rate_bps is None:
             fee_rate_bps = self.get_fee_rate(token_id)
+
+        expiration = to_unix_timestamp(expiration)
 
         side_int, maker_amount, taker_amount = self._get_order_amounts(side, price, size, tick_size)
 
@@ -802,7 +815,7 @@ class PolymarketPandas(
         side: str,
         order_type: str = "GTC",
         **kwargs,
-    ) -> dict:
+    ) -> SendOrderResponse:
         """Build, sign, and place an order in a single call.
 
         Args:

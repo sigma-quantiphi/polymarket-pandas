@@ -153,7 +153,8 @@ def main() -> None:
     # ── 6. Read user trades ────────────────────────────────────────────
 
     print("\nRecent user trades:")
-    trades = client.get_user_trades()
+    result = client.get_user_trades()
+    trades = result["data"]
     if not trades.empty:
         print(trades)
     else:

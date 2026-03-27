@@ -8,6 +8,7 @@ dependency: ``pip install polymarket-pandas[ctf]``.
 from __future__ import annotations
 
 from polymarket_pandas.exceptions import PolymarketAuthError
+from polymarket_pandas.types import TransactionReceipt
 
 # ── Contract addresses (Polygon mainnet) ─────────────────────────────
 
@@ -187,7 +188,7 @@ class CTFMixin:
         *,
         wait: bool = True,
         timeout: int = 120,
-    ) -> dict:
+    ) -> TransactionReceipt:
         """Sign, send, and optionally wait for a CTF transaction."""
         self._require_ctf_auth()
         self._require_web3()
@@ -223,7 +224,7 @@ class CTFMixin:
         *,
         wait: bool = True,
         timeout: int = 120,
-    ) -> dict:
+    ) -> TransactionReceipt:
         """Approve a CTF contract to spend USDC.e on your behalf.
 
         Args:
@@ -260,7 +261,7 @@ class CTFMixin:
         neg_risk: bool = False,
         wait: bool = True,
         timeout: int = 120,
-    ) -> dict:
+    ) -> TransactionReceipt:
         """Split USDC.e collateral into Yes + No outcome tokens.
 
         Args:
@@ -307,7 +308,7 @@ class CTFMixin:
         neg_risk: bool = False,
         wait: bool = True,
         timeout: int = 120,
-    ) -> dict:
+    ) -> TransactionReceipt:
         """Merge equal amounts of Yes + No outcome tokens back into USDC.e.
 
         Args:
@@ -350,7 +351,7 @@ class CTFMixin:
         *,
         wait: bool = True,
         timeout: int = 120,
-    ) -> dict:
+    ) -> TransactionReceipt:
         """Redeem winning outcome tokens for USDC.e after market resolution.
 
         Args:

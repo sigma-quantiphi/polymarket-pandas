@@ -124,11 +124,17 @@ async def test_async_private_requires_auth(client: AsyncPolymarketPandas):
 async def test_async_get_user_trades(authed_client: AsyncPolymarketPandas, httpx_mock: HTTPXMock):
     """Async private endpoint works with credentials."""
     httpx_mock.add_response(
-        json={"data": [{"id": "trade-1", "side": "BUY", "size": "10", "price": "0.5"}]},
+        json={
+            "data": [{"id": "trade-1", "side": "BUY", "size": "10", "price": "0.5"}],
+            "next_cursor": "LTE=",
+            "count": 1,
+            "limit": 100,
+        },
     )
-    df = await authed_client.get_user_trades()
-    assert isinstance(df, pd.DataFrame)
-    assert not df.empty
+    result = await authed_client.get_user_trades()
+    assert isinstance(result, dict)
+    assert isinstance(result["data"], pd.DataFrame)
+    assert not result["data"].empty
 
 
 # ── Test CTF amount_usdc ────────────────────────────────────────────────

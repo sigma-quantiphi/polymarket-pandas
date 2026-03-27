@@ -37,12 +37,14 @@ uv run python -c "from polymarket_pandas import PolymarketPandas, AsyncPolymarke
 
 ```
 polymarket_pandas/
-  __init__.py          # Public exports (6 classes + 4 exceptions)
+  __init__.py          # Public exports (6 classes + 4 exceptions + 12 TypedDicts + 14 schemas)
   client.py            # PolymarketPandas dataclass — core infra + build_order
   async_client.py      # AsyncPolymarketPandas — async wrapper via composition + ThreadPoolExecutor
   exceptions.py        # PolymarketError hierarchy
+  types.py             # TypedDicts for dict-returning endpoints (CursorPage, SignedOrder, etc.)
+  schemas.py           # pandera DataFrameModels for DataFrame-returning endpoints
   utils.py             # Stateless helpers: preprocess_dataframe, preprocess_dict, filter_params,
-  #                      instance_cache, etc.
+  #                      instance_cache, to_unix_timestamp, etc.
   ws.py                # PolymarketWebSocket + PolymarketWebSocketSession (sync, websocket-client)
   async_ws.py          # AsyncPolymarketWebSocket + AsyncPolymarketWebSocketSession (async, websockets)
   order_schema.py      # pandera DataFrameModel for validating place_orders input
@@ -105,7 +107,9 @@ All four are exported from the top-level package. `_handle_response` maps HTTP e
 
 ### Order building (`build_order`)
 
-`build_order(token_id, price, size, side, ...)` in `client.py` constructs and EIP-712-signs a CLOB order. Returns a dict ready for `place_order()`.
+`build_order(token_id, price, size, side, ...)` in `client.py` constructs and EIP-712-signs a CLOB order. Returns a `SignedOrder` TypedDict ready for `place_order()`.
+
+**Expiration conversion:** The `expiration` parameter accepts `int` (Unix seconds), `pd.Timestamp`, or ISO-8601 `str`. Values are auto-converted to int via `to_unix_timestamp()` in `utils.py` before signing. `0` = no expiry (GTC).
 
 **Signing details:**
 - **Domain**: `name="Polymarket CTF Exchange"`, `version="1"`, `chainId=137`, `verifyingContract=<exchange>`
@@ -167,9 +171,9 @@ The column name lists (`numeric_columns`, `str_datetime_columns`, etc.) are tupl
 Two patterns:
 
 - **Offset-based** — `_autopage(fetcher, ...)`: used by `get_tags_all`, `get_events_all`, `get_markets_all`. Reads default `limit` from the fetcher's signature via `inspect.signature`, increments `offset` by returned row count, stops on a short page.
-- **Cursor-based** — `_autopage_cursor(fetcher, ...)`: used by `get_sampling_markets_all`, `get_simplified_markets_all`, `get_sampling_simplified_markets_all`. Stops when `next_cursor == "LTE="` (sentinel) or falsy.
+- **Cursor-based** — `_autopage_cursor(fetcher, ...)`: used by `get_sampling_markets_all`, `get_simplified_markets_all`, `get_sampling_simplified_markets_all`, `get_user_trades_all`, `get_active_orders_all`, and rewards `_all` methods. Stops when `next_cursor == "LTE="` (sentinel) or falsy.
 
-Cursor-paginated single-page methods (`get_sampling_markets`, `get_simplified_markets`, `get_sampling_simplified_markets`, `get_builder_trades`) return `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}` instead of a bare DataFrame.
+Cursor-paginated single-page methods (`get_sampling_markets`, `get_simplified_markets`, `get_sampling_simplified_markets`, `get_builder_trades`, `get_user_trades`, `get_active_orders`, and all rewards cursor methods) return `CursorPage` TypedDict: `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}` instead of a bare DataFrame.
 
 ### `AsyncPolymarketPandas` — Async HTTP client (`async_client.py`)
 
@@ -226,18 +230,31 @@ All `_request_*` helpers pass `params` through `filter_params` before sending. I
 
 A `pandera.DataFrameModel` for validating order DataFrames before passing them to `place_orders`. Fields match the CLOB signed-order struct. Side validation: uppercase `"BUY"` / `"SELL"`.
 
+### Typed returns (`types.py` and `schemas.py`)
+
+**TypedDicts** (`types.py`): Structural subtypes of `dict` for dict-returning endpoints. No runtime overhead, full IDE autocomplete. Key types: `CursorPage` (9 cursor-paginated methods), `TransactionReceipt` (4 CTF methods), `SignedOrder` (`build_order`), `SendOrderResponse` (`place_order`, `submit_order`), `CancelOrdersResponse`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`.
+
+**Pandera schemas** (`schemas.py`): `DataFrameModel` subclasses for DataFrame-returning endpoints. All use `strict=False` (extra columns allowed) and `coerce=True`. Annotation-only by default (no runtime validation unless user calls `.validate()`). Field names verified against the official Polymarket OpenAPI specs.
+
+Key schemas: `MarketSchema`, `EventSchema`, `OrderbookSchema`, `ClobTradeSchema`, `ActiveOrderSchema`, `PriceHistorySchema`, `PositionSchema`, `ClosedPositionSchema`, `DataTradeSchema`, `ActivitySchema`, `LeaderboardSchema`, `BuilderLeaderboardSchema`, `RebateSchema`, `SendOrderResponseSchema`.
+
+### `to_unix_timestamp` (`utils.py`)
+
+Converts `int`, `float`, `str` (ISO-8601), `pd.Timestamp`, or `datetime.datetime` to Unix seconds (int). Used by `build_order()` to accept flexible expiration formats. Naive timestamps are assumed UTC.
+
 ## Tests
 
-- `tests/test_unit.py` — 75 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
+- `tests/test_unit.py` — 96 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
 - `tests/test_async_unit.py` — 16 async tests using `pytest-asyncio`.
 - `tests/test_integration.py` — 13 integration tests (live API, optional).
 - `tests/conftest.py` — `client` (unauthenticated), `authed_client` (stub L2 credentials), and `ctf_client` (stub private key) fixtures.
 
 Test categories:
-- Utility functions (snake_to_camel, filter_params, expand_column_lists)
+- Utility functions (snake_to_camel, filter_params, expand_column_lists, to_unix_timestamp)
 - HTTP endpoint responses (mocked via pytest-httpx)
 - WebSocket channels (market, user, sports, RTDS)
 - CTF operations (auth guards, web3 import guard, contract routing, tx wait/no-wait, amount_usdc)
-- Order building (buy/sell amounts, neg-risk signing, validation, DataFrame submit_orders)
+- Order building (buy/sell amounts, neg-risk signing, validation, DataFrame submit_orders, datetime expiry)
+- Typed returns (schema validation smoke tests, TypedDict imports, CursorPage returns)
 - Async client (methods exist, HTTP calls work, auth errors, properties)
 - Async WebSocket (from_client, channel creation, credential validation)

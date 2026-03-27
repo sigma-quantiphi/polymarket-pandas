@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from polymarket_pandas.types import RelayPayload, SubmitTransactionResponse
+
 
 class RelayerMixin:
     # ── Relayer API Keys ─────────────────────────────────────────────────
@@ -73,7 +75,7 @@ class RelayerMixin:
         data = self._request_relayer("transactions", auth_headers=self._relayer_auth_headers())
         return self.response_to_dataframe(data)
 
-    def get_relay_payload(self, address: str, type: str) -> dict:
+    def get_relay_payload(self, address: str, type: str) -> RelayPayload:
         """
         Get the relayer address and current nonce needed to construct a relayed
         transaction.
@@ -97,7 +99,7 @@ class RelayerMixin:
         signature: str,
         type: str,
         signature_params: dict,
-    ) -> dict:
+    ) -> SubmitTransactionResponse:
         """
         Submit a transaction to the Polymarket relayer.
 

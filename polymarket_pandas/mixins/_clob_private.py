@@ -3,6 +3,17 @@
 from __future__ import annotations
 
 import pandas as pd
+import pandera.pandas as pa
+
+from polymarket_pandas.schemas import SendOrderResponseSchema
+from polymarket_pandas.types import (
+    ApiCredentials,
+    BalanceAllowance,
+    CancelOrdersResponse,
+    OrdersCursorPage,
+    SendOrderResponse,
+    UserTradesCursorPage,
+)
 
 
 class ClobPrivateMixin:
@@ -12,7 +23,7 @@ class ClobPrivateMixin:
         self,
         asset_type: int,
         token_id: str | None = None,
-    ) -> dict:
+    ) -> BalanceAllowance:
         """
         Get balance and allowance for the authenticated user (L2 auth).
 
@@ -36,11 +47,30 @@ class ClobPrivateMixin:
         market: str | None = None,
         before: str | None = None,
         after: str | None = None,
-    ) -> pd.DataFrame:
+        next_cursor: str | None = None,
+    ) -> UserTradesCursorPage:
+        """Retrieve trades for the authenticated user based on provided filters.
+
+        Uses cursor-based pagination. Returns a dict with keys:
+            - ``data`` (pd.DataFrame): preprocessed trade rows
+            - ``next_cursor`` (str): pass to the next call to page forward;
+              ``"LTE="`` means the last page has been reached
+            - ``count`` (int): total result count
+            - ``limit`` (int): page size
+
+        Args:
+            id: Trade ID filter.
+            taker: Taker address filter.
+            maker: Maker address filter.
+            market: Market condition ID.
+            before: Return trades before this Unix timestamp.
+            after: Return trades after this Unix timestamp.
+            next_cursor: Opaque base64 cursor from a previous response.
+
+        Returns:
+            dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
         """
-        Retrieve trades for the authenticated user based on provided filters.
-        """
-        data = self._request_clob_private(
+        raw = self._request_clob_private(
             path="data/trades",
             params={
                 "id": id,
@@ -49,9 +79,11 @@ class ClobPrivateMixin:
                 "market": market,
                 "before": before,
                 "after": after,
+                "next_cursor": next_cursor,
             },
         )
-        return self.response_to_dataframe(data["data"])
+        raw["data"] = self.response_to_dataframe(raw.get("data", []))
+        return raw
 
     def get_order(self, order_id: str) -> dict:
         """
@@ -70,19 +102,37 @@ class ClobPrivateMixin:
         id: str | None = None,
         market: str | None = None,
         asset_id: str | None = None,
-    ) -> pd.DataFrame:
+        next_cursor: str | None = None,
+    ) -> OrdersCursorPage:
+        """Get active orders for a specific market, asset, or order ID.
+
+        Uses cursor-based pagination. Returns a dict with keys:
+            - ``data`` (pd.DataFrame): preprocessed order rows
+            - ``next_cursor`` (str): pass to the next call to page forward;
+              ``"LTE="`` means the last page has been reached
+            - ``count`` (int): total result count
+            - ``limit`` (int): page size
+
+        Args:
+            id: Order ID filter.
+            market: Market condition ID.
+            asset_id: CLOB token ID.
+            next_cursor: Opaque base64 cursor from a previous response.
+
+        Returns:
+            dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
         """
-        Get active orders for a specific market, asset, or order ID.
-        """
-        data = self._request_clob_private(
+        raw = self._request_clob_private(
             path="data/orders",
             params={
                 "id": id,
                 "market": market,
                 "asset_id": asset_id,
+                "next_cursor": next_cursor,
             },
         )
-        return self.response_to_dataframe(data)
+        raw["data"] = self.response_to_dataframe(raw.get("data", []))
+        return raw
 
     def get_order_scoring(self, order_id: str) -> bool:
         """Check whether an order is being scored for rewards.
@@ -98,7 +148,7 @@ class ClobPrivateMixin:
         data = self._request_clob_private(path="order-scoring", params={"order_id": order_id})
         return bool(self._extract(data, "scoring"))
 
-    def place_order(self, order: dict, owner: str, orderType: str) -> dict:
+    def place_order(self, order: dict, owner: str, orderType: str) -> SendOrderResponse:
         """
         Create and place an order using the Polymarket CLOB API.
 
@@ -116,7 +166,7 @@ class ClobPrivateMixin:
             data={"order": order, "owner": owner, "orderType": orderType},
         )
 
-    def place_orders(self, orders: pd.DataFrame) -> pd.DataFrame:
+    def place_orders(self, orders: pd.DataFrame) -> pa.DataFrame[SendOrderResponseSchema]:
         """Place multiple signed orders in a batch (up to 15 per call).
 
         The DataFrame must contain signed order fields (from
@@ -147,7 +197,7 @@ class ClobPrivateMixin:
         )
         return self.response_to_dataframe(response)
 
-    def cancel_order(self, order_id: str) -> dict:
+    def cancel_order(self, order_id: str) -> CancelOrdersResponse:
         """Cancel a single order."""
         return self._request_clob_private(
             path="order",
@@ -155,7 +205,7 @@ class ClobPrivateMixin:
             data={"orderID": order_id},
         )
 
-    def cancel_orders(self, order_ids: list[str]) -> dict:
+    def cancel_orders(self, order_ids: list[str]) -> CancelOrdersResponse:
         """Cancel multiple orders."""
         return self._request_clob_private(
             path="orders",
@@ -163,11 +213,13 @@ class ClobPrivateMixin:
             data=order_ids,
         )
 
-    def cancel_all_orders(self) -> dict:
+    def cancel_all_orders(self) -> CancelOrdersResponse:
         """Cancel all orders."""
         return self._request_clob_private(path="cancel-all", method="DELETE")
 
-    def cancel_orders_from_market(self, market: str = "", asset_id: str = "") -> dict:
+    def cancel_orders_from_market(
+        self, market: str = "", asset_id: str = ""
+    ) -> CancelOrdersResponse:
         """Cancel orders from a specific market or asset.
 
         Args:
@@ -196,7 +248,7 @@ class ClobPrivateMixin:
         self._api_passphrase = creds["passphrase"]
         return creds
 
-    def create_api_key(self, nonce: int = 0) -> dict:
+    def create_api_key(self, nonce: int = 0) -> ApiCredentials:
         """Create a new API key using an L1 (EIP-712) signature.
 
         Automatically sets the returned credentials on this client
@@ -213,7 +265,7 @@ class ClobPrivateMixin:
         response.raise_for_status()
         return self._apply_api_creds(response.json())
 
-    def derive_api_key(self, nonce: int = 0) -> dict:
+    def derive_api_key(self, nonce: int = 0) -> ApiCredentials:
         """Derive an existing API key using an L1 (EIP-712) signature.
 
         Automatically sets the returned credentials on this client

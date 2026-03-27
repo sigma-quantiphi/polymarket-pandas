@@ -42,6 +42,12 @@ def _make_async_wrapper(method_name: str):
 
     wrapper.__name__ = method_name
     wrapper.__qualname__ = f"AsyncPolymarketPandas.{method_name}"
+    # Propagate return type annotation from the sync method for IDE support
+    sync_method = getattr(PolymarketPandas, method_name, None)
+    if sync_method is not None:
+        annotations = getattr(sync_method, "__annotations__", {})
+        if "return" in annotations:
+            wrapper.__annotations__ = {"return": annotations["return"]}
     return wrapper
 
 

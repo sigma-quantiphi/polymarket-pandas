@@ -6,6 +6,16 @@ import io
 import zipfile
 
 import pandas as pd
+import pandera.pandas as pa
+
+from polymarket_pandas.schemas import (
+    ActivitySchema,
+    BuilderLeaderboardSchema,
+    ClosedPositionSchema,
+    DataTradeSchema,
+    LeaderboardSchema,
+    PositionSchema,
+)
 
 
 class DataMixin:
@@ -24,7 +34,7 @@ class DataMixin:
         sortBy: str | None = "TOKENS",
         sortDirection: str | None = "DESC",
         title: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[PositionSchema]:
         """Fetch open positions for a user.
 
         Args:
@@ -73,7 +83,7 @@ class DataMixin:
         offset: int | None = 0,
         sortBy: str | None = "REALIZEDPNL",
         sortDirection: str | None = "DESC",
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[ClosedPositionSchema]:
         """Fetch closed (resolved) positions for a user.
 
         Args:
@@ -205,7 +215,7 @@ class DataMixin:
         offset: int | None = 0,
         user: str | None = None,
         userName: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[LeaderboardSchema]:
         """Fetch the trader leaderboard.
 
         Args:
@@ -247,7 +257,7 @@ class DataMixin:
         eventId: list[int] | None = None,
         user: str | None = None,
         side: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[DataTradeSchema]:
         """Fetch recent trades.
 
         Args:
@@ -295,7 +305,7 @@ class DataMixin:
         sortBy: str | None = "TIMESTAMP",
         sortDirection: str | None = "DESC",
         side: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[ActivitySchema]:
         """Fetch activity history (trades, redemptions, merges) for a user.
 
         Args:
@@ -401,7 +411,7 @@ class DataMixin:
         timePeriod: str | None = "DAY",
         limit: int | None = 25,
         offset: int | None = 0,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[BuilderLeaderboardSchema]:
         """Fetch the builder (liquidity provider) leaderboard.
 
         Args:

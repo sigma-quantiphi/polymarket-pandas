@@ -1,5 +1,6 @@
 import inspect
 import time
+from datetime import datetime
 from functools import wraps
 
 import orjson
@@ -20,7 +21,34 @@ __all__ = [
     "preprocess_dataframe",
     "snake_columns_to_camel",
     "snake_to_camel",
+    "to_unix_timestamp",
 ]
+
+
+def to_unix_timestamp(value: int | float | str | pd.Timestamp | datetime) -> int:
+    """Convert a datetime-like value to a Unix timestamp in seconds.
+
+    Accepts:
+        int / float: returned as-is (assumed Unix seconds already).
+        str: parsed as ISO-8601 datetime, then converted.
+        pd.Timestamp / datetime.datetime: converted to Unix seconds.
+
+    Returns:
+        int: Unix timestamp in seconds.
+    """
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        value = pd.Timestamp(value, tz="UTC")
+    if isinstance(value, pd.Timestamp):
+        if value.tzinfo is None:
+            value = value.tz_localize("UTC")
+        return int(value.timestamp())
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=__import__("zoneinfo").ZoneInfo("UTC"))
+        return int(value.timestamp())
+    raise TypeError(f"Cannot convert {type(value).__name__} to Unix timestamp")
 
 
 def instance_cache(method=None, *, ttl: float | None = None, maxsize: int = 256):

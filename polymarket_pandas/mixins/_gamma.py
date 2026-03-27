@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import pandera.pandas as pa
 
+from polymarket_pandas.schemas import EventSchema, MarketSchema
 from polymarket_pandas.utils import expand_dataframe
 
 
@@ -42,7 +44,7 @@ class GammaMixin:
         expand_clob_token_ids: bool = True,
         expand_events: bool = True,
         expand_series: bool = True,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[MarketSchema]:
         """Fetch markets with optional filtering, pagination, and nested expansion.
 
         Returns one row per CLOB token when ``expand_clob_token_ids`` is True.
@@ -148,7 +150,7 @@ class GammaMixin:
         end_date_max: str | pd.Timestamp | None = None,
         expand_markets: bool | None = True,
         expand_clob_token_ids: bool | None = True,
-    ) -> pd.DataFrame:
+    ) -> pa.DataFrame[EventSchema]:
         """Fetch events with optional filtering, pagination, and nested market expansion.
 
         Returns one row per CLOB token when ``expand_clob_token_ids`` is True.

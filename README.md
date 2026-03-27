@@ -97,6 +97,34 @@ Every method that returns a list of objects returns a preprocessed `pd.DataFrame
 
 Raw `dict` returns are used only where a single object is expected (e.g. `get_market_by_id`).
 
+### Typed returns
+
+All dict-returning endpoints use **TypedDicts** for IDE autocomplete and type safety:
+
+```python
+from polymarket_pandas import CursorPage, TransactionReceipt, SignedOrder, SendOrderResponse
+
+page: CursorPage = client.get_sampling_markets()
+page["data"]         # pd.DataFrame
+page["next_cursor"]  # str
+
+order: SignedOrder = client.build_order(token_id, 0.55, 10, "BUY")
+order["makerAmount"]  # str — IDE knows all 13 fields
+```
+
+All DataFrame-returning endpoints use **pandera DataFrameModels** for column documentation:
+
+```python
+from polymarket_pandas import MarketSchema, PositionSchema, OrderbookSchema
+
+# Annotation-only — no runtime validation overhead
+markets = client.get_markets()  # pa.DataFrame[MarketSchema]
+# Users who want validation: MarketSchema.validate(markets)
+```
+
+All schemas use `strict=False` (extra columns allowed) so API changes don't break validation.
+Field names verified against the official Polymarket OpenAPI specs.
+
 ---
 
 ## REST API Reference
@@ -515,7 +543,7 @@ mids = client.get_midpoints(["15871...", "99182..."])
 
 #### `get_spread(token_id) → float`
 
-#### `get_last_trade_price(token_id) → dict`
+#### `get_last_trade_price(token_id) → LastTradePrice`
 
 #### `get_last_trade_prices(data) → pd.DataFrame`
 
@@ -535,26 +563,41 @@ history = client.get_price_history(
 
 All private endpoints use HMAC-SHA256 (`_api_key`, `_api_secret`, `_api_passphrase`).
 
-#### `get_balance_allowance(asset_type, token_id=None) → dict`
+#### `get_balance_allowance(asset_type, token_id=None) → BalanceAllowance`
 
 ```python
 # asset_type 0 = USDC collateral, 1 = conditional token
 balance = client.get_balance_allowance(asset_type=0)
+# balance["balance"], balance["allowances"]
 ```
 
-#### `get_user_trades(**kwargs) → pd.DataFrame`
+#### `get_user_trades(**kwargs) → CursorPage`
+
+Cursor-paginated. Returns `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}`.
 
 ```python
-trades = client.get_user_trades(market="0xConditionId...")
+page = client.get_user_trades(market="0xConditionId...")
+trades = page["data"]
+# Auto-paginate all:
+all_trades = client.get_user_trades_all(market="0xConditionId...")
 ```
 
 #### `get_order(order_id) → dict`
 
-#### `get_active_orders(id=None, market=None, asset_id=None) → pd.DataFrame`
+#### `get_active_orders(**kwargs) → CursorPage`
+
+Cursor-paginated. Returns `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}`.
+
+```python
+page = client.get_active_orders(market="0xConditionId...")
+orders = page["data"]
+# Auto-paginate all:
+all_orders = client.get_active_orders_all(market="0xConditionId...")
+```
 
 #### `get_order_scoring(order_id) → bool`
 
-#### `place_order(order, owner, orderType) → dict`
+#### `place_order(order, owner, orderType) → SendOrderResponse`
 
 ```python
 result = client.place_order(
@@ -569,17 +612,18 @@ result = client.place_order(
 Batch place up to 15 orders. `orders` is a DataFrame with order fields plus
 `owner` and `orderType` columns.
 
-#### `cancel_order(order_id) → dict`
+#### `cancel_order(order_id) → CancelOrdersResponse`
 
-#### `cancel_orders(order_ids) → dict`
+#### `cancel_orders(order_ids) → CancelOrdersResponse`
 
 ```python
 result = client.cancel_orders(["order-id-1", "order-id-2"])
+# result["canceled"], result["not_canceled"]
 ```
 
-#### `cancel_all_orders() → dict`
+#### `cancel_all_orders() → CancelOrdersResponse`
 
-#### `cancel_orders_from_market(market=None, asset_id=None) → dict`
+#### `cancel_orders_from_market(market=None, asset_id=None) → CancelOrdersResponse`
 
 #### `send_heartbeat() → dict`
 
@@ -597,9 +641,9 @@ you only need to provide `token_id`, `price`, `size`, and `side`.
 Caching: `get_tick_size` uses a 300-second TTL (tick sizes can change mid-market);
 `get_neg_risk` and `get_fee_rate` are cached permanently.
 
-#### `build_order(token_id, price, size, side, **kwargs) → dict`
+#### `build_order(token_id, price, size, side, **kwargs) → SignedOrder`
 
-Build and EIP-712-sign a CLOB order. Returns a dict ready for `place_order()`.
+Build and EIP-712-sign a CLOB order. Returns a typed dict ready for `place_order()`.
 
 ```python
 order = client.build_order(
@@ -614,9 +658,15 @@ order = client.build_order(
     # expiration=0,       # 0 = no expiry (GTC)
     # nonce=0,
 )
+
+# Expiration accepts int (Unix seconds), pd.Timestamp, or ISO-8601 string:
+gtd_order = client.build_order(
+    token_id="15871...", price=0.55, size=10, side="BUY",
+    expiration=pd.Timestamp("2025-12-31T23:59:59Z"),  # auto-converted to int
+)
 ```
 
-#### `submit_order(token_id, price, size, side, order_type="GTC", **kwargs) → dict`
+#### `submit_order(token_id, price, size, side, order_type="GTC", **kwargs) → SendOrderResponse`
 
 Build, sign, and place a single order in one call.
 
@@ -661,7 +711,7 @@ responses = client.submit_orders(orders_df)
 | `neg_risk` | No | auto | Fetched from CLOB API |
 | `tick_size` | No | auto | Fetched from CLOB API |
 | `fee_rate_bps` | No | auto | Fetched from CLOB API |
-| `expiration` | No | `0` | Unix timestamp (0 = no expiry) |
+| `expiration` | No | `0` | Unix timestamp, `pd.Timestamp`, or ISO string (0 = no expiry) |
 | `nonce` | No | `0` | Order nonce |
 
 </details>
@@ -707,9 +757,9 @@ rebates = client.get_rebates(
 
 Requires `private_key` (EIP-712 signing).
 
-#### `create_api_key(nonce=0) → dict`
+#### `create_api_key(nonce=0) → ApiCredentials`
 
-#### `derive_api_key(nonce=0) → dict`
+#### `derive_api_key(nonce=0) → ApiCredentials`
 
 #### `get_api_keys() → pd.DataFrame`
 
@@ -748,7 +798,7 @@ nonce = client.get_relayer_nonce("0xSignerAddress", type="PROXY")
 
 Requires relayer credentials. Returns recent transactions for the authenticated account.
 
-#### `get_relay_payload(address, type) → dict`
+#### `get_relay_payload(address, type) → RelayPayload`
 
 Returns `{"address": "<relayer_address>", "nonce": "<nonce>"}` — needed to
 construct a transaction before signing.
@@ -757,7 +807,7 @@ construct a transaction before signing.
 payload = client.get_relay_payload("0xSignerAddress", type="PROXY")
 ```
 
-#### `submit_transaction(...) → dict`
+#### `submit_transaction(...) → SubmitTransactionResponse`
 
 ```python
 result = client.submit_transaction(
@@ -823,7 +873,7 @@ quote = client.get_bridge_quote(
 #             estToTokenBaseUnit, estFeeBreakdown (appFeeUsd, gasUsd, ...)
 ```
 
-#### `create_deposit_address(address) → dict`
+#### `create_deposit_address(address) → BridgeAddress`
 
 Create multi-chain deposit addresses. Send funds to the returned address to
 have USDC.e credited to your Polymarket wallet.
@@ -833,7 +883,7 @@ result = client.create_deposit_address("0xYourPolymarketWallet")
 # result: {"address": {"evm": "0x...", "svm": "...", "btc": "bc1q..."}, "note": "..."}
 ```
 
-#### `create_withdrawal_address(address, to_chain_id, to_token_address, recipient_addr) → dict`
+#### `create_withdrawal_address(address, to_chain_id, to_token_address, recipient_addr) → BridgeAddress`
 
 Bridge funds out of Polymarket to another chain.
 
@@ -869,7 +919,7 @@ All methods require `private_key` (for signing transactions) and a funded EOA
 wallet (MATIC for gas). Amounts are in USDC.e base units (6 decimals):
 `1_000_000` = 1.00 USDC.
 
-#### `split_position(condition_id, amount, neg_risk=False, wait=True, timeout=120) → dict`
+#### `split_position(condition_id, amount, neg_risk=False, wait=True, timeout=120) → TransactionReceipt`
 
 Split USDC.e collateral into Yes + No outcome tokens.
 
@@ -882,7 +932,7 @@ result = client.split_position(
 # result: {"txHash": "0x...", "status": 1, "blockNumber": 12345, "gasUsed": 150000}
 ```
 
-#### `merge_positions(condition_id, amount, neg_risk=False, wait=True, timeout=120) → dict`
+#### `merge_positions(condition_id, amount, neg_risk=False, wait=True, timeout=120) → TransactionReceipt`
 
 Merge equal amounts of Yes + No tokens back into USDC.e.
 
@@ -893,7 +943,7 @@ result = client.merge_positions(
 )
 ```
 
-#### `redeem_positions(condition_id, index_sets=None, wait=True, timeout=120) → dict`
+#### `redeem_positions(condition_id, index_sets=None, wait=True, timeout=120) → TransactionReceipt`
 
 Redeem winning outcome tokens for USDC.e after market resolution.
 
@@ -901,7 +951,7 @@ Redeem winning outcome tokens for USDC.e after market resolution.
 result = client.redeem_positions(condition_id="0x4aee6d11...")
 ```
 
-#### `approve_collateral(spender=None, amount=None, wait=True, timeout=120) → dict`
+#### `approve_collateral(spender=None, amount=None, wait=True, timeout=120) → TransactionReceipt`
 
 Approve a CTF contract to spend USDC.e. Required before `split_position` or
 `merge_positions`. Defaults to unlimited approval for the ConditionalTokens contract.
@@ -1104,6 +1154,10 @@ all_tags    = client.get_tags_all()
 all_sampling    = client.get_sampling_markets_all()
 all_simplified  = client.get_simplified_markets_all()
 all_samp_simple = client.get_sampling_simplified_markets_all()
+
+# User trades and active orders (CLOB private, cursor-paginated)
+all_trades = client.get_user_trades_all(market="0xConditionId...")
+all_orders = client.get_active_orders_all(market="0xConditionId...")
 
 # Limit pages
 first_3 = client.get_simplified_markets_all(max_pages=3)

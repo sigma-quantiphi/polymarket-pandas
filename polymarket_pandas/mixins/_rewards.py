@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from polymarket_pandas.types import CursorPage
+
 
 class RewardsMixin:
     # ── CLOB API: Rewards (Public) ────────────────────────────────────────
@@ -12,7 +14,7 @@ class RewardsMixin:
         self,
         sponsored: bool | None = None,
         next_cursor: str | None = None,
-    ) -> dict:
+    ) -> CursorPage:
         """Get all currently active reward configurations, organized by market.
 
         Uses cursor-based pagination. Returns a dict with keys:
@@ -55,7 +57,7 @@ class RewardsMixin:
         max_price: float | None = None,
         page_size: int | None = None,
         next_cursor: str | None = None,
-    ) -> dict:
+    ) -> CursorPage:
         """Get active markets with their reward configurations.
 
         Supports text search, tag filtering, numeric filters, and sorting.
@@ -110,7 +112,7 @@ class RewardsMixin:
         condition_id: str,
         sponsored: bool | None = None,
         next_cursor: str | None = None,
-    ) -> dict:
+    ) -> CursorPage:
         """Get reward configurations for a specific market.
 
         Uses cursor-based pagination.
@@ -142,7 +144,7 @@ class RewardsMixin:
         maker_address: str | None = None,
         sponsored: bool | None = None,
         next_cursor: str | None = None,
-    ) -> dict:
+    ) -> CursorPage:
         """Get per-market user earnings for a specific day.
 
         Requires L2 authentication. Uses cursor-based pagination.
@@ -252,7 +254,7 @@ class RewardsMixin:
         position: str | None = None,
         page_size: int | None = None,
         next_cursor: str | None = None,
-    ) -> dict:
+    ) -> CursorPage:
         """Get user earnings combined with full market configurations.
 
         Requires L2 authentication. Supports search, filtering, and sorting.
