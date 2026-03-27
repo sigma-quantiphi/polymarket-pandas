@@ -37,7 +37,7 @@ uv run python -c "from polymarket_pandas import PolymarketPandas, AsyncPolymarke
 
 ```
 polymarket_pandas/
-  __init__.py          # Public exports (6 classes + 4 exceptions + 12 TypedDicts + 14 schemas)
+  __init__.py          # Public exports (6 classes + 4 exceptions + 22 TypedDicts + 22 schemas)
   client.py            # PolymarketPandas dataclass — core infra + build_order
   async_client.py      # AsyncPolymarketPandas — async wrapper via composition + ThreadPoolExecutor
   exceptions.py        # PolymarketError hierarchy
@@ -232,11 +232,17 @@ A `pandera.DataFrameModel` for validating order DataFrames before passing them t
 
 ### Typed returns (`types.py` and `schemas.py`)
 
-**TypedDicts** (`types.py`): Structural subtypes of `dict` for dict-returning endpoints. No runtime overhead, full IDE autocomplete. Key types: `CursorPage` (9 cursor-paginated methods), `TransactionReceipt` (4 CTF methods), `SignedOrder` (`build_order`), `SendOrderResponse` (`place_order`, `submit_order`), `CancelOrdersResponse`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`.
+**TypedDicts** (`types.py`): Structural subtypes of `dict` for dict-returning endpoints. No runtime overhead, full IDE autocomplete.
 
-**Pandera schemas** (`schemas.py`): `DataFrameModel` subclasses for DataFrame-returning endpoints. All use `strict=False` (extra columns allowed) and `coerce=True`. Annotation-only by default (no runtime validation unless user calls `.validate()`). Field names verified against the official Polymarket OpenAPI specs.
+- **Cursor-paginated** (all inherit from `CursorPage` base with `next_cursor`, `count`, `limit`): `OrdersCursorPage`, `UserTradesCursorPage`, `SamplingMarketsCursorPage`, `SimplifiedMarketsCursorPage`, `BuilderTradesCursorPage`, `CurrentRewardsCursorPage`, `RewardsMarketMultiCursorPage`, `RewardsMarketCursorPage`, `UserEarningsCursorPage`, `UserRewardsMarketsCursorPage`. Each has `data: DataFrame[SpecificSchema]`.
+- **Other dicts**: `SignedOrder`, `SendOrderResponse`, `CancelOrdersResponse`, `TransactionReceipt`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `BridgeAddressInfo`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`.
 
-Key schemas: `MarketSchema`, `EventSchema`, `OrderbookSchema`, `ClobTradeSchema`, `ActiveOrderSchema`, `PriceHistorySchema`, `PositionSchema`, `ClosedPositionSchema`, `DataTradeSchema`, `ActivitySchema`, `LeaderboardSchema`, `BuilderLeaderboardSchema`, `RebateSchema`, `SendOrderResponseSchema`.
+**Pandera schemas** (`schemas.py`): `DataFrameModel` subclasses (via `pandera.pandas`) for DataFrame-returning endpoints. All use `strict=False` (extra columns allowed) and `coerce=True`. Annotation-only by default (no runtime validation unless user calls `.validate()`). Field names verified against the official Polymarket OpenAPI specs.
+
+- **Gamma API**: `MarketSchema`, `EventSchema`
+- **CLOB API**: `OrderbookSchema`, `ClobTradeSchema`, `ActiveOrderSchema`, `PriceHistorySchema`, `SendOrderResponseSchema`, `SamplingMarketSchema`, `SimplifiedMarketSchema`, `BuilderTradeSchema`
+- **Data API**: `PositionSchema`, `ClosedPositionSchema`, `DataTradeSchema`, `ActivitySchema`, `LeaderboardSchema`, `BuilderLeaderboardSchema`
+- **Rewards API**: `CurrentRewardSchema`, `RewardsMarketMultiSchema`, `RewardsMarketSchema`, `UserEarningSchema`, `UserRewardsMarketSchema`, `RebateSchema`
 
 ### `to_unix_timestamp` (`utils.py`)
 
@@ -244,7 +250,7 @@ Converts `int`, `float`, `str` (ISO-8601), `pd.Timestamp`, or `datetime.datetime
 
 ## Tests
 
-- `tests/test_unit.py` — 96 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
+- `tests/test_unit.py` — 112 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
 - `tests/test_async_unit.py` — 16 async tests using `pytest-asyncio`.
 - `tests/test_integration.py` — 13 integration tests (live API, optional).
 - `tests/conftest.py` — `client` (unauthenticated), `authed_client` (stub L2 credentials), and `ctf_client` (stub private key) fixtures.

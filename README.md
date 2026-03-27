@@ -102,28 +102,37 @@ Raw `dict` returns are used only where a single object is expected (e.g. `get_ma
 All dict-returning endpoints use **TypedDicts** for IDE autocomplete and type safety:
 
 ```python
-from polymarket_pandas import CursorPage, TransactionReceipt, SignedOrder, SendOrderResponse
+from polymarket_pandas import (
+    SamplingMarketsCursorPage, OrdersCursorPage,
+    SignedOrder, SendOrderResponse, TransactionReceipt,
+)
 
-page: CursorPage = client.get_sampling_markets()
-page["data"]         # pd.DataFrame
+# Every cursor-paginated endpoint has a specific type with typed data
+page = client.get_sampling_markets()   # SamplingMarketsCursorPage
+page["data"]         # DataFrame[SamplingMarketSchema] — IDE knows columns
 page["next_cursor"]  # str
+
+orders = client.get_active_orders()    # OrdersCursorPage
+orders["data"]       # DataFrame[ActiveOrderSchema]
 
 order: SignedOrder = client.build_order(token_id, 0.55, 10, "BUY")
 order["makerAmount"]  # str — IDE knows all 13 fields
 ```
 
-All DataFrame-returning endpoints use **pandera DataFrameModels** for column documentation:
+All DataFrame-returning endpoints use **pandera DataFrameModels** (22 schemas) for column documentation:
 
 ```python
 from polymarket_pandas import MarketSchema, PositionSchema, OrderbookSchema
 
 # Annotation-only — no runtime validation overhead
-markets = client.get_markets()  # pa.DataFrame[MarketSchema]
+markets = client.get_markets()  # DataFrame[MarketSchema]
 # Users who want validation: MarketSchema.validate(markets)
 ```
 
 All schemas use `strict=False` (extra columns allowed) so API changes don't break validation.
-Field names verified against the official Polymarket OpenAPI specs.
+Field names verified against the official Polymarket OpenAPI specs. All 11 cursor-paginated
+endpoints have specific CursorPage types (e.g. `OrdersCursorPage`, `UserTradesCursorPage`)
+that inherit from a `CursorPage` base and specify `data: DataFrame[Schema]`.
 
 ---
 
