@@ -328,7 +328,9 @@ class ClobPublicMixin:
         raw["data"] = self.preprocess_dataframe(pd.DataFrame(raw.get("data", [])))
         return raw
 
-    def get_sampling_simplified_markets(self, next_cursor: str | None = None) -> SimplifiedMarketsCursorPage:
+    def get_sampling_simplified_markets(
+        self, next_cursor: str | None = None
+    ) -> SimplifiedMarketsCursorPage:
         """
         Intersection of sampling markets and simplified markets.
 

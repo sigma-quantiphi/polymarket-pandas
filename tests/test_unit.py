@@ -1147,11 +1147,11 @@ def test_to_unix_timestamp_from_string():
 
 
 def test_to_unix_timestamp_from_datetime():
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
 
     from polymarket_pandas.utils import to_unix_timestamp
 
-    dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    dt = datetime(2024, 1, 1, tzinfo=UTC)
     assert to_unix_timestamp(dt) == 1704067200
 
 

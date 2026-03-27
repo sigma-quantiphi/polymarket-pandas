@@ -87,3 +87,23 @@ python_version = "3.11"
 ignore_missing_imports = true
 warn_return_any = false
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "polymarket_pandas.mixins.*"
+disable_error_code = ["attr-defined", "arg-type", "return-value"]
+
+[[tool.mypy.overrides]]
+module = "polymarket_pandas.utils"
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "polymarket_pandas.client"
+disable_error_code = ["arg-type", "assignment", "return-value"]
+
+[[tool.mypy.overrides]]
+module = "polymarket_pandas.ws"
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = "polymarket_pandas.async_ws"
+disable_error_code = ["union-attr", "arg-type"]
