@@ -11,7 +11,7 @@ OpenAPI specs at ``docs.polymarket.com/api-spec/clob-openapi.yaml`` and
 
 from __future__ import annotations
 
-import pandera as pa
+import pandera.pandas as pa
 
 
 class _Lenient(pa.DataFrameModel):
