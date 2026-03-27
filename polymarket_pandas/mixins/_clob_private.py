@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
-import pandera.pandas as pa
+from pandera.typing import DataFrame
 
 from polymarket_pandas.schemas import SendOrderResponseSchema
 from polymarket_pandas.types import (
@@ -166,7 +166,7 @@ class ClobPrivateMixin:
             data={"order": order, "owner": owner, "orderType": orderType},
         )
 
-    def place_orders(self, orders: pd.DataFrame) -> pa.DataFrame[SendOrderResponseSchema]:
+    def place_orders(self, orders: pd.DataFrame) -> DataFrame[SendOrderResponseSchema]:
         """Place multiple signed orders in a batch (up to 15 per call).
 
         The DataFrame must contain signed order fields (from

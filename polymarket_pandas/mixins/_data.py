@@ -6,7 +6,7 @@ import io
 import zipfile
 
 import pandas as pd
-import pandera.pandas as pa
+from pandera.typing import DataFrame
 
 from polymarket_pandas.schemas import (
     ActivitySchema,
@@ -34,7 +34,7 @@ class DataMixin:
         sortBy: str | None = "TOKENS",
         sortDirection: str | None = "DESC",
         title: str | None = None,
-    ) -> pa.DataFrame[PositionSchema]:
+    ) -> DataFrame[PositionSchema]:
         """Fetch open positions for a user.
 
         Args:
@@ -83,7 +83,7 @@ class DataMixin:
         offset: int | None = 0,
         sortBy: str | None = "REALIZEDPNL",
         sortDirection: str | None = "DESC",
-    ) -> pa.DataFrame[ClosedPositionSchema]:
+    ) -> DataFrame[ClosedPositionSchema]:
         """Fetch closed (resolved) positions for a user.
 
         Args:
@@ -215,7 +215,7 @@ class DataMixin:
         offset: int | None = 0,
         user: str | None = None,
         userName: str | None = None,
-    ) -> pa.DataFrame[LeaderboardSchema]:
+    ) -> DataFrame[LeaderboardSchema]:
         """Fetch the trader leaderboard.
 
         Args:
@@ -257,7 +257,7 @@ class DataMixin:
         eventId: list[int] | None = None,
         user: str | None = None,
         side: str | None = None,
-    ) -> pa.DataFrame[DataTradeSchema]:
+    ) -> DataFrame[DataTradeSchema]:
         """Fetch recent trades.
 
         Args:
@@ -305,7 +305,7 @@ class DataMixin:
         sortBy: str | None = "TIMESTAMP",
         sortDirection: str | None = "DESC",
         side: str | None = None,
-    ) -> pa.DataFrame[ActivitySchema]:
+    ) -> DataFrame[ActivitySchema]:
         """Fetch activity history (trades, redemptions, merges) for a user.
 
         Args:
@@ -411,7 +411,7 @@ class DataMixin:
         timePeriod: str | None = "DAY",
         limit: int | None = 25,
         offset: int | None = 0,
-    ) -> pa.DataFrame[BuilderLeaderboardSchema]:
+    ) -> DataFrame[BuilderLeaderboardSchema]:
         """Fetch the builder (liquidity provider) leaderboard.
 
         Args:

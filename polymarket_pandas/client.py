@@ -864,16 +864,18 @@ class PolymarketPandas(
         # Build and sign each order
         signed = []
         for row in orders.itertuples(index=False):
-            order = self.build_order(
-                token_id=str(row.token_id),
-                price=row.price,
-                size=row.size,
-                side=row.side,
-                fee_rate_bps=getattr(row, "fee_rate_bps", None),
-                expiration=getattr(row, "expiration", 0),
-                nonce=getattr(row, "nonce", 0),
-                neg_risk=getattr(row, "neg_risk", None),
-                tick_size=getattr(row, "tick_size", None),
+            order: dict = dict(
+                self.build_order(
+                    token_id=str(row.token_id),
+                    price=float(row.price),
+                    size=float(row.size),
+                    side=str(row.side),
+                    fee_rate_bps=getattr(row, "fee_rate_bps", None),
+                    expiration=getattr(row, "expiration", 0),
+                    nonce=getattr(row, "nonce", 0),
+                    neg_risk=getattr(row, "neg_risk", None),
+                    tick_size=getattr(row, "tick_size", None),
+                )
             )
             order["owner"] = self._api_key
             order["orderType"] = getattr(row, "order_type", "GTC") or "GTC"

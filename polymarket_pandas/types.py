@@ -9,19 +9,26 @@ from __future__ import annotations
 from typing import TypedDict
 
 import pandas as pd
-import pandera.pandas as pa
+from pandera.typing import DataFrame
 
-from polymarket_pandas.schemas import ActiveOrderSchema, ClobTradeSchema
+from polymarket_pandas.schemas import (
+    ActiveOrderSchema,
+    BuilderTradeSchema,
+    ClobTradeSchema,
+    CurrentRewardSchema,
+    RewardsMarketMultiSchema,
+    RewardsMarketSchema,
+    SamplingMarketSchema,
+    SimplifiedMarketSchema,
+    UserEarningSchema,
+    UserRewardsMarketSchema,
+)
 
 # ── Cursor-paginated responses ────────────────────────────────────────
-# Used by: get_sampling_markets, get_simplified_markets,
-# get_sampling_simplified_markets, get_builder_trades,
-# get_rewards_markets_current, get_rewards_markets_multi,
-# get_rewards_market, get_rewards_earnings, get_rewards_user_markets
 
 
 class CursorPage(TypedDict):
-    """Cursor-paginated response wrapper (generic)."""
+    """Base cursor-paginated response. Subclasses override ``data`` with a typed DataFrame."""
 
     data: pd.DataFrame
     next_cursor: str
@@ -29,35 +36,64 @@ class CursorPage(TypedDict):
     limit: int
 
 
-# ── Typed cursor-paginated responses ─────────────────────────────────
-# Used by: get_active_orders
+class OrdersCursorPage(CursorPage):
+    """Active orders (CLOB ``/data/orders``)."""
+
+    data: DataFrame[ActiveOrderSchema]  # type: ignore[misc]
 
 
-class OrdersCursorPage(TypedDict):
-    """Cursor-paginated response for active orders.
+class UserTradesCursorPage(CursorPage):
+    """User trades (CLOB ``/data/trades``)."""
 
-    ``data`` is a DataFrame conforming to :class:`ActiveOrderSchema`.
-    """
-
-    data: pa.DataFrame[ActiveOrderSchema]
-    next_cursor: str
-    count: int
-    limit: int
+    data: DataFrame[ClobTradeSchema]  # type: ignore[misc]
 
 
-# Used by: get_user_trades
+class SamplingMarketsCursorPage(CursorPage):
+    """Sampling markets (CLOB ``/sampling-markets``)."""
+
+    data: DataFrame[SamplingMarketSchema]  # type: ignore[misc]
 
 
-class UserTradesCursorPage(TypedDict):
-    """Cursor-paginated response for user trades.
+class SimplifiedMarketsCursorPage(CursorPage):
+    """Simplified markets (CLOB ``/simplified-markets``)."""
 
-    ``data`` is a DataFrame conforming to :class:`ClobTradeSchema`.
-    """
+    data: DataFrame[SimplifiedMarketSchema]  # type: ignore[misc]
 
-    data: pa.DataFrame[ClobTradeSchema]
-    next_cursor: str
-    count: int
-    limit: int
+
+class BuilderTradesCursorPage(CursorPage):
+    """Builder trades (CLOB ``/builder/trades``)."""
+
+    data: DataFrame[BuilderTradeSchema]  # type: ignore[misc]
+
+
+class CurrentRewardsCursorPage(CursorPage):
+    """Current reward configs (``/rewards/markets/current``)."""
+
+    data: DataFrame[CurrentRewardSchema]  # type: ignore[misc]
+
+
+class RewardsMarketMultiCursorPage(CursorPage):
+    """Rewards markets multi (``/rewards/markets/multi``)."""
+
+    data: DataFrame[RewardsMarketMultiSchema]  # type: ignore[misc]
+
+
+class RewardsMarketCursorPage(CursorPage):
+    """Rewards for a market (``/rewards/markets/{id}``)."""
+
+    data: DataFrame[RewardsMarketSchema]  # type: ignore[misc]
+
+
+class UserEarningsCursorPage(CursorPage):
+    """User earnings (``/rewards/user``)."""
+
+    data: DataFrame[UserEarningSchema]  # type: ignore[misc]
+
+
+class UserRewardsMarketsCursorPage(CursorPage):
+    """User reward markets (``/rewards/user/markets``)."""
+
+    data: DataFrame[UserRewardsMarketSchema]  # type: ignore[misc]
 
 
 # ── CTF transaction receipts ──────────────────────────────────────────
@@ -208,14 +244,22 @@ __all__ = [
     "BalanceAllowance",
     "BridgeAddress",
     "BridgeAddressInfo",
+    "BuilderTradesCursorPage",
     "CancelOrdersResponse",
+    "CurrentRewardsCursorPage",
     "CursorPage",
     "LastTradePrice",
     "OrdersCursorPage",
     "RelayPayload",
+    "RewardsMarketCursorPage",
+    "RewardsMarketMultiCursorPage",
+    "SamplingMarketsCursorPage",
     "SendOrderResponse",
     "SignedOrder",
+    "SimplifiedMarketsCursorPage",
     "SubmitTransactionResponse",
     "TransactionReceipt",
+    "UserEarningsCursorPage",
+    "UserRewardsMarketsCursorPage",
     "UserTradesCursorPage",
 ]

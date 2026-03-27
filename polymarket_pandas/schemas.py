@@ -11,7 +11,7 @@ OpenAPI specs at ``docs.polymarket.com/api-spec/clob-openapi.yaml`` and
 
 from __future__ import annotations
 
-import pandera.pandas as pa
+import pandera as pa
 
 
 class _Lenient(pa.DataFrameModel):
@@ -327,12 +327,186 @@ class RebateSchema(_Lenient):
     rebatedFeesUsdc: float | None = pa.Field(nullable=True)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CLOB Sampling / Simplified Market schemas
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class SamplingMarketSchema(_Lenient):
+    """Schema for ``get_sampling_markets`` data rows.
+
+    Source: ``GET clob.polymarket.com/sampling-markets``
+    """
+
+    enableOrderBook: bool | None = pa.Field(nullable=True)
+    active: bool | None = pa.Field(nullable=True)
+    closed: bool | None = pa.Field(nullable=True)
+    archived: bool | None = pa.Field(nullable=True)
+    acceptingOrders: bool | None = pa.Field(nullable=True)
+    minimumOrderSize: float | None = pa.Field(nullable=True)
+    minimumTickSize: float | None = pa.Field(nullable=True)
+    conditionId: str | None = pa.Field(nullable=True)
+    questionId: str | None = pa.Field(nullable=True)
+    question: str | None = pa.Field(nullable=True)
+    description: str | None = pa.Field(nullable=True)
+    marketSlug: str | None = pa.Field(nullable=True)
+    negRisk: bool | None = pa.Field(nullable=True)
+    negRiskMarketId: str | None = pa.Field(nullable=True)
+    notificationsEnabled: bool | None = pa.Field(nullable=True)
+    is5050Outcome: bool | None = pa.Field(nullable=True)
+    rewards: object | None = pa.Field(nullable=True)
+    tokens: object | None = pa.Field(nullable=True)
+    tags: object | None = pa.Field(nullable=True)
+
+
+class SimplifiedMarketSchema(_Lenient):
+    """Schema for ``get_simplified_markets`` / ``get_sampling_simplified_markets`` data rows.
+
+    Source: ``GET clob.polymarket.com/simplified-markets``
+    """
+
+    conditionId: str | None = pa.Field(nullable=True)
+    rewards: object | None = pa.Field(nullable=True)
+    tokens: object | None = pa.Field(nullable=True)
+    active: bool | None = pa.Field(nullable=True)
+    closed: bool | None = pa.Field(nullable=True)
+    archived: bool | None = pa.Field(nullable=True)
+    acceptingOrders: bool | None = pa.Field(nullable=True)
+
+
+class BuilderTradeSchema(_Lenient):
+    """Schema for ``get_builder_trades`` data rows.
+
+    Source: ``GET clob.polymarket.com/builder/trades``
+    Note: Builder trades are already camelCase in the API response.
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    tradeType: str | None = pa.Field(nullable=True)
+    takerOrderHash: str | None = pa.Field(nullable=True)
+    builder: str | None = pa.Field(nullable=True)
+    market: str | None = pa.Field(nullable=True)
+    assetId: str | None = pa.Field(nullable=True)
+    side: str | None = pa.Field(nullable=True)
+    size: float | None = pa.Field(nullable=True)
+    sizeUsdc: float | None = pa.Field(nullable=True)
+    price: float | None = pa.Field(nullable=True)
+    status: str | None = pa.Field(nullable=True)
+    outcome: str | None = pa.Field(nullable=True)
+    outcomeIndex: int | None = pa.Field(nullable=True)
+    owner: str | None = pa.Field(nullable=True)
+    maker: str | None = pa.Field(nullable=True)
+    transactionHash: str | None = pa.Field(nullable=True)
+    bucketIndex: int | None = pa.Field(nullable=True)
+    fee: float | None = pa.Field(nullable=True)
+    feeUsdc: float | None = pa.Field(nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Rewards cursor-paginated schemas
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class CurrentRewardSchema(_Lenient):
+    """Schema for ``get_rewards_markets_current`` data rows.
+
+    Source: ``GET clob.polymarket.com/rewards/markets/current``
+    """
+
+    conditionId: str | None = pa.Field(nullable=True)
+    rewardsMaxSpread: float | None = pa.Field(nullable=True)
+    rewardsMinSize: float | None = pa.Field(nullable=True)
+    rewardsConfig: object | None = pa.Field(nullable=True)
+    sponsoredDailyRate: float | None = pa.Field(nullable=True)
+    sponsorsCount: int | None = pa.Field(nullable=True)
+    nativeDailyRate: float | None = pa.Field(nullable=True)
+    totalDailyRate: float | None = pa.Field(nullable=True)
+
+
+class RewardsMarketMultiSchema(_Lenient):
+    """Schema for ``get_rewards_markets_multi`` data rows.
+
+    Source: ``GET clob.polymarket.com/rewards/markets/multi``
+    """
+
+    conditionId: str | None = pa.Field(nullable=True)
+    eventId: str | None = pa.Field(nullable=True)
+    eventSlug: str | None = pa.Field(nullable=True)
+    marketId: str | None = pa.Field(nullable=True)
+    marketSlug: str | None = pa.Field(nullable=True)
+    question: str | None = pa.Field(nullable=True)
+    rewardsMaxSpread: float | None = pa.Field(nullable=True)
+    rewardsMinSize: float | None = pa.Field(nullable=True)
+    spread: float | None = pa.Field(nullable=True)
+    volume24hr: float | None = pa.Field(nullable=True)
+    marketCompetitiveness: float | None = pa.Field(nullable=True)
+    oneDayPriceChange: float | None = pa.Field(nullable=True)
+    tokens: object | None = pa.Field(nullable=True)
+    rewardsConfig: object | None = pa.Field(nullable=True)
+
+
+class RewardsMarketSchema(_Lenient):
+    """Schema for ``get_rewards_market`` data rows.
+
+    Source: ``GET clob.polymarket.com/rewards/markets/{condition_id}``
+    """
+
+    conditionId: str | None = pa.Field(nullable=True)
+    question: str | None = pa.Field(nullable=True)
+    marketSlug: str | None = pa.Field(nullable=True)
+    eventSlug: str | None = pa.Field(nullable=True)
+    rewardsMaxSpread: float | None = pa.Field(nullable=True)
+    rewardsMinSize: float | None = pa.Field(nullable=True)
+    marketCompetitiveness: float | None = pa.Field(nullable=True)
+    tokens: object | None = pa.Field(nullable=True)
+    rewardsConfig: object | None = pa.Field(nullable=True)
+
+
+class UserEarningSchema(_Lenient):
+    """Schema for ``get_rewards_earnings`` data rows.
+
+    Source: ``GET clob.polymarket.com/rewards/user``
+    """
+
+    conditionId: str | None = pa.Field(nullable=True)
+    assetAddress: str | None = pa.Field(nullable=True)
+    makerAddress: str | None = pa.Field(nullable=True)
+    earnings: float | None = pa.Field(nullable=True)
+    assetRate: float | None = pa.Field(nullable=True)
+
+
+class UserRewardsMarketSchema(_Lenient):
+    """Schema for ``get_rewards_user_markets`` data rows.
+
+    Source: ``GET clob.polymarket.com/rewards/user/markets``
+    """
+
+    conditionId: str | None = pa.Field(nullable=True)
+    marketId: str | None = pa.Field(nullable=True)
+    eventId: str | None = pa.Field(nullable=True)
+    question: str | None = pa.Field(nullable=True)
+    marketSlug: str | None = pa.Field(nullable=True)
+    eventSlug: str | None = pa.Field(nullable=True)
+    rewardsMaxSpread: float | None = pa.Field(nullable=True)
+    rewardsMinSize: float | None = pa.Field(nullable=True)
+    volume24hr: float | None = pa.Field(nullable=True)
+    spread: float | None = pa.Field(nullable=True)
+    marketCompetitiveness: float | None = pa.Field(nullable=True)
+    tokens: object | None = pa.Field(nullable=True)
+    rewardsConfig: object | None = pa.Field(nullable=True)
+    makerAddress: str | None = pa.Field(nullable=True)
+    earningPercentage: float | None = pa.Field(nullable=True)
+    earnings: object | None = pa.Field(nullable=True)
+
+
 __all__ = [
     "ActiveOrderSchema",
     "ActivitySchema",
     "BuilderLeaderboardSchema",
+    "BuilderTradeSchema",
     "ClobTradeSchema",
     "ClosedPositionSchema",
+    "CurrentRewardSchema",
     "DataTradeSchema",
     "EventSchema",
     "LeaderboardSchema",
@@ -341,5 +515,11 @@ __all__ = [
     "PositionSchema",
     "PriceHistorySchema",
     "RebateSchema",
+    "RewardsMarketMultiSchema",
+    "RewardsMarketSchema",
+    "SamplingMarketSchema",
     "SendOrderResponseSchema",
+    "SimplifiedMarketSchema",
+    "UserEarningSchema",
+    "UserRewardsMarketSchema",
 ]
