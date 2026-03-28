@@ -23,7 +23,8 @@ mcp = FastMCP(
     instructions=(
         "Query live Polymarket prediction market data. "
         "Use search_markets to find markets by keyword, then drill into "
-        "orderbooks, prices, positions, and trades using token/condition IDs."
+        "orderbooks, prices, positions, and trades using token/condition IDs. "
+        "All table-returning tools accept max_rows to control output size."
     ),
 )
 
@@ -47,20 +48,25 @@ def _client() -> PolymarketPandas:
 
 _cached_client: PolymarketPandas | None = None
 
+_DEFAULT_MAX_ROWS = int(os.environ.get("POLYMARKET_MCP_MAX_ROWS", "200"))
 
-def _df_to_str(df: pd.DataFrame, max_rows: int = 50) -> str:
+
+def _df_to_str(df: pd.DataFrame, max_rows: int | None = None) -> str:
     """Convert a DataFrame to a readable markdown table, truncated."""
+    if max_rows is None:
+        max_rows = _DEFAULT_MAX_ROWS
     if df.empty:
         return "No data returned."
-    if len(df) > max_rows:
+    total = len(df)
+    if total > max_rows:
         df = df.head(max_rows)
-        suffix = f"\n\n... truncated to {max_rows} of {len(df)} rows"
+        suffix = f"\n\n... truncated to {max_rows} of {total} rows"
     else:
         suffix = ""
     return df.to_markdown(index=False) + suffix
 
 
-def _cursor_to_str(result: dict, max_rows: int = 50) -> str:
+def _cursor_to_str(result: dict, max_rows: int | None = None) -> str:
     """Convert a CursorPage result to readable output."""
     df = result["data"]
     cursor = result.get("next_cursor", "")
@@ -109,14 +115,16 @@ def get_markets(
     closed: bool | None = None,
     volume_num_min: float | None = None,
     tag_id: int | None = None,
+    max_rows: int | None = None,
 ) -> str:
     """Get Polymarket markets with optional filters.
 
     Args:
-        limit: Max rows to return (1-500).
+        limit: Number of markets to fetch from the API (1-500).
         closed: None=all, True=closed, False=open.
         volume_num_min: Minimum volume filter.
         tag_id: Filter by tag ID.
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_markets(
         limit=limit,
@@ -124,7 +132,7 @@ def get_markets(
         volume_num_min=volume_num_min,
         tag_id=tag_id if tag_id else None,
     )
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
@@ -139,20 +147,22 @@ def get_events(
     limit: int = 20,
     closed: bool | None = None,
     featured: bool | None = None,
+    max_rows: int | None = None,
 ) -> str:
     """Get Polymarket events (groups of related markets).
 
     Args:
-        limit: Max rows (1-500).
+        limit: Number of events to fetch from the API (1-500).
         closed: None=all, True=closed, False=open.
         featured: None=all, True=featured only.
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_events(
         limit=limit,
         closed=closed,
         featured=featured,
     )
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
@@ -163,31 +173,47 @@ def get_event_by_slug(slug: str) -> str:
 
 
 @mcp.tool()
-def get_tags(limit: int = 100) -> str:
-    """Get all available tags (categories) on Polymarket."""
+def get_tags(limit: int = 100, max_rows: int | None = None) -> str:
+    """Get all available tags (categories) on Polymarket.
+
+    Args:
+        limit: Number of tags to fetch from the API.
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
+    """
     df = _client().get_tags(limit=limit)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
-def get_series(limit: int = 20, closed: bool | None = None) -> str:
-    """Get Polymarket series (recurring event collections)."""
+def get_series(
+    limit: int = 20,
+    closed: bool | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get Polymarket series (recurring event collections).
+
+    Args:
+        limit: Number of series to fetch from the API.
+        closed: None=all, True=closed, False=open.
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
+    """
     df = _client().get_series(limit=limit, closed=closed)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 # ── Pricing ──────────────────────────────────────────────────────────────────
 
 
 @mcp.tool()
-def get_orderbook(token_id: str) -> str:
+def get_orderbook(token_id: str, max_rows: int | None = None) -> str:
     """Get the full orderbook (bids and asks) for a CLOB token.
 
     Args:
         token_id: The clobTokenId (from market data).
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_orderbook(token_id)
-    return _df_to_str(df, max_rows=30)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
@@ -216,6 +242,7 @@ def get_price_history(
     token_id: str,
     interval: str = "max",
     fidelity: int | None = None,
+    max_rows: int | None = None,
 ) -> str:
     """Get historical price data for a token.
 
@@ -223,13 +250,14 @@ def get_price_history(
         token_id: The clobTokenId.
         interval: Time range — "max", "1m", "1w", "1d", "6h", "1h".
         fidelity: Candle size in minutes (1, 5, 15, 60, 360, 1440).
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_price_history(
         market=token_id,
         interval=interval,
         fidelity=fidelity,
     )
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 # ── Positions & Trades ───────────────────────────────────────────────────────
@@ -240,16 +268,18 @@ def get_positions(
     user: str,
     limit: int = 50,
     sort_by: str = "TOKENS",
+    max_rows: int | None = None,
 ) -> str:
     """Get open positions for a wallet address.
 
     Args:
         user: Wallet address (0x...).
-        limit: Max positions to return.
+        limit: Max positions to fetch from the API.
         sort_by: Sort field — "TOKENS" or "VALUE".
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_positions(user=user, limit=limit, sortBy=sort_by)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
@@ -257,16 +287,18 @@ def get_closed_positions(
     user: str,
     limit: int = 20,
     sort_by: str = "REALIZEDPNL",
+    max_rows: int | None = None,
 ) -> str:
     """Get closed positions for a wallet address.
 
     Args:
         user: Wallet address (0x...).
-        limit: Max positions to return.
+        limit: Max positions to fetch from the API.
         sort_by: "REALIZEDPNL" or "TOTAL_PNL".
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_closed_positions(user=user, limit=limit, sortBy=sort_by)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
@@ -274,28 +306,35 @@ def get_trades(
     limit: int = 50,
     user: str | None = None,
     side: str | None = None,
+    max_rows: int | None = None,
 ) -> str:
     """Get recent trades, optionally filtered by user or side.
 
     Args:
-        limit: Max trades (1-500).
+        limit: Max trades to fetch from the API (1-500).
         user: Filter by wallet address.
         side: "BUY" or "SELL".
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_trades(limit=limit, user=user or None, side=side)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
-def get_top_holders(market: str, limit: int = 50) -> str:
+def get_top_holders(
+    market: str,
+    limit: int = 50,
+    max_rows: int | None = None,
+) -> str:
     """Get the top token holders for a market.
 
     Args:
         market: Token ID(s) — single clobTokenId string.
-        limit: Max holders to return.
+        limit: Max holders to fetch from the API.
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_top_holders(market=[market], limit=limit)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 # ── Leaderboard ──────────────────────────────────────────────────────────────
@@ -306,30 +345,39 @@ def get_leaderboard(
     time_period: str = "DAY",
     order_by: str = "PNL",
     limit: int = 25,
+    max_rows: int | None = None,
 ) -> str:
     """Get the Polymarket trader leaderboard.
 
     Args:
         time_period: "DAY", "WEEK", "MONTH", or "ALL".
         order_by: "PNL" or "VOLUME".
-        limit: Max entries (1-100).
+        limit: Max entries to fetch from the API (1-100).
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     df = _client().get_leaderboard(
         timePeriod=time_period,
         orderBy=order_by,
         limit=limit,
     )
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 @mcp.tool()
 def get_builder_leaderboard(
     time_period: str = "DAY",
     limit: int = 25,
+    max_rows: int | None = None,
 ) -> str:
-    """Get the Polymarket builder (API trader) leaderboard."""
+    """Get the Polymarket builder (API trader) leaderboard.
+
+    Args:
+        time_period: "DAY", "WEEK", "MONTH", or "ALL".
+        limit: Max entries to fetch from the API.
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
+    """
     df = _client().get_builder_leaderboard(timePeriod=time_period, limit=limit)
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 # ── Rewards ──────────────────────────────────────────────────────────────────
@@ -339,15 +387,17 @@ def get_builder_leaderboard(
 def get_rewards_markets(
     query: str | None = None,
     order_by: str | None = None,
+    max_rows: int | None = None,
 ) -> str:
     """Get markets with active liquidity rewards.
 
     Args:
         query: Text search on market question.
         order_by: "rate_per_day", "volume_24hr", "spread", "competitiveness".
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
     """
     result = _client().get_rewards_markets_multi(q=query, order_by=order_by)
-    return _cursor_to_str(dict(result))
+    return _cursor_to_str(dict(result), max_rows=max_rows if max_rows != 0 else 999999)
 
 
 # ── Profile ──────────────────────────────────────────────────────────────────
@@ -364,10 +414,14 @@ def get_profile(address: str) -> str:
 
 
 @mcp.tool()
-def get_sports_metadata() -> str:
-    """Get metadata about available sports on Polymarket (leagues, teams, etc.)."""
+def get_sports_metadata(max_rows: int | None = None) -> str:
+    """Get metadata about available sports on Polymarket (leagues, teams, etc.).
+
+    Args:
+        max_rows: Max rows in the output table (default 200, 0=unlimited).
+    """
     df = _client().get_sports_metadata()
-    return _df_to_str(df)
+    return _df_to_str(df, max_rows=max_rows if max_rows != 0 else 999999)
 
 
 # ── Bridge ───────────────────────────────────────────────────────────────────
