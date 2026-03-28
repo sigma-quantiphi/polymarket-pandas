@@ -8,6 +8,7 @@ import streamlit as st
 def _tri(x):
     return {None: "Default", True: "Yes", False: "No"}[x]
 
+
 st.set_page_config(page_title="Events", layout="wide")
 st.title("Events")
 
@@ -49,31 +50,29 @@ with st.sidebar:
 
     with st.expander("Sorting"):
         order = st.text_input("Order by (comma-separated fields)", key="ev_order")
-        ascending = st.selectbox("Ascending", [None, True, False],
-                                 format_func=_tri,
-                                 key="ev_asc")
+        ascending = st.selectbox("Ascending", [None, True, False], format_func=_tri, key="ev_asc")
 
     with st.expander("Lookup / Tags"):
         slug_input = st.text_input("Slugs (comma-separated)", key="ev_slugs")
-        tag_id = st.number_input("Tag ID", min_value=0, value=0, step=1, key="ev_tag_id",
-                                 help="0 = no filter")
+        tag_id = st.number_input(
+            "Tag ID", min_value=0, value=0, step=1, key="ev_tag_id", help="0 = no filter"
+        )
         exclude_tag_ids = st.text_input("Exclude tag IDs (comma-separated)", key="ev_excl_tags")
-        related_tags = st.selectbox("Related tags", [None, True, False],
-                                    format_func=_tri,
-                                    key="ev_related_tags")
+        related_tags = st.selectbox(
+            "Related tags", [None, True, False], format_func=_tri, key="ev_related_tags"
+        )
 
     with st.expander("Advanced"):
-        cyom = st.selectbox("CYOM", [None, True, False],
-                            format_func=_tri,
-                            key="ev_cyom")
-        include_chat = st.selectbox("Include chat", [None, True, False],
-                                    format_func=_tri,
-                                    key="ev_chat")
-        include_template = st.selectbox("Include template", [None, True, False],
-                                        format_func=_tri,
-                                        key="ev_template")
-        recurrence = st.selectbox("Recurrence", [None, "daily", "weekly", "monthly"],
-                                  key="ev_recurrence")
+        cyom = st.selectbox("CYOM", [None, True, False], format_func=_tri, key="ev_cyom")
+        include_chat = st.selectbox(
+            "Include chat", [None, True, False], format_func=_tri, key="ev_chat"
+        )
+        include_template = st.selectbox(
+            "Include template", [None, True, False], format_func=_tri, key="ev_template"
+        )
+        recurrence = st.selectbox(
+            "Recurrence", [None, "daily", "weekly", "monthly"], key="ev_recurrence"
+        )
 
 # ── Build kwargs ─────────────────────────────────────────────────────────────
 

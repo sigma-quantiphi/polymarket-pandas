@@ -8,6 +8,7 @@ import streamlit as st
 def _tri(x):
     return {None: "Default", True: "Yes", False: "No"}[x]
 
+
 st.set_page_config(page_title="Series", layout="wide")
 st.title("Series")
 
@@ -37,9 +38,7 @@ with st.sidebar:
 
     with st.expander("Sorting"):
         order = st.text_input("Order by (comma-separated fields)", key="ser_order")
-        ascending = st.selectbox("Ascending", [None, True, False],
-                                 format_func=_tri,
-                                 key="ser_asc")
+        ascending = st.selectbox("Ascending", [None, True, False], format_func=_tri, key="ser_asc")
 
     with st.expander("Lookup / Categories"):
         slug_input = st.text_input("Slugs (comma-separated)", key="ser_slugs")
@@ -47,11 +46,12 @@ with st.sidebar:
         categories_labels = st.text_input("Category labels (comma-separated)", key="ser_cat_labels")
 
     with st.expander("Advanced"):
-        include_chat = st.selectbox("Include chat", [None, True, False],
-                                    format_func=_tri,
-                                    key="ser_chat")
-        recurrence = st.selectbox("Recurrence", [None, "daily", "weekly", "monthly"],
-                                  key="ser_recurrence")
+        include_chat = st.selectbox(
+            "Include chat", [None, True, False], format_func=_tri, key="ser_chat"
+        )
+        recurrence = st.selectbox(
+            "Recurrence", [None, "daily", "weekly", "monthly"], key="ser_recurrence"
+        )
 
 # ── Build kwargs ─────────────────────────────────────────────────────────────
 

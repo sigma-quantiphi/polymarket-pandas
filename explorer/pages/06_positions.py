@@ -37,14 +37,20 @@ with st.sidebar:
     if tab == "Open":
         sort_by = st.selectbox("Sort by", ["TOKENS", "VALUE"], key="positions_sort_open")
         sort_dir = st.selectbox("Sort direction", ["DESC", "ASC"], key="positions_dir_open")
-        size_threshold = st.number_input("Size threshold", min_value=0.0, value=1.0, step=0.1,
-                                         key="positions_size_thresh",
-                                         help="Min position size to include")
+        size_threshold = st.number_input(
+            "Size threshold",
+            min_value=0.0,
+            value=1.0,
+            step=0.1,
+            key="positions_size_thresh",
+            help="Min position size to include",
+        )
         redeemable = st.checkbox("Redeemable only", value=False, key="positions_redeemable")
         mergeable = st.checkbox("Mergeable only", value=False, key="positions_mergeable")
     else:
-        sort_by = st.selectbox("Sort by", ["REALIZEDPNL", "TOTAL_PNL", "TOKENS"],
-                               key="positions_sort_closed")
+        sort_by = st.selectbox(
+            "Sort by", ["REALIZEDPNL", "TOTAL_PNL", "TOKENS"], key="positions_sort_closed"
+        )
         sort_dir = st.selectbox("Sort direction", ["DESC", "ASC"], key="positions_dir_closed")
 
     with st.expander("Filter by Market/Event"):

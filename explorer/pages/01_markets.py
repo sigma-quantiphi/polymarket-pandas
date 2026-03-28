@@ -8,6 +8,7 @@ import streamlit as st
 def _tri(x):
     return {None: "Default", True: "Yes", False: "No"}[x]
 
+
 st.set_page_config(page_title="Markets", layout="wide")
 st.title("Markets")
 
@@ -37,13 +38,16 @@ with st.sidebar:
 
     with st.expander("Volume / Liquidity"):
         volume_min = st.number_input("Min volume", min_value=0.0, value=0.0, step=1000.0)
-        volume_max = st.number_input("Max volume", min_value=0.0, value=0.0, step=1000.0,
-                                     help="0 = no limit")
+        volume_max = st.number_input(
+            "Max volume", min_value=0.0, value=0.0, step=1000.0, help="0 = no limit"
+        )
         liquidity_min = st.number_input("Min liquidity", min_value=0.0, value=0.0, step=1000.0)
-        liquidity_max = st.number_input("Max liquidity", min_value=0.0, value=0.0, step=1000.0,
-                                        help="0 = no limit")
-        rewards_min_size = st.number_input("Min rewards size", min_value=0.0, value=0.0, step=100.0,
-                                           help="0 = no filter")
+        liquidity_max = st.number_input(
+            "Max liquidity", min_value=0.0, value=0.0, step=1000.0, help="0 = no limit"
+        )
+        rewards_min_size = st.number_input(
+            "Min rewards size", min_value=0.0, value=0.0, step=100.0, help="0 = no filter"
+        )
 
     with st.expander("Date Range"):
         start_date_min = st.date_input("Start date min", value=None, key="mkt_sd_min")
@@ -52,35 +56,34 @@ with st.sidebar:
         end_date_max = st.date_input("End date max", value=None, key="mkt_ed_max")
 
     with st.expander("Sorting"):
-        order = st.text_input("Order by (comma-separated fields)", key="mkt_order",
-                              help="e.g. volume,startDate")
-        ascending = st.selectbox("Ascending", [None, True, False],
-                                 format_func=_tri,
-                                 key="mkt_asc")
+        order = st.text_input(
+            "Order by (comma-separated fields)", key="mkt_order", help="e.g. volume,startDate"
+        )
+        ascending = st.selectbox("Ascending", [None, True, False], format_func=_tri, key="mkt_asc")
 
     with st.expander("Lookup by ID"):
         slug_input = st.text_input("Slugs (comma-separated)", key="mkt_slugs")
         condition_ids_input = st.text_input("Condition IDs (comma-separated)", key="mkt_cids")
         clob_token_ids_input = st.text_input("CLOB token IDs (comma-separated)", key="mkt_tids")
-        tag_id = st.number_input("Tag ID", min_value=0, value=0, step=1, key="mkt_tag_id",
-                                 help="0 = no filter")
+        tag_id = st.number_input(
+            "Tag ID", min_value=0, value=0, step=1, key="mkt_tag_id", help="0 = no filter"
+        )
 
     with st.expander("Advanced"):
-        related_tags = st.selectbox("Related tags", [None, True, False],
-                                    format_func=_tri,
-                                    key="mkt_related_tags")
-        include_tag = st.selectbox("Include tag", [None, True, False],
-                                   format_func=_tri,
-                                   key="mkt_include_tag")
-        cyom = st.selectbox("CYOM", [None, True, False],
-                            format_func=_tri,
-                            key="mkt_cyom")
-        uma_resolution_status = st.selectbox("UMA resolution status",
-                                             [None, "proposed", "disputed", "resolved"],
-                                             key="mkt_uma")
+        related_tags = st.selectbox(
+            "Related tags", [None, True, False], format_func=_tri, key="mkt_related_tags"
+        )
+        include_tag = st.selectbox(
+            "Include tag", [None, True, False], format_func=_tri, key="mkt_include_tag"
+        )
+        cyom = st.selectbox("CYOM", [None, True, False], format_func=_tri, key="mkt_cyom")
+        uma_resolution_status = st.selectbox(
+            "UMA resolution status", [None, "proposed", "disputed", "resolved"], key="mkt_uma"
+        )
         game_id = st.text_input("Game ID", key="mkt_game_id")
-        sports_market_types_input = st.text_input("Sports market types (comma-separated)",
-                                                  key="mkt_smt")
+        sports_market_types_input = st.text_input(
+            "Sports market types (comma-separated)", key="mkt_smt"
+        )
 
 # ── Build kwargs ─────────────────────────────────────────────────────────────
 
@@ -111,9 +114,8 @@ kwargs: dict = {
     "cyom": cyom,
     "uma_resolution_status": uma_resolution_status,
     "game_id": game_id or None,
-    "sports_market_types": [
-        s.strip() for s in sports_market_types_input.split(",") if s.strip()
-    ] or None,
+    "sports_market_types": [s.strip() for s in sports_market_types_input.split(",") if s.strip()]
+    or None,
 }
 
 # Remove None values for clean code snippet

@@ -21,8 +21,9 @@ with st.sidebar:
     limit = st.number_input("Limit", min_value=1, max_value=500, value=100, key="trades_limit")
     offset = st.number_input("Offset", min_value=0, value=0, step=10, key="trades_offset")
     user = st.text_input("User address (optional)", key="trades_user", placeholder="0x...")
-    side = st.selectbox("Side", [None, "BUY", "SELL"],
-                        format_func=lambda x: x or "All", key="trades_side")
+    side = st.selectbox(
+        "Side", [None, "BUY", "SELL"], format_func=lambda x: x or "All", key="trades_side"
+    )
     taker_only = st.checkbox("Taker only", value=True, key="trades_taker_only")
 
     with st.expander("Filter by Market/Event"):
@@ -30,11 +31,17 @@ with st.sidebar:
         event_ids = st.text_input("Event IDs (comma-separated)", key="trades_event_ids")
 
     with st.expander("Amount Filter"):
-        filter_type = st.selectbox("Filter type", [None, "ABOVE", "BELOW"],
-                                   key="trades_filter_type")
-        filter_amount = st.number_input("Filter amount", min_value=0.0, value=0.0, step=10.0,
-                                        key="trades_filter_amount",
-                                        help="Used with filter type")
+        filter_type = st.selectbox(
+            "Filter type", [None, "ABOVE", "BELOW"], key="trades_filter_type"
+        )
+        filter_amount = st.number_input(
+            "Filter amount",
+            min_value=0.0,
+            value=0.0,
+            step=10.0,
+            key="trades_filter_amount",
+            help="Used with filter type",
+        )
 
 # ── Build kwargs ─────────────────────────────────────────────────────────────
 

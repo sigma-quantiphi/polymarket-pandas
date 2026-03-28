@@ -57,17 +57,19 @@ st.subheader("Price History")
 
 with st.sidebar:
     st.subheader("Price History Params")
-    interval = st.selectbox("Interval", ["max", "1m", "1w", "1d", "6h", "1h"], index=0,
-                            key="ph_interval")
-    fidelity = st.selectbox("Fidelity (minutes)", [None, 1, 5, 15, 60, 360, 1440], index=0,
-                            key="ph_fidelity")
+    interval = st.selectbox(
+        "Interval", ["max", "1m", "1w", "1d", "6h", "1h"], index=0, key="ph_interval"
+    )
+    fidelity = st.selectbox(
+        "Fidelity (minutes)", [None, 1, 5, 15, 60, 360, 1440], index=0, key="ph_fidelity"
+    )
 
     with st.expander("Time Range"):
         st.caption("Unix timestamps (seconds). Leave 0 to omit.")
-        start_ts = st.number_input("Start timestamp", min_value=0, value=0, step=1,
-                                   key="ph_start_ts")
-        end_ts = st.number_input("End timestamp", min_value=0, value=0, step=1,
-                                 key="ph_end_ts")
+        start_ts = st.number_input(
+            "Start timestamp", min_value=0, value=0, step=1, key="ph_start_ts"
+        )
+        end_ts = st.number_input("End timestamp", min_value=0, value=0, step=1, key="ph_end_ts")
 
 ph_kwargs: dict = {
     "market": token_id,

@@ -37,8 +37,9 @@ if endpoint == "Current Reward Configs":
             format_func=lambda x: {None: "All", True: "Sponsored", False: "Standard"}[x],
             key="rewards_sponsored",
         )
-        next_cursor = st.text_input("Next cursor", key="rewards_cursor",
-                                    help="Paste cursor from previous page to continue")
+        next_cursor = st.text_input(
+            "Next cursor", key="rewards_cursor", help="Paste cursor from previous page to continue"
+        )
 
     with st.spinner("Fetching current rewards..."):
         try:
@@ -98,10 +99,10 @@ elif endpoint == "Markets with Rewards":
             [None, "rate_per_day", "volume_24hr", "spread", "competitiveness"],
             key="rewards_order",
         )
-        position = st.selectbox("Sort direction", [None, "ASC", "DESC"],
-                                key="rewards_position")
-        page_size = st.number_input("Page size", min_value=1, max_value=500, value=100,
-                                    key="rewards_page_size")
+        position = st.selectbox("Sort direction", [None, "ASC", "DESC"], key="rewards_position")
+        page_size = st.number_input(
+            "Page size", min_value=1, max_value=500, value=100, key="rewards_page_size"
+        )
         next_cursor = st.text_input("Next cursor", key="rewards_multi_cursor")
 
         with st.expander("Tag / Event Filter"):
@@ -110,21 +111,39 @@ elif endpoint == "Markets with Rewards":
             event_title = st.text_input("Event title", key="rewards_event_title")
 
         with st.expander("Numeric Filters"):
-            min_volume_24hr = st.number_input("Min 24h volume", min_value=0.0, value=0.0,
-                                              step=100.0, key="rewards_min_vol")
-            max_volume_24hr = st.number_input("Max 24h volume", min_value=0.0, value=0.0,
-                                              step=100.0, key="rewards_max_vol",
-                                              help="0 = no limit")
-            min_spread = st.number_input("Min spread", min_value=0.0, value=0.0,
-                                         step=0.01, key="rewards_min_spread")
-            max_spread = st.number_input("Max spread", min_value=0.0, value=0.0,
-                                         step=0.01, key="rewards_max_spread",
-                                         help="0 = no limit")
-            min_price = st.number_input("Min price", min_value=0.0, value=0.0,
-                                        step=0.01, key="rewards_min_price")
-            max_price = st.number_input("Max price", min_value=0.0, value=0.0,
-                                        step=0.01, key="rewards_max_price",
-                                        help="0 = no limit")
+            min_volume_24hr = st.number_input(
+                "Min 24h volume", min_value=0.0, value=0.0, step=100.0, key="rewards_min_vol"
+            )
+            max_volume_24hr = st.number_input(
+                "Max 24h volume",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+                key="rewards_max_vol",
+                help="0 = no limit",
+            )
+            min_spread = st.number_input(
+                "Min spread", min_value=0.0, value=0.0, step=0.01, key="rewards_min_spread"
+            )
+            max_spread = st.number_input(
+                "Max spread",
+                min_value=0.0,
+                value=0.0,
+                step=0.01,
+                key="rewards_max_spread",
+                help="0 = no limit",
+            )
+            min_price = st.number_input(
+                "Min price", min_value=0.0, value=0.0, step=0.01, key="rewards_min_price"
+            )
+            max_price = st.number_input(
+                "Max price",
+                min_value=0.0,
+                value=0.0,
+                step=0.01,
+                key="rewards_max_price",
+                help="0 = no limit",
+            )
 
     kwargs: dict = {
         "q": q or None,
