@@ -1,3 +1,5 @@
+"""Pandera DataFrameModel for validating EIP-712 CLOB order DataFrames."""
+
 import pandera.pandas as pa
 
 
@@ -6,7 +8,7 @@ class OrderSchema(pa.DataFrameModel):
 
     salt: int = pa.Field(ge=0, description="Random salt used to create unique order")
     maker: str = pa.Field(description="Maker address (funder)")
-    signer: str = pa.Field(description="Signing ad  dress")
+    signer: str = pa.Field(description="Signer address")
     taker: str = pa.Field(description="Taker address (operator)")
     tokenId: str = pa.Field(description="ERC1155 token ID of conditional token being traded")
     makerAmount: str = pa.Field(description="Maximum amount maker is willing to spend")
@@ -20,6 +22,7 @@ class OrderSchema(pa.DataFrameModel):
 
     @classmethod
     def validate_price_for_limit_orders(cls, df):
+        """Raise ValueError if any non-market order is missing a price."""
         limit_orders = df.query("type != 'market'")
         if limit_orders["price"].isnull().any():
             raise ValueError("Non market orders must include a price.")

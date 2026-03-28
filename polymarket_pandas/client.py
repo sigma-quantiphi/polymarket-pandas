@@ -1,3 +1,5 @@
+"""PolymarketPandas — core HTTP client dataclass with order building and pagination."""
+
 import base64
 import hashlib
 import hmac

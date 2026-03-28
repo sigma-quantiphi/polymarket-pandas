@@ -264,6 +264,7 @@ def preprocess_dataframe(
     json_columns: list,
     int_datetime_unit: str = "s",
 ) -> pd.DataFrame:
+    """Apply column renaming and type coercion to a raw API DataFrame."""
     df = snake_columns_to_camel(df)
     df = df.drop(columns=drop_columns, errors="ignore")
     columns = df.columns
@@ -290,6 +291,7 @@ def preprocess_dataframe(
 
 
 def filter_params(params: dict | None) -> dict:
+    """Remove None values and empty lists; convert Timestamps to ISO-8601."""
     if params is None:
         return {}
     new_params = {}
@@ -324,6 +326,7 @@ def snake_columns_to_camel(data: pd.DataFrame) -> pd.DataFrame:
 def expand_dataframe(
     data: pd.DataFrame, field: str = "events", column: str = "event"
 ) -> pd.DataFrame:
+    """Flatten a nested list column via ``pd.json_normalize`` with prefixed columns."""
     meta = [x for x in data.columns if x != field]
     data = pd.json_normalize(
         data=data.to_dict("records"),
@@ -347,6 +350,8 @@ def expand_column_lists(base: tuple, prefixes: tuple = _EXPAND_PREFIXES) -> list
 
 
 def autopage(param_limit: str = "limit", param_offset: str = "offset"):
+    """Decorator that adds an ``_all`` autopaging wrapper using offset-based pagination."""
+
     def _decorator(func):
         sig = inspect.signature(func)
         default_limit = (
