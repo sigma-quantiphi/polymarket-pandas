@@ -330,7 +330,7 @@ def expand_dataframe(
         record_path=field,
         meta=meta,
         record_prefix=f"{column}_",
-    )
+    ).copy()
     data = snake_columns_to_camel(data)
     return data.loc[:, ~data.columns.duplicated(keep="last")]
 

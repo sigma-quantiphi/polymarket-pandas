@@ -86,7 +86,7 @@ st.metric("Rows returned", len(df))
 # ── Data table ───────────────────────────────────────────────────────────────
 
 st.subheader("Data")
-st.dataframe(df, width="full", height=400)
+st.dataframe(df, width="stretch", height=400)
 
 # ── Visualization ────────────────────────────────────────────────────────────
 
@@ -113,7 +113,7 @@ if not df.empty and expand_events:
             labels={"eventCount": "Events", title_col: "Series"},
         )
         fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
-        st.plotly_chart(fig, width="full")
+        st.plotly_chart(fig, use_container_width=True)
 
 # ── Code snippet ─────────────────────────────────────────────────────────────
 

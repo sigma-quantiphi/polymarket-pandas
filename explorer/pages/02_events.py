@@ -115,7 +115,7 @@ st.metric("Rows returned", len(df))
 # ── Data table ───────────────────────────────────────────────────────────────
 
 st.subheader("Data")
-st.dataframe(df, width="full", height=400)
+st.dataframe(df, width="stretch", height=400)
 
 # ── Visualization ────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ if not df.empty:
                 labels={volume_col: "Volume (USD)", display_col: "Event"},
             )
             fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=600)
-            st.plotly_chart(fig, width="full")
+            st.plotly_chart(fig, use_container_width=True)
 
 # ── Code snippet ─────────────────────────────────────────────────────────────
 

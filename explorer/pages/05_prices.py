@@ -91,7 +91,7 @@ if df.empty:
     st.warning("No price history available for this token.")
     st.stop()
 
-st.dataframe(df, width="full", height=300)
+st.dataframe(df, width="stretch", height=300)
 
 # ── Price chart ──────────────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ if time_col and price_col:
         labels={time_col: "Time", price_col: "Price"},
     )
     fig.update_layout(height=500)
-    st.plotly_chart(fig, width="full")
+    st.plotly_chart(fig, use_container_width=True)
 
 # ── Code snippet ─────────────────────────────────────────────────────────────
 
