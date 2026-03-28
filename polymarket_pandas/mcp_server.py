@@ -346,7 +346,7 @@ def get_rewards_markets(
         query: Text search on market question.
         order_by: "rate_per_day", "volume_24hr", "spread", "competitiveness".
     """
-    result = _client().get_rewards_markets_multi(q=query, order_by=order_by)
+    result: dict = _client().get_rewards_markets_multi(q=query, order_by=order_by)
     return _cursor_to_str(result)
 
 
