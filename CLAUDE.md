@@ -62,6 +62,19 @@ polymarket_pandas/
     _ctf.py            # CTFMixin     — on-chain merge, split, redeem positions (requires web3)
 ```
 
+## Entity Relationships
+
+Polymarket entities form a hierarchy: **Series → Events → Markets → Tokens**. The SDK bridges two parallel ID systems:
+
+- **Gamma API** (discovery): uses slugs, numeric IDs, nested JSON. Methods: `get_markets`, `get_events`, `get_series`.
+- **CLOB/Data APIs** (trading): uses `conditionId` (1:1 with market) and `clobTokenIds` (1 per outcome). Methods: `get_orderbook`, `get_positions`, `get_user_trades`, `build_order`.
+
+Typical flow: discover via Gamma → extract `conditionId`/`clobTokenIds` → query CLOB/Data.
+
+**Gotcha**: The `market` parameter means **token ID** in the Data API (`get_positions`) but **condition ID** in CLOB private (`get_user_trades`).
+
+Full reference with workflows, expansion logic, and lookup methods: `.claude/skills/entity-relationships.md`
+
 ## Architecture
 
 ### `PolymarketPandas` — HTTP client
@@ -247,6 +260,39 @@ A `pandera.DataFrameModel` for validating order DataFrames before passing them t
 ### `to_unix_timestamp` (`utils.py`)
 
 Converts `int`, `float`, `str` (ISO-8601), `pd.Timestamp`, or `datetime.datetime` to Unix seconds (int). Used by `build_order()` to accept flexible expiration formats. Naive timestamps are assumed UTC.
+
+## Explorer (Streamlit Dashboard)
+
+Interactive dashboard for exploring all public endpoints. Installed as an optional extra:
+
+```bash
+uv pip install -e ".[explorer]"
+
+# Run via CLI entry point
+polymarket-explore
+
+# Or directly
+streamlit run explorer/home.py
+```
+
+```
+explorer/
+  app.py              # CLI entry point (runs streamlit)
+  home.py             # Home page, sidebar config, shared client
+  pages/
+    01_markets.py     # get_markets — filters, volume chart
+    02_events.py      # get_events — expand markets, volume chart
+    03_series.py      # get_series — expand events, hierarchy chart
+    04_orderbook.py   # get_orderbook — depth chart (bids/asks)
+    05_prices.py      # get_price_history, midpoint, spread, last trade
+    06_positions.py   # get_positions / get_closed_positions — portfolio pie
+    07_trades.py      # get_trades — price scatter plot
+    08_leaderboard.py # get_leaderboard / get_builder_leaderboard
+    09_rewards.py     # reward configs, markets with rewards
+    10_bridge.py      # supported assets, transaction status
+```
+
+Each page shows: raw DataFrame, Plotly visualization, and collapsible Python code snippet.
 
 ## Tests
 

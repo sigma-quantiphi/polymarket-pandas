@@ -18,6 +18,28 @@ For on-chain CTF operations (merge, split, redeem positions):
 pip install "polymarket-pandas[ctf]"
 ```
 
+For the interactive Streamlit explorer dashboard:
+
+```bash
+pip install "polymarket-pandas[explorer]"
+```
+
+---
+
+## Interactive Explorer
+
+Explore all public endpoints visually with the built-in Streamlit dashboard:
+
+```bash
+# Install with explorer support
+pip install "polymarket-pandas[explorer]"
+
+# Launch the dashboard
+polymarket-explore
+```
+
+The explorer includes 10 pages covering Markets, Events, Series, Orderbook (depth chart), Prices (history + spot), Positions, Trades, Leaderboard, Rewards, and Bridge. Each page shows the raw DataFrame, an interactive Plotly chart, and the equivalent Python code to reproduce.
+
 ---
 
 ## Quick Start
