@@ -103,7 +103,7 @@ if df.empty:
 # ── Data table ───────────────────────────────────────────────────────────────
 
 st.subheader("Data")
-st.dataframe(df, use_container_width=True, height=400)
+st.dataframe(df, width="full", height=400)
 
 # ── Visualization ────────────────────────────────────────────────────────────
 
@@ -131,7 +131,7 @@ if size_col and label_col:
             hole=0.3,
         )
         fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="full")
 
 # ── Code snippet ─────────────────────────────────────────────────────────────
 

@@ -56,7 +56,7 @@ if endpoint == "Current Reward Configs":
     st.caption(f"Next cursor: `{result.get('next_cursor', 'N/A')}`")
 
     if not df.empty:
-        st.dataframe(df, use_container_width=True, height=400)
+        st.dataframe(df, width="full", height=400)
 
         import plotly.express as px
 
@@ -70,7 +70,7 @@ if endpoint == "Current Reward Configs":
             chart_df = df.dropna(subset=[rate_col]).copy()
             chart_df[rate_col] = chart_df[rate_col].astype(float)
             fig = px.histogram(chart_df, x=rate_col, nbins=30, title="Distribution of Reward Rates")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="full")
 
     with st.expander("View Code"):
         st.code(
@@ -175,7 +175,7 @@ elif endpoint == "Markets with Rewards":
     st.caption(f"Next cursor: `{result.get('next_cursor', 'N/A')}`")
 
     if not df.empty:
-        st.dataframe(df, use_container_width=True, height=400)
+        st.dataframe(df, width="full", height=400)
 
     with st.expander("View Code"):
         args_str = ",\n    ".join(f"{k}={v!r}" for k, v in active_kwargs.items())
@@ -232,7 +232,7 @@ else:
     st.caption(f"Next cursor: `{result.get('next_cursor', 'N/A')}`")
 
     if not df.empty:
-        st.dataframe(df, use_container_width=True, height=400)
+        st.dataframe(df, width="full", height=400)
 
     with st.expander("View Code"):
         st.code(

@@ -77,7 +77,7 @@ if df.empty:
 # ── Data table ───────────────────────────────────────────────────────────────
 
 st.subheader("Data")
-st.dataframe(df, use_container_width=True, height=400)
+st.dataframe(df, width="full", height=400)
 
 # ── Visualization ────────────────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ if time_col and price_col:
         color_discrete_map={"BUY": "green", "SELL": "red"} if color_col else None,
     )
     fig.update_layout(height=500)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="full")
 
 # ── Code snippet ─────────────────────────────────────────────────────────────
 

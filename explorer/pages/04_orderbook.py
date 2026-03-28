@@ -57,11 +57,11 @@ if not asks.empty:
 st.subheader("Data")
 tab_bids, tab_asks, tab_all = st.tabs(["Bids", "Asks", "All"])
 with tab_bids:
-    st.dataframe(bids.sort_values("price", ascending=False), use_container_width=True)
+    st.dataframe(bids.sort_values("price", ascending=False), width="full")
 with tab_asks:
-    st.dataframe(asks.sort_values("price", ascending=True), use_container_width=True)
+    st.dataframe(asks.sort_values("price", ascending=True), width="full")
 with tab_all:
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width="full")
 
 # ── Depth chart ──────────────────────────────────────────────────────────────
 
@@ -101,7 +101,7 @@ fig.update_layout(
     yaxis_title="Cumulative Size",
     height=500,
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="full")
 
 # ── Code snippet ─────────────────────────────────────────────────────────────
 

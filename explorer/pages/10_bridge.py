@@ -36,7 +36,7 @@ if assets:
         else:
             rows.append({"asset": asset})
     df_assets = pd.DataFrame(rows)
-    st.dataframe(df_assets, use_container_width=True, height=300)
+    st.dataframe(df_assets, width="full", height=300)
 else:
     st.warning("No supported assets returned.")
 
@@ -73,7 +73,7 @@ if bridge_addr:
     if df_tx is not None:
         st.metric("Transactions", len(df_tx))
         if not df_tx.empty:
-            st.dataframe(df_tx, use_container_width=True, height=300)
+            st.dataframe(df_tx, width="full", height=300)
         else:
             st.info("No transactions found for this address.")
 
