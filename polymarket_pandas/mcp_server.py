@@ -1083,6 +1083,56 @@ def cancel_all_orders() -> str:
     return json.dumps(dict(result), default=str, indent=2)
 
 
+@mcp.tool()
+def cancel_orders_from_market(market: str = "", asset_id: str = "") -> str:
+    """Cancel all orders for a specific market or token. Requires L2 auth.
+
+    THIS WILL CANCEL REAL ORDERS ON POLYMARKET.
+
+    Args:
+        market: Condition ID to cancel orders from.
+        asset_id: Token ID to cancel orders from.
+    """
+    result = _client().cancel_orders_from_market(market=market, asset_id=asset_id)
+    return json.dumps(dict(result), default=str, indent=2)
+
+
+@mcp.tool()
+def send_heartbeat() -> str:
+    """Send a heartbeat to keep active orders alive. Requires L2 auth."""
+    return json.dumps(_client().send_heartbeat(), default=str, indent=2)
+
+
+@mcp.tool()
+def get_order_scoring(order_id: str) -> str:
+    """Check if an order is scoring (earning rewards). Requires L2 auth.
+
+    Args:
+        order_id: The order ID to check.
+    """
+    return str(_client().get_order_scoring(order_id))
+
+
+@mcp.tool()
+def create_api_key(nonce: int = 0) -> str:
+    """Create new L2 API credentials. Requires private key.
+
+    Args:
+        nonce: Key creation nonce (default 0).
+    """
+    result = _client().create_api_key(nonce=nonce)
+    return json.dumps(dict(result), default=str, indent=2)
+
+
+@mcp.tool()
+def delete_api_key() -> str:
+    """Delete the current API key. Requires L2 auth.
+
+    THIS WILL DELETE YOUR API KEY.
+    """
+    return json.dumps(_client().delete_api_key(), default=str, indent=2)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # BRIDGE API
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1159,6 +1209,332 @@ def get_api_keys(max_rows: int | None = None) -> str:
     """List API keys for the authenticated user. Requires L2 auth."""
     df = _client().get_api_keys()
     return _df_to_str(df, max_rows)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADDITIONAL DISCOVERY (Gamma)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def get_event_by_id(id: int) -> str:
+    """Get detailed info for a single event by its numeric ID."""
+    return json.dumps(_client().get_event_by_id(id), default=str, indent=2)
+
+
+@mcp.tool()
+def get_tag_by_slug(slug: str) -> str:
+    """Get a single tag by its slug."""
+    return json.dumps(_client().get_tag_by_slug(slug), default=str, indent=2)
+
+
+@mcp.tool()
+def get_tag_by_id(id: int) -> str:
+    """Get a single tag by its numeric ID."""
+    return json.dumps(_client().get_tag_by_id(id), default=str, indent=2)
+
+
+@mcp.tool()
+def get_related_tags(
+    slug: str | None = None,
+    id: int | None = None,
+    omit_empty: bool | None = None,
+    status: str | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get tags related to a given tag (by slug or ID).
+
+    Args:
+        slug: Tag slug (use this or id).
+        id: Tag numeric ID (use this or slug).
+        omit_empty: Omit tags with no events.
+        status: Filter by status.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    if slug:
+        df = _client().get_related_tags_by_tag_slug(slug=slug, omit_empty=omit_empty, status=status)
+    elif id is not None:
+        df = _client().get_related_tags_by_tag_id(id=id, omit_empty=omit_empty, status=status)
+    else:
+        return "Error: provide either slug or id."
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_market_tags(id: int, max_rows: int | None = None) -> str:
+    """Get tags for a specific market.
+
+    Args:
+        id: Market numeric ID.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    return _df_to_str(_client().get_market_tags(id), max_rows)
+
+
+@mcp.tool()
+def get_event_tags(id: int, max_rows: int | None = None) -> str:
+    """Get tags for a specific event.
+
+    Args:
+        id: Event numeric ID.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    return _df_to_str(_client().get_event_tags(id), max_rows)
+
+
+@mcp.tool()
+def get_series_by_id(id: int) -> str:
+    """Get a single series by its numeric ID."""
+    return json.dumps(_client().get_series_by_id(id), default=str, indent=2)
+
+
+@mcp.tool()
+def get_sports_market_types() -> str:
+    """Get the list of supported sports market types."""
+    return json.dumps(_client().get_sports_market_types(), default=str, indent=2)
+
+
+@mcp.tool()
+def get_comment_by_id(id: int) -> str:
+    """Get a single comment by its ID."""
+    return json.dumps(_client().get_comment_by_id(id), default=str, indent=2)
+
+
+@mcp.tool()
+def get_comments_by_user(
+    user_address: str,
+    limit: int | None = None,
+    offset: int | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get comments posted by a specific user.
+
+    Args:
+        user_address: Wallet address.
+        limit: Max comments.
+        offset: Pagination offset.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_comments_by_user_address(
+        user_address=user_address, limit=limit, offset=offset
+    )
+    return _df_to_str(df, max_rows)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADDITIONAL PRICING (CLOB Public)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def get_server_time() -> str:
+    """Get the CLOB server time (Unix timestamp)."""
+    return str(_client().get_server_time())
+
+
+@mcp.tool()
+def get_fee_rate(token_id: str | None = None) -> str:
+    """Get the maker fee rate (basis points).
+
+    Args:
+        token_id: Token ID (optional, for market-specific rate).
+    """
+    return str(_client().get_fee_rate(token_id=token_id))
+
+
+@mcp.tool()
+def get_market_price(token_id: str, side: str) -> str:
+    """Get the best price on one side of the book.
+
+    Args:
+        token_id: The clobTokenId.
+        side: "BUY" or "SELL".
+    """
+    return f"{_client().get_market_price(token_id, side):.6f}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADDITIONAL DATA API
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def get_positions_value(
+    user: str,
+    market: str | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get position values (mark-to-market) for a user.
+
+    Args:
+        user: Wallet address.
+        market: Comma-separated token IDs to filter.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_positions_value(user=user, market=_to_list(market))
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_live_volume(id: int) -> str:
+    """Get live volume for a market.
+
+    Args:
+        id: Market numeric ID.
+    """
+    return json.dumps(_client().get_live_volume(id), default=str, indent=2)
+
+
+@mcp.tool()
+def get_traded_markets_count(user: str) -> str:
+    """Get the number of markets a user has traded.
+
+    Args:
+        user: Wallet address.
+    """
+    return json.dumps(_client().get_traded_markets_count(user), default=str, indent=2)
+
+
+@mcp.tool()
+def get_builder_volume(
+    time_period: str = "DAY",
+    max_rows: int | None = None,
+) -> str:
+    """Get builder volume data.
+
+    Args:
+        time_period: "DAY", "WEEK", "MONTH", or "ALL".
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_builder_volume(timePeriod=time_period)
+    return _df_to_str(df, max_rows)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADDITIONAL REWARDS
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def get_rewards_market(
+    condition_id: str,
+    sponsored: bool | None = None,
+    next_cursor: str | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get reward configs for a specific market.
+
+    Args:
+        condition_id: The market's condition ID.
+        sponsored: Filter sponsored rewards.
+        next_cursor: Cursor for pagination.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    result = _client().get_rewards_market(
+        condition_id=condition_id,
+        sponsored=sponsored,
+        next_cursor=next_cursor or None,
+    )
+    return _cursor_to_str(dict(result), max_rows)
+
+
+@mcp.tool()
+def get_rewards_earnings(
+    date: str,
+    maker_address: str | None = None,
+    sponsored: bool | None = None,
+    next_cursor: str | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get per-market user earnings for a day. Requires L2 auth.
+
+    Args:
+        date: Date string (YYYY-MM-DD).
+        maker_address: Maker address override.
+        sponsored: Filter sponsored rewards.
+        next_cursor: Cursor for pagination.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    result = _client().get_rewards_earnings(
+        date=date,
+        maker_address=maker_address,
+        sponsored=sponsored,
+        next_cursor=next_cursor or None,
+    )
+    return _cursor_to_str(dict(result), max_rows)
+
+
+@mcp.tool()
+def get_rewards_earnings_total(
+    date: str,
+    maker_address: str | None = None,
+    sponsored: bool | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get total earnings for a user on a given day. Requires L2 auth.
+
+    Args:
+        date: Date string (YYYY-MM-DD).
+        maker_address: Maker address override.
+        sponsored: Filter sponsored rewards.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_rewards_earnings_total(
+        date=date, maker_address=maker_address, sponsored=sponsored
+    )
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_rewards_percentages(maker_address: str | None = None) -> str:
+    """Get real-time reward percentages per market. Requires L2 auth.
+
+    Args:
+        maker_address: Maker address override.
+    """
+    result = _client().get_rewards_percentages(maker_address=maker_address)
+    return json.dumps(result, default=str, indent=2)
+
+
+@mcp.tool()
+def get_rewards_user_markets(
+    date: str | None = None,
+    maker_address: str | None = None,
+    sponsored: bool | None = None,
+    q: str | None = None,
+    tag_slug: str | None = None,
+    order_by: str | None = None,
+    position: str | None = None,
+    page_size: int | None = None,
+    next_cursor: str | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Get user's reward markets with filtering. Requires L2 auth.
+
+    Args:
+        date: Date filter (YYYY-MM-DD).
+        maker_address: Maker address override.
+        sponsored: Filter sponsored rewards.
+        q: Text search.
+        tag_slug: Tag slug filter.
+        order_by: Sort field.
+        position: Sort direction: "ASC" or "DESC".
+        page_size: Items per page.
+        next_cursor: Cursor for pagination.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    result = _client().get_rewards_user_markets(
+        date=date,
+        maker_address=maker_address,
+        sponsored=sponsored,
+        q=q,
+        tag_slug=tag_slug,
+        order_by=order_by,
+        position=position,
+        page_size=page_size,
+        next_cursor=next_cursor or None,
+    )
+    return _cursor_to_str(dict(result), max_rows)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
