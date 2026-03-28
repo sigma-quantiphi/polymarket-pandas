@@ -55,16 +55,32 @@ with st.spinner("Fetching spot prices..."):
 
 st.subheader("Price History")
 
-interval = st.selectbox("Interval", ["max", "1m", "1w", "1d", "6h", "1h"], index=0)
-fidelity = st.selectbox("Fidelity (minutes)", [None, 1, 5, 15, 60, 360, 1440], index=0)
+with st.sidebar:
+    st.subheader("Price History Params")
+    interval = st.selectbox("Interval", ["max", "1m", "1w", "1d", "6h", "1h"], index=0,
+                            key="ph_interval")
+    fidelity = st.selectbox("Fidelity (minutes)", [None, 1, 5, 15, 60, 360, 1440], index=0,
+                            key="ph_fidelity")
+
+    with st.expander("Time Range"):
+        st.caption("Unix timestamps (seconds). Leave 0 to omit.")
+        start_ts = st.number_input("Start timestamp", min_value=0, value=0, step=1,
+                                   key="ph_start_ts")
+        end_ts = st.number_input("End timestamp", min_value=0, value=0, step=1,
+                                 key="ph_end_ts")
+
+ph_kwargs: dict = {
+    "market": token_id,
+    "interval": interval,
+    "fidelity": fidelity,
+    "startTs": start_ts if start_ts > 0 else None,
+    "endTs": end_ts if end_ts > 0 else None,
+}
+active_ph_kwargs = {k: v for k, v in ph_kwargs.items() if v is not None}
 
 with st.spinner("Fetching price history..."):
     try:
-        df = client.get_price_history(
-            market=token_id,
-            interval=interval,
-            fidelity=fidelity,
-        )
+        df = client.get_price_history(**active_ph_kwargs)
     except Exception as e:
         st.error(f"API error: {e}")
         st.stop()
@@ -77,7 +93,7 @@ st.dataframe(df, use_container_width=True, height=300)
 
 # ── Price chart ──────────────────────────────────────────────────────────────
 
-import plotly.express as px
+import plotly.express as px  # noqa: E402
 
 time_col = None
 for candidate in ["t", "timestamp", "time"]:
@@ -105,6 +121,7 @@ if time_col and price_col:
 # ── Code snippet ─────────────────────────────────────────────────────────────
 
 with st.expander("View Code"):
+    args_str = ",\n    ".join(f"{k}={v!r}" for k, v in active_ph_kwargs.items())
     st.code(
         f"""\
 from polymarket_pandas import PolymarketPandas
@@ -118,9 +135,7 @@ last = client.get_last_trade_price("{token_id}")
 
 # Price history
 df = client.get_price_history(
-    market="{token_id}",
-    interval="{interval}",
-    fidelity={fidelity},
+    {args_str},
 )
 print(df)
 """,

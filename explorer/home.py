@@ -17,7 +17,10 @@ st.set_page_config(
 st.sidebar.title("Configuration")
 
 with st.sidebar.expander("API Credentials (optional)", expanded=False):
-    st.caption("Leave blank for public endpoints. Set for private endpoints (positions, orders, trades).")
+    st.caption(
+        "Leave blank for public endpoints."
+        " Set for private endpoints (positions, orders, trades)."
+    )
     _addr = st.text_input("Wallet address", key="cfg_address", type="default")
     _api_key = st.text_input("API key", key="cfg_api_key", type="password")
     _api_secret = st.text_input("API secret", key="cfg_api_secret", type="password")

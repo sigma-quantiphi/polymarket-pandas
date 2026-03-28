@@ -21,8 +21,19 @@ with st.sidebar:
     board_type = st.radio("Type", ["Traders", "Builders"], key="lb_type")
     time_period = st.selectbox("Time period", ["DAY", "WEEK", "MONTH", "ALL"], key="lb_period")
     limit = st.number_input("Limit", min_value=1, max_value=100, value=25, key="lb_limit")
+    offset = st.number_input("Offset", min_value=0, value=0, step=10, key="lb_offset")
+
     if board_type == "Traders":
         order_by = st.selectbox("Order by", ["PNL", "VOLUME"], key="lb_order")
+        category = st.selectbox(
+            "Category",
+            ["OVERALL", "CRYPTO", "POLITICS", "SPORTS", "POP_CULTURE"],
+            key="lb_category",
+        )
+
+        with st.expander("Lookup User"):
+            lb_user = st.text_input("User address", key="lb_user", placeholder="0x...")
+            lb_user_name = st.text_input("Username", key="lb_user_name")
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 
@@ -30,14 +41,19 @@ with st.spinner("Fetching leaderboard..."):
     try:
         if board_type == "Traders":
             df = client.get_leaderboard(
+                category=category,
                 timePeriod=time_period,
                 orderBy=order_by,
                 limit=limit,
+                offset=offset if offset > 0 else 0,
+                user=lb_user or None,
+                userName=lb_user_name or None,
             )
         else:
             df = client.get_builder_leaderboard(
                 timePeriod=time_period,
                 limit=limit,
+                offset=offset if offset > 0 else 0,
             )
     except Exception as e:
         st.error(f"API error: {e}")
@@ -56,7 +72,7 @@ st.dataframe(df, use_container_width=True, height=400)
 
 # ── Visualization ────────────────────────────────────────────────────────────
 
-import plotly.express as px
+import plotly.express as px  # noqa: E402
 
 name_col = None
 for candidate in ["userName", "name", "address", "user"]:
@@ -96,9 +112,11 @@ from polymarket_pandas import PolymarketPandas
 
 client = PolymarketPandas()
 df = client.get_leaderboard(
+    category="{category}",
     timePeriod="{time_period}",
     orderBy="{order_by}",
     limit={limit},
+    offset={offset},
 )
 print(df)
 """,
@@ -113,6 +131,7 @@ client = PolymarketPandas()
 df = client.get_builder_leaderboard(
     timePeriod="{time_period}",
     limit={limit},
+    offset={offset},
 )
 print(df)
 """,

@@ -19,20 +19,44 @@ client = get_client()
 with st.sidebar:
     st.subheader("Trade Filters")
     limit = st.number_input("Limit", min_value=1, max_value=500, value=100, key="trades_limit")
+    offset = st.number_input("Offset", min_value=0, value=0, step=10, key="trades_offset")
     user = st.text_input("User address (optional)", key="trades_user", placeholder="0x...")
-    side = st.selectbox("Side", [None, "BUY", "SELL"], format_func=lambda x: x or "All", key="trades_side")
+    side = st.selectbox("Side", [None, "BUY", "SELL"],
+                        format_func=lambda x: x or "All", key="trades_side")
     taker_only = st.checkbox("Taker only", value=True, key="trades_taker_only")
+
+    with st.expander("Filter by Market/Event"):
+        market_ids = st.text_input("Market token IDs (comma-separated)", key="trades_market_ids")
+        event_ids = st.text_input("Event IDs (comma-separated)", key="trades_event_ids")
+
+    with st.expander("Amount Filter"):
+        filter_type = st.selectbox("Filter type", [None, "ABOVE", "BELOW"],
+                                   key="trades_filter_type")
+        filter_amount = st.number_input("Filter amount", min_value=0.0, value=0.0, step=10.0,
+                                        key="trades_filter_amount",
+                                        help="Used with filter type")
+
+# ── Build kwargs ─────────────────────────────────────────────────────────────
+
+kwargs: dict = {
+    "limit": limit,
+    "offset": offset if offset > 0 else 0,
+    "user": user or None,
+    "side": side,
+    "takerOnly": taker_only,
+    "market": [s.strip() for s in market_ids.split(",") if s.strip()] or None,
+    "eventId": [int(s.strip()) for s in event_ids.split(",") if s.strip()] or None,
+    "filterType": filter_type,
+    "filterAmount": filter_amount if filter_amount > 0 and filter_type else None,
+}
+
+active_kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
 # ── Fetch data ───────────────────────────────────────────────────────────────
 
 with st.spinner("Fetching trades..."):
     try:
-        df = client.get_trades(
-            limit=limit,
-            user=user or None,
-            side=side,
-            takerOnly=taker_only,
-        )
+        df = client.get_trades(**active_kwargs)
     except Exception as e:
         st.error(f"API error: {e}")
         st.stop()
@@ -50,7 +74,7 @@ st.dataframe(df, use_container_width=True, height=400)
 
 # ── Visualization ────────────────────────────────────────────────────────────
 
-import plotly.express as px
+import plotly.express as px  # noqa: E402
 
 time_col = None
 for candidate in ["timestamp", "createdAt", "matchTime"]:
@@ -85,16 +109,14 @@ if time_col and price_col:
 # ── Code snippet ─────────────────────────────────────────────────────────────
 
 with st.expander("View Code"):
+    args_str = ",\n    ".join(f"{k}={v!r}" for k, v in active_kwargs.items())
     st.code(
         f"""\
 from polymarket_pandas import PolymarketPandas
 
 client = PolymarketPandas()
 df = client.get_trades(
-    limit={limit},
-    user={f'"{user}"' if user else None},
-    side={f'"{side}"' if side else None},
-    takerOnly={taker_only},
+    {args_str},
 )
 print(df)
 """,

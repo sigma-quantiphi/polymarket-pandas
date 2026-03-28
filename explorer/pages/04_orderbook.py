@@ -65,7 +65,7 @@ with tab_all:
 
 # ── Depth chart ──────────────────────────────────────────────────────────────
 
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # noqa: E402
 
 st.subheader("Depth Chart")
 
