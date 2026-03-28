@@ -42,6 +42,10 @@ explorer = [
     "streamlit>=1.30",
     "plotly>=5.0",
 ]
+mcp = [
+    "fastmcp>=2.0",
+    "tabulate>=0.9",
+]
 dev = [
     "pytest>=8.0",
     "pytest-httpx>=0.35",
@@ -54,6 +58,7 @@ dev = [
 
 [project.scripts]
 polymarket-explore = "explorer.app:main"
+polymarket-mcp = "polymarket_pandas.mcp_server:main"
 
 [project.urls]
 homepage = "https://github.com/sigma-quantiphi/polymarket-pandas"
