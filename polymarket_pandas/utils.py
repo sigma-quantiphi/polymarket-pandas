@@ -178,7 +178,7 @@ DEFAULT_BOOL_COLUMNS = (
 )
 
 DEFAULT_DROP_COLUMNS = ("icon", "image")
-DEFAULT_JSON_COLUMNS = ("clobTokenIds", "outcomes", "outcomePrices")
+DEFAULT_JSON_COLUMNS = ("clobTokenIds", "outcomes", "outcomePrices", "umaResolutionStatuses")
 
 
 def preprocess_dict(

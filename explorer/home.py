@@ -78,6 +78,7 @@ Series  (recurring collections)
 | **Markets** | `get_markets`, `get_markets_all` | No |
 | **Events** | `get_events`, `get_events_all` | No |
 | **Series** | `get_series`, `get_series_all` | No |
+| **Tags** | `get_tags` | No |
 | **Orderbook** | `get_orderbook` | No |
 | **Prices** | `get_price_history`, `get_midpoint_price`, `get_spread` | No |
 | **Positions** | `get_positions`, `get_closed_positions` | No (needs wallet address) |
