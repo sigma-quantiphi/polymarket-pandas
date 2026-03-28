@@ -1036,6 +1036,8 @@ def place_order(
         side=side,
         expiration=expiration,
     )
+    if not client.address:
+        return "Error: POLYMARKET_ADDRESS not set. Cannot place orders."
     result = client.place_order(
         order=dict(order),
         owner=client.address,
