@@ -9,6 +9,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.5] — 2026-03-30
+
+### Added
+- **`expand_outcomes=False`** flag on `get_markets`, `get_events`, and their `_all`
+  variants — explodes `outcomes`, `outcomePrices`, and `clobTokenIds` as parallel
+  lists into one row per outcome. Takes precedence over `expand_clob_token_ids`.
+- **`feeSchedule` dict flattening** — nested dict columns are automatically expanded
+  into prefixed scalar columns (e.g. `feeScheduleMaker`, `feeScheduleTaker`).
+  Configurable via `dict_columns` on the client.
+- **`outcomePrices` always coerced to `list[float]`** — even without
+  `expand_outcomes`, list values are floats instead of strings.
+- **`umaBond` / `umaReward`** added to numeric columns — auto-coerced from strings.
+
+---
+
 ## [0.6.4] — 2026-03-30
 
 ### Added

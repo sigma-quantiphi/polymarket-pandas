@@ -9,6 +9,30 @@ from polymarket_pandas.schemas import EventSchema, MarketSchema
 from polymarket_pandas.utils import expand_dataframe
 
 
+def _coerce_outcome_prices(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """Convert string values inside outcomePrices lists to float."""
+    if col in df.columns:
+        df[col] = df[col].apply(lambda x: [float(v) for v in x] if isinstance(x, list) else x)
+    return df
+
+
+def _expand_outcomes(
+    df: pd.DataFrame,
+    outcomes_col: str,
+    prices_col: str,
+    tokens_col: str,
+) -> pd.DataFrame:
+    """Explode parallel outcome/price/token lists into one row per outcome."""
+    explode_cols = [c for c in (outcomes_col, prices_col, tokens_col) if c in df.columns]
+    if explode_cols:
+        df = df.explode(explode_cols, ignore_index=True)
+    if prices_col in df.columns:
+        df[prices_col] = pd.to_numeric(df[prices_col], errors="coerce")
+    if tokens_col in df.columns:
+        df[tokens_col] = df[tokens_col].astype(str)
+    return df
+
+
 class GammaMixin:
     # ── Gamma API: Markets ──────────────────────────────────────────────
 
@@ -44,10 +68,12 @@ class GammaMixin:
         expand_clob_token_ids: bool = True,
         expand_events: bool = True,
         expand_series: bool = True,
+        expand_outcomes: bool = False,
     ) -> DataFrame[MarketSchema]:
         """Fetch markets with optional filtering, pagination, and nested expansion.
 
         Returns one row per CLOB token when ``expand_clob_token_ids`` is True.
+        Returns one row per outcome when ``expand_outcomes`` is True.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-markets
         """
@@ -91,7 +117,10 @@ class GammaMixin:
                 if expand_series and "eventsSeries" in data.columns:
                     data = expand_dataframe(data, field="eventsSeries", column="eventsSeries")
         data = self.preprocess_dataframe(data)
-        if expand_clob_token_ids and not data.empty:
+        data = _coerce_outcome_prices(data, "outcomePrices")
+        if expand_outcomes and not data.empty:
+            data = _expand_outcomes(data, "outcomes", "outcomePrices", "clobTokenIds")
+        elif expand_clob_token_ids and not data.empty:
             data = data.explode("clobTokenIds", ignore_index=True)
             data["clobTokenIds"] = data["clobTokenIds"].astype(str)
         data = data.reset_index(drop=True)
@@ -153,10 +182,12 @@ class GammaMixin:
         end_date_max: str | pd.Timestamp | None = None,
         expand_markets: bool | None = True,
         expand_clob_token_ids: bool | None = True,
+        expand_outcomes: bool = False,
     ) -> DataFrame[EventSchema]:
         """Fetch events with optional filtering, pagination, and nested market expansion.
 
         Returns one row per CLOB token when ``expand_clob_token_ids`` is True.
+        Returns one row per outcome when ``expand_outcomes`` is True.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-events
         """
@@ -189,10 +220,14 @@ class GammaMixin:
         if expand_markets or expand_clob_token_ids:
             data = expand_dataframe(data, field="markets", column="markets")
         data = self.preprocess_dataframe(data)
-        if expand_clob_token_ids:
-            if not data.empty:
-                data = data.explode("marketsClobTokenIds", ignore_index=True)
-                data["marketsClobTokenIds"] = data["marketsClobTokenIds"].astype(str)
+        data = _coerce_outcome_prices(data, "marketsOutcomePrices")
+        if expand_outcomes and not data.empty:
+            data = _expand_outcomes(
+                data, "marketsOutcomes", "marketsOutcomePrices", "marketsClobTokenIds"
+            )
+        elif expand_clob_token_ids and not data.empty:
+            data = data.explode("marketsClobTokenIds", ignore_index=True)
+            data["marketsClobTokenIds"] = data["marketsClobTokenIds"].astype(str)
         data.attrs["_raw_count"] = raw_count
         return data
 

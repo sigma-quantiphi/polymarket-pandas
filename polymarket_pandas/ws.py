@@ -12,6 +12,7 @@ from websocket import WebSocketApp
 
 from polymarket_pandas.utils import (
     DEFAULT_BOOL_COLUMNS,
+    DEFAULT_DICT_COLUMNS,
     DEFAULT_DROP_COLUMNS,
     DEFAULT_INT_DATETIME_COLUMNS,
     DEFAULT_JSON_COLUMNS,
@@ -134,6 +135,7 @@ class PolymarketWebSocket:
     bool_columns: tuple = field(default=DEFAULT_BOOL_COLUMNS)
     drop_columns: tuple = field(default=DEFAULT_DROP_COLUMNS)
     json_columns: tuple = field(default=DEFAULT_JSON_COLUMNS)
+    dict_columns: tuple = field(default=DEFAULT_DICT_COLUMNS)
 
     def __post_init__(self) -> None:
         self._numeric_columns = expand_column_lists(self.numeric_columns)
@@ -142,6 +144,7 @@ class PolymarketWebSocket:
         self._bool_columns = expand_column_lists(self.bool_columns)
         self._drop_columns = expand_column_lists(self.drop_columns)
         self._json_columns = expand_column_lists(self.json_columns)
+        self._dict_columns = expand_column_lists(self.dict_columns)
 
     @classmethod
     def from_client(cls, client) -> PolymarketWebSocket:
@@ -156,6 +159,7 @@ class PolymarketWebSocket:
             bool_columns=client.bool_columns,
             drop_columns=client.drop_columns,
             json_columns=client.json_columns,
+            dict_columns=client.dict_columns,
         )
 
     # ── Private helpers ─────────────────────────────────────────────────
@@ -169,6 +173,7 @@ class PolymarketWebSocket:
             bool_columns=self._bool_columns,
             drop_columns=self._drop_columns,
             json_columns=self._json_columns,
+            dict_columns=self._dict_columns,
             int_datetime_unit=int_datetime_unit,
         )
 

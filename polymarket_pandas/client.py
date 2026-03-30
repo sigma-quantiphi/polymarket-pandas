@@ -36,6 +36,7 @@ from polymarket_pandas.mixins import (
 from polymarket_pandas.types import SendOrderResponse, SignedOrder
 from polymarket_pandas.utils import (
     DEFAULT_BOOL_COLUMNS,
+    DEFAULT_DICT_COLUMNS,
     DEFAULT_DROP_COLUMNS,
     DEFAULT_INT_DATETIME_COLUMNS,
     DEFAULT_JSON_COLUMNS,
@@ -149,6 +150,7 @@ class PolymarketPandas(
     bool_columns: tuple = field(default=DEFAULT_BOOL_COLUMNS)
     drop_columns: tuple = field(default=DEFAULT_DROP_COLUMNS)
     json_columns: tuple = field(default=DEFAULT_JSON_COLUMNS)
+    dict_columns: tuple = field(default=DEFAULT_DICT_COLUMNS)
 
     # Mapping: (field_name, env_var, fallback)
     _ENV_DEFAULTS: dict = field(
@@ -183,6 +185,7 @@ class PolymarketPandas(
         self._bool_columns = expand_column_lists(self.bool_columns)
         self._drop_columns = expand_column_lists(self.drop_columns)
         self._json_columns = expand_column_lists(self.json_columns)
+        self._dict_columns = expand_column_lists(self.dict_columns)
 
         # Derive EOA address from private key if not explicitly set
         if self.private_key and not self.address:
@@ -548,6 +551,7 @@ class PolymarketPandas(
             bool_columns=self._bool_columns,
             drop_columns=self._drop_columns,
             json_columns=self._json_columns,
+            dict_columns=self._dict_columns,
         )
 
     def preprocess_dict(self, data: dict) -> dict:
@@ -655,6 +659,7 @@ class PolymarketPandas(
         end_date_max: str | pd.Timestamp | None = None,
         expand_markets: bool | None = True,
         expand_clob_token_ids: bool | None = True,
+        expand_outcomes: bool = False,
     ) -> pd.DataFrame:
         """Auto-page through all events and return a single DataFrame."""
         return self._autopage(
@@ -680,6 +685,7 @@ class PolymarketPandas(
             end_date_max=end_date_max,
             expand_markets=expand_markets,
             expand_clob_token_ids=expand_clob_token_ids,
+            expand_outcomes=expand_outcomes,
         )
 
     def get_markets_all(
@@ -715,6 +721,7 @@ class PolymarketPandas(
         expand_clob_token_ids: bool = True,
         expand_events: bool = True,
         expand_series: bool = True,
+        expand_outcomes: bool = False,
     ) -> pd.DataFrame:
         """Auto-page through all markets and return a single DataFrame."""
         return self._autopage(
@@ -749,6 +756,7 @@ class PolymarketPandas(
             expand_clob_token_ids=expand_clob_token_ids,
             expand_events=expand_events,
             expand_series=expand_series,
+            expand_outcomes=expand_outcomes,
         )
 
     def get_series_all(

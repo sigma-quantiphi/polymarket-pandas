@@ -8,6 +8,7 @@ import pandas as pd
 
 __all__ = [
     "DEFAULT_BOOL_COLUMNS",
+    "DEFAULT_DICT_COLUMNS",
     "DEFAULT_DROP_COLUMNS",
     "DEFAULT_INT_DATETIME_COLUMNS",
     "DEFAULT_JSON_COLUMNS",
@@ -114,6 +115,8 @@ DEFAULT_NUMERIC_COLUMNS = (
     "size",
     "spread",
     "tick_size",
+    "umaBond",
+    "umaReward",
     "upperBound",
     "volume",
     "volume1mo",
@@ -177,6 +180,7 @@ DEFAULT_BOOL_COLUMNS = (
     "wideFormat",
 )
 
+DEFAULT_DICT_COLUMNS = ("feeSchedule",)
 DEFAULT_DROP_COLUMNS = ("icon", "image")
 DEFAULT_JSON_COLUMNS = ("clobTokenIds", "outcomes", "outcomePrices", "umaResolutionStatuses")
 
@@ -262,6 +266,7 @@ def preprocess_dataframe(
     bool_columns: list,
     drop_columns: list,
     json_columns: list,
+    dict_columns: tuple | list = (),
     int_datetime_unit: str = "s",
 ) -> pd.DataFrame:
     """Apply column renaming and type coercion to a raw API DataFrame."""
@@ -273,6 +278,7 @@ def preprocess_dataframe(
     str_datetime_to_convert = [x for x in columns if x in str_datetime_columns]
     bool_to_convert = [x for x in columns if x in bool_columns]
     json_to_convert = [x for x in columns if x in json_columns]
+    dict_to_flatten = [x for x in columns if x in dict_columns]
     if numeric_to_convert:
         df[numeric_to_convert] = df[numeric_to_convert].apply(pd.to_numeric, errors="coerce")
     if int_datetime_to_convert:
@@ -287,6 +293,13 @@ def preprocess_dataframe(
         df[bool_to_convert] = df[bool_to_convert].astype(bool)
     for column in json_to_convert:
         df[column] = df[column].apply(lambda x: orjson.loads(x) if pd.notnull(x) else x)
+    for column in dict_to_flatten:
+        expanded = pd.json_normalize(df[column].apply(lambda x: x if isinstance(x, dict) else {}))
+        expanded.columns = [
+            column + snake_to_camel(c)[:1].upper() + snake_to_camel(c)[1:] for c in expanded.columns
+        ]
+        expanded.index = df.index
+        df = pd.concat([df.drop(columns=[column]), expanded], axis=1)
     return df
 
 
