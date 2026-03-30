@@ -634,7 +634,9 @@ class PolymarketPandas(
 
     def get_comments_by_user_address_all(self, user_address: str, **kwargs) -> pd.DataFrame:
         """Auto-page through all comments by a user and return a single DataFrame."""
-        return self._autopage(self.get_comments_by_user_address, user_address=user_address, **kwargs)
+        return self._autopage(
+            self.get_comments_by_user_address, user_address=user_address, **kwargs
+        )
 
     def get_positions_all(self, **kwargs) -> pd.DataFrame:
         """Auto-page through all positions and return a single DataFrame."""
