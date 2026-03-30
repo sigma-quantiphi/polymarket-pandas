@@ -344,7 +344,10 @@ def expand_dataframe(
     rows = []
     for rec in data.to_dict("records"):
         meta = {c: rec[c] for c in meta_cols}
-        for child in rec.get(field) or []:
+        children = rec.get(field)
+        if not isinstance(children, list):
+            children = []
+        for child in children:
             row = {f"{column}_{k}": v for k, v in child.items()}
             row.update(meta)
             rows.append(row)
