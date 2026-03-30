@@ -232,11 +232,11 @@ class PolymarketPandas(
             call_kwargs[page_param_offset] = offset
             page = fetcher(**call_kwargs)
             data.append(page)
-            page_len = len(page)
+            page_len = getattr(page, "attrs", {}).get("_raw_count", len(page))
             offset += page_len
+            len_pages = page_len
             if progress_bar:
                 progress_bar.update(1)
-                len_pages = page_len
         if progress_bar:
             progress_bar.close()
         return pd.concat(data, ignore_index=True)
@@ -619,6 +619,50 @@ class PolymarketPandas(
     def get_markets_all(self, **kwargs) -> pd.DataFrame:
         """Auto-page through all markets and return a single DataFrame."""
         return self._autopage(self.get_markets, **kwargs)
+
+    def get_series_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all series and return a single DataFrame."""
+        return self._autopage(self.get_series, **kwargs)
+
+    def get_teams_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all teams and return a single DataFrame."""
+        return self._autopage(self.get_teams, **kwargs)
+
+    def get_comments_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all comments and return a single DataFrame."""
+        return self._autopage(self.get_comments, **kwargs)
+
+    def get_comments_by_user_address_all(self, user_address: str, **kwargs) -> pd.DataFrame:
+        """Auto-page through all comments by a user and return a single DataFrame."""
+        return self._autopage(self.get_comments_by_user_address, user_address=user_address, **kwargs)
+
+    def get_positions_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all positions and return a single DataFrame."""
+        return self._autopage(self.get_positions, **kwargs)
+
+    def get_closed_positions_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all closed positions and return a single DataFrame."""
+        return self._autopage(self.get_closed_positions, **kwargs)
+
+    def get_market_positions_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all market positions and return a single DataFrame."""
+        return self._autopage(self.get_market_positions, **kwargs)
+
+    def get_trades_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all trades and return a single DataFrame."""
+        return self._autopage(self.get_trades, **kwargs)
+
+    def get_user_activity_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through all user activity and return a single DataFrame."""
+        return self._autopage(self.get_user_activity, **kwargs)
+
+    def get_leaderboard_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through the full leaderboard and return a single DataFrame."""
+        return self._autopage(self.get_leaderboard, **kwargs)
+
+    def get_builder_leaderboard_all(self, **kwargs) -> pd.DataFrame:
+        """Auto-page through the full builder leaderboard and return a single DataFrame."""
+        return self._autopage(self.get_builder_leaderboard, **kwargs)
 
     def get_sampling_markets_all(self, **kwargs) -> pd.DataFrame:
         """Auto-page through all sampling markets and return a single DataFrame."""

@@ -270,7 +270,7 @@ def test_get_orderbook_returns_dataframe(client: PolymarketPandas, httpx_mock: H
 def test_get_markets_returns_dataframe(client: PolymarketPandas, httpx_mock: HTTPXMock):
     # expand_* are Python-side flags — not passed as query params
     httpx_mock.add_response(
-        url="https://gamma-api.polymarket.com/markets?limit=500",
+        url="https://gamma-api.polymarket.com/markets?limit=300",
         json=[
             {
                 "id": 1,

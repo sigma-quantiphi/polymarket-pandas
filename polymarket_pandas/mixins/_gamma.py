@@ -14,7 +14,7 @@ class GammaMixin:
 
     def get_markets(
         self,
-        limit: int | None = 500,
+        limit: int | None = 300,
         offset: int | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -83,6 +83,7 @@ class GammaMixin:
                 "closed": closed,
             },
         )
+        raw_count = len(data)
         data = pd.DataFrame(data)
         if not data.empty:
             if expand_events or expand_series:
@@ -93,7 +94,9 @@ class GammaMixin:
         if expand_clob_token_ids and not data.empty:
             data = data.explode("clobTokenIds", ignore_index=True)
             data["clobTokenIds"] = data["clobTokenIds"].astype(str)
-        return data.reset_index(drop=True)
+        data = data.reset_index(drop=True)
+        data.attrs["_raw_count"] = raw_count
+        return data
 
     def get_market_by_id(self, id: int, include_tag: bool | None = None) -> dict:
         """Fetch a single market by its numeric ID.
@@ -129,7 +132,7 @@ class GammaMixin:
 
     def get_events(
         self,
-        limit: int | None = 500,
+        limit: int | None = 300,
         offset: int | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -181,6 +184,7 @@ class GammaMixin:
                 "end_date_max": end_date_max,
             },
         )
+        raw_count = len(data)
         data = pd.DataFrame(data)
         if expand_markets or expand_clob_token_ids:
             data = expand_dataframe(data, field="markets", column="markets")
@@ -189,6 +193,7 @@ class GammaMixin:
             if not data.empty:
                 data = data.explode("marketsClobTokenIds", ignore_index=True)
                 data["marketsClobTokenIds"] = data["marketsClobTokenIds"].astype(str)
+        data.attrs["_raw_count"] = raw_count
         return data
 
     def get_event_by_id(
@@ -317,7 +322,7 @@ class GammaMixin:
 
     def get_series(
         self,
-        limit: int | None = 500,
+        limit: int | None = 300,
         offset: int | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -349,6 +354,7 @@ class GammaMixin:
                 "recurrence": recurrence,
             },
         )
+        raw_count = len(data)
         if expand_events or expand_event_tags:
             data = pd.DataFrame(data)
             data = expand_dataframe(data, field="events", column="events")
@@ -356,7 +362,9 @@ class GammaMixin:
                 data = expand_dataframe(data, field="eventsTags", column="eventsTags")
         else:
             data = pd.DataFrame(data)
-        return self.preprocess_dataframe(data)
+        data = self.preprocess_dataframe(data)
+        data.attrs["_raw_count"] = raw_count
+        return data
 
     def get_series_by_id(self, id: int, include_chat: bool | None = None) -> dict:
         """Fetch a single series by its numeric ID.
@@ -397,7 +405,7 @@ class GammaMixin:
 
     def get_teams(
         self,
-        limit: int | None = 500,
+        limit: int | None = 300,
         offset: int | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -424,7 +432,7 @@ class GammaMixin:
 
     def get_comments(
         self,
-        limit: int | None = None,
+        limit: int | None = 300,
         offset: int | None = None,
         order: str | None = None,
         ascending: bool | None = None,
@@ -452,7 +460,7 @@ class GammaMixin:
     def get_comments_by_user_address(
         self,
         user_address: str,
-        limit: int | None = None,
+        limit: int | None = 300,
         offset: int | None = None,
         order: str | None = None,
         ascending: bool | None = None,
