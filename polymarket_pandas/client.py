@@ -608,99 +608,603 @@ class PolymarketPandas(
                 break
         return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame()
 
-    def get_tags_all(self, **kwargs) -> pd.DataFrame:
+    # ── Offset-paginated _all methods ─────────────────────────────────
+
+    def get_tags_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        include_template: bool | None = None,
+        is_carousel: bool | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all tags and return a single DataFrame."""
-        return self._autopage(self.get_tags, **kwargs)
-
-    def get_events_all(self, **kwargs) -> pd.DataFrame:
-        """Auto-page through all events and return a single DataFrame."""
-        return self._autopage(self.get_events, **kwargs)
-
-    def get_markets_all(self, **kwargs) -> pd.DataFrame:
-        """Auto-page through all markets and return a single DataFrame."""
-        return self._autopage(self.get_markets, **kwargs)
-
-    def get_series_all(self, **kwargs) -> pd.DataFrame:
-        """Auto-page through all series and return a single DataFrame."""
-        return self._autopage(self.get_series, **kwargs)
-
-    def get_teams_all(self, **kwargs) -> pd.DataFrame:
-        """Auto-page through all teams and return a single DataFrame."""
-        return self._autopage(self.get_teams, **kwargs)
-
-    def get_comments_all(self, **kwargs) -> pd.DataFrame:
-        """Auto-page through all comments and return a single DataFrame."""
-        return self._autopage(self.get_comments, **kwargs)
-
-    def get_comments_by_user_address_all(self, user_address: str, **kwargs) -> pd.DataFrame:
-        """Auto-page through all comments by a user and return a single DataFrame."""
         return self._autopage(
-            self.get_comments_by_user_address, user_address=user_address, **kwargs
+            self.get_tags,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+            include_template=include_template,
+            is_carousel=is_carousel,
         )
 
-    def get_positions_all(self, **kwargs) -> pd.DataFrame:
+    def get_events_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        id: list[int] | None = None,
+        slug: list[str] | None = None,
+        tag_id: int | None = None,
+        exclude_tag_id: list[int] | None = None,
+        related_tags: bool | None = None,
+        featured: bool | None = None,
+        cyom: bool | None = None,
+        include_chat: bool | None = None,
+        include_template: bool | None = None,
+        recurrence: str | None = None,
+        closed: bool | None = None,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        expand_markets: bool | None = True,
+        expand_clob_token_ids: bool | None = True,
+    ) -> pd.DataFrame:
+        """Auto-page through all events and return a single DataFrame."""
+        return self._autopage(
+            self.get_events,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+            id=id,
+            slug=slug,
+            tag_id=tag_id,
+            exclude_tag_id=exclude_tag_id,
+            related_tags=related_tags,
+            featured=featured,
+            cyom=cyom,
+            include_chat=include_chat,
+            include_template=include_template,
+            recurrence=recurrence,
+            closed=closed,
+            start_date_min=start_date_min,
+            start_date_max=start_date_max,
+            end_date_min=end_date_min,
+            end_date_max=end_date_max,
+            expand_markets=expand_markets,
+            expand_clob_token_ids=expand_clob_token_ids,
+        )
+
+    def get_markets_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        id: list[int] | None = None,
+        slug: list[str] | None = None,
+        clob_token_ids: list[str] | None = None,
+        condition_ids: list[str] | None = None,
+        market_maker_address: list[str] | None = None,
+        liquidity_num_min: float | None = None,
+        liquidity_num_max: float | None = None,
+        volume_num_min: float | None = None,
+        volume_num_max: float | None = None,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        tag_id: int | None = None,
+        related_tags: bool | None = None,
+        cyom: bool | None = None,
+        uma_resolution_status: str | None = None,
+        game_id: str | None = None,
+        sports_market_types: list[str] | None = None,
+        rewards_min_size: float | None = None,
+        question_ids: list[str] | None = None,
+        include_tag: bool | None = None,
+        closed: bool | None = None,
+        expand_clob_token_ids: bool = True,
+        expand_events: bool = True,
+        expand_series: bool = True,
+    ) -> pd.DataFrame:
+        """Auto-page through all markets and return a single DataFrame."""
+        return self._autopage(
+            self.get_markets,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+            id=id,
+            slug=slug,
+            clob_token_ids=clob_token_ids,
+            condition_ids=condition_ids,
+            market_maker_address=market_maker_address,
+            liquidity_num_min=liquidity_num_min,
+            liquidity_num_max=liquidity_num_max,
+            volume_num_min=volume_num_min,
+            volume_num_max=volume_num_max,
+            start_date_min=start_date_min,
+            start_date_max=start_date_max,
+            end_date_min=end_date_min,
+            end_date_max=end_date_max,
+            tag_id=tag_id,
+            related_tags=related_tags,
+            cyom=cyom,
+            uma_resolution_status=uma_resolution_status,
+            game_id=game_id,
+            sports_market_types=sports_market_types,
+            rewards_min_size=rewards_min_size,
+            question_ids=question_ids,
+            include_tag=include_tag,
+            closed=closed,
+            expand_clob_token_ids=expand_clob_token_ids,
+            expand_events=expand_events,
+            expand_series=expand_series,
+        )
+
+    def get_series_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        slug: list[str] | None = None,
+        categories_ids: list[int] | None = None,
+        categories_labels: list[str] | None = None,
+        closed: bool | None = None,
+        include_chat: bool | None = None,
+        recurrence: str | None = None,
+        expand_events: bool = False,
+        expand_event_tags: bool = False,
+    ) -> pd.DataFrame:
+        """Auto-page through all series and return a single DataFrame."""
+        return self._autopage(
+            self.get_series,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+            slug=slug,
+            categories_ids=categories_ids,
+            categories_labels=categories_labels,
+            closed=closed,
+            include_chat=include_chat,
+            recurrence=recurrence,
+            expand_events=expand_events,
+            expand_event_tags=expand_event_tags,
+        )
+
+    def get_teams_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        league: list[str] | None = None,
+        name: list[str] | None = None,
+        abbreviation: list[str] | None = None,
+    ) -> pd.DataFrame:
+        """Auto-page through all teams and return a single DataFrame."""
+        return self._autopage(
+            self.get_teams,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+            league=league,
+            name=name,
+            abbreviation=abbreviation,
+        )
+
+    def get_comments_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: str | None = None,
+        ascending: bool | None = None,
+        parent_entity_type: str | None = None,
+        parent_entity_id: int | None = None,
+        get_positions: bool | None = None,
+        holders_only: bool | None = None,
+    ) -> pd.DataFrame:
+        """Auto-page through all comments and return a single DataFrame."""
+        return self._autopage(
+            self.get_comments,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+            parent_entity_type=parent_entity_type,
+            parent_entity_id=parent_entity_id,
+            get_positions=get_positions,
+            holders_only=holders_only,
+        )
+
+    def get_comments_by_user_address_all(
+        self,
+        user_address: str,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        order: str | None = None,
+        ascending: bool | None = None,
+    ) -> pd.DataFrame:
+        """Auto-page through all comments by a user and return a single DataFrame."""
+        return self._autopage(
+            self.get_comments_by_user_address,
+            user_address=user_address,
+            max_pages=max_pages,
+            limit=limit,
+            order=order,
+            ascending=ascending,
+        )
+
+    def get_positions_all(
+        self,
+        user: str,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 100,
+        market: list[str] | None = None,
+        eventId: list[int] | None = None,
+        sizeThreshold: float | None = 1,
+        redeemable: bool | None = False,
+        mergeable: bool | None = False,
+        sortBy: str | None = "TOKENS",
+        sortDirection: str | None = "DESC",
+        title: str | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all positions and return a single DataFrame."""
-        return self._autopage(self.get_positions, **kwargs)
+        return self._autopage(
+            self.get_positions,
+            max_pages=max_pages,
+            user=user,
+            limit=limit,
+            market=market,
+            eventId=eventId,
+            sizeThreshold=sizeThreshold,
+            redeemable=redeemable,
+            mergeable=mergeable,
+            sortBy=sortBy,
+            sortDirection=sortDirection,
+            title=title,
+        )
 
-    def get_closed_positions_all(self, **kwargs) -> pd.DataFrame:
+    def get_closed_positions_all(
+        self,
+        user: str,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 10,
+        market: list[str] | None = None,
+        eventId: list[int] | None = None,
+        title: str | None = None,
+        sortBy: str | None = "REALIZEDPNL",
+        sortDirection: str | None = "DESC",
+    ) -> pd.DataFrame:
         """Auto-page through all closed positions and return a single DataFrame."""
-        return self._autopage(self.get_closed_positions, **kwargs)
+        return self._autopage(
+            self.get_closed_positions,
+            max_pages=max_pages,
+            user=user,
+            limit=limit,
+            market=market,
+            eventId=eventId,
+            title=title,
+            sortBy=sortBy,
+            sortDirection=sortDirection,
+        )
 
-    def get_market_positions_all(self, **kwargs) -> pd.DataFrame:
+    def get_market_positions_all(
+        self,
+        market: str,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 50,
+        user: str | None = None,
+        status: str | None = "ALL",
+        sortBy: str | None = "TOTAL_PNL",
+        sortDirection: str | None = "DESC",
+    ) -> pd.DataFrame:
         """Auto-page through all market positions and return a single DataFrame."""
-        return self._autopage(self.get_market_positions, **kwargs)
+        return self._autopage(
+            self.get_market_positions,
+            max_pages=max_pages,
+            market=market,
+            limit=limit,
+            user=user,
+            status=status,
+            sortBy=sortBy,
+            sortDirection=sortDirection,
+        )
 
-    def get_trades_all(self, **kwargs) -> pd.DataFrame:
+    def get_trades_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 100,
+        takerOnly: bool | None = True,
+        filterType: str | None = None,
+        filterAmount: float | None = None,
+        market: list[str] | None = None,
+        eventId: list[int] | None = None,
+        user: str | None = None,
+        side: str | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all trades and return a single DataFrame."""
-        return self._autopage(self.get_trades, **kwargs)
+        return self._autopage(
+            self.get_trades,
+            max_pages=max_pages,
+            limit=limit,
+            takerOnly=takerOnly,
+            filterType=filterType,
+            filterAmount=filterAmount,
+            market=market,
+            eventId=eventId,
+            user=user,
+            side=side,
+        )
 
-    def get_user_activity_all(self, **kwargs) -> pd.DataFrame:
+    def get_user_activity_all(
+        self,
+        user: str,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 100,
+        market: list[str] | None = None,
+        eventId: list[int] | None = None,
+        type: list[str] | None = None,
+        start: int | None = None,
+        end: int | None = None,
+        sortBy: str | None = "TIMESTAMP",
+        sortDirection: str | None = "DESC",
+        side: str | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all user activity and return a single DataFrame."""
-        return self._autopage(self.get_user_activity, **kwargs)
+        return self._autopage(
+            self.get_user_activity,
+            max_pages=max_pages,
+            user=user,
+            limit=limit,
+            market=market,
+            eventId=eventId,
+            type=type,
+            start=start,
+            end=end,
+            sortBy=sortBy,
+            sortDirection=sortDirection,
+            side=side,
+        )
 
-    def get_leaderboard_all(self, **kwargs) -> pd.DataFrame:
+    def get_leaderboard_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 25,
+        category: str | None = "OVERALL",
+        timePeriod: str | None = "DAY",
+        orderBy: str | None = "PNL",
+        user: str | None = None,
+        userName: str | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through the full leaderboard and return a single DataFrame."""
-        return self._autopage(self.get_leaderboard, **kwargs)
+        return self._autopage(
+            self.get_leaderboard,
+            max_pages=max_pages,
+            limit=limit,
+            category=category,
+            timePeriod=timePeriod,
+            orderBy=orderBy,
+            user=user,
+            userName=userName,
+        )
 
-    def get_builder_leaderboard_all(self, **kwargs) -> pd.DataFrame:
+    def get_builder_leaderboard_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 25,
+        timePeriod: str | None = "DAY",
+    ) -> pd.DataFrame:
         """Auto-page through the full builder leaderboard and return a single DataFrame."""
-        return self._autopage(self.get_builder_leaderboard, **kwargs)
+        return self._autopage(
+            self.get_builder_leaderboard,
+            max_pages=max_pages,
+            limit=limit,
+            timePeriod=timePeriod,
+        )
 
-    def get_sampling_markets_all(self, **kwargs) -> pd.DataFrame:
+    # ── Cursor-paginated _all methods ──────────────────────────────────
+
+    def get_sampling_markets_all(
+        self,
+        *,
+        max_pages: int | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all sampling markets and return a single DataFrame."""
-        return self._autopage_cursor(self.get_sampling_markets, **kwargs)
+        return self._autopage_cursor(
+            self.get_sampling_markets, max_pages=max_pages,
+        )
 
-    def get_simplified_markets_all(self, **kwargs) -> pd.DataFrame:
+    def get_simplified_markets_all(
+        self,
+        *,
+        max_pages: int | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all simplified markets and return a single DataFrame."""
-        return self._autopage_cursor(self.get_simplified_markets, **kwargs)
+        return self._autopage_cursor(
+            self.get_simplified_markets, max_pages=max_pages,
+        )
 
-    def get_sampling_simplified_markets_all(self, **kwargs) -> pd.DataFrame:
+    def get_sampling_simplified_markets_all(
+        self,
+        *,
+        max_pages: int | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all sampling simplified markets and return a single DataFrame."""
-        return self._autopage_cursor(self.get_sampling_simplified_markets, **kwargs)
+        return self._autopage_cursor(
+            self.get_sampling_simplified_markets, max_pages=max_pages,
+        )
 
-    def get_rewards_markets_current_all(self, **kwargs) -> pd.DataFrame:
+    def get_rewards_markets_current_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        sponsored: bool | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all current reward configs and return a single DataFrame."""
-        return self._autopage_cursor(self.get_rewards_markets_current, **kwargs)
+        return self._autopage_cursor(
+            self.get_rewards_markets_current,
+            max_pages=max_pages,
+            sponsored=sponsored,
+        )
 
-    def get_rewards_markets_multi_all(self, **kwargs) -> pd.DataFrame:
+    def get_rewards_markets_multi_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        q: str | None = None,
+        tag_slug: str | None = None,
+        event_id: str | None = None,
+        event_title: str | None = None,
+        order_by: str | None = None,
+        position: str | None = None,
+        min_volume_24hr: float | None = None,
+        max_volume_24hr: float | None = None,
+        min_spread: float | None = None,
+        max_spread: float | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        page_size: int | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all reward markets and return a single DataFrame."""
-        return self._autopage_cursor(self.get_rewards_markets_multi, **kwargs)
+        return self._autopage_cursor(
+            self.get_rewards_markets_multi,
+            max_pages=max_pages,
+            q=q,
+            tag_slug=tag_slug,
+            event_id=event_id,
+            event_title=event_title,
+            order_by=order_by,
+            position=position,
+            min_volume_24hr=min_volume_24hr,
+            max_volume_24hr=max_volume_24hr,
+            min_spread=min_spread,
+            max_spread=max_spread,
+            min_price=min_price,
+            max_price=max_price,
+            page_size=page_size,
+        )
 
-    def get_rewards_earnings_all(self, **kwargs) -> pd.DataFrame:
+    def get_rewards_earnings_all(
+        self,
+        date: str,
+        *,
+        max_pages: int | None = None,
+        signature_type: int | None = None,
+        maker_address: str | None = None,
+        sponsored: bool | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all user earnings and return a single DataFrame."""
-        return self._autopage_cursor(self.get_rewards_earnings, **kwargs)
+        return self._autopage_cursor(
+            self.get_rewards_earnings,
+            max_pages=max_pages,
+            date=date,
+            signature_type=signature_type,
+            maker_address=maker_address,
+            sponsored=sponsored,
+        )
 
-    def get_rewards_user_markets_all(self, **kwargs) -> pd.DataFrame:
+    def get_rewards_user_markets_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        date: str | None = None,
+        signature_type: int | None = None,
+        maker_address: str | None = None,
+        sponsored: bool | None = None,
+        q: str | None = None,
+        tag_slug: str | None = None,
+        favorite_markets: bool | None = None,
+        no_competition: bool | None = None,
+        only_mergeable: bool | None = None,
+        only_open_orders: bool | None = None,
+        only_open_positions: bool | None = None,
+        order_by: str | None = None,
+        position: str | None = None,
+        page_size: int | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all user reward markets and return a single DataFrame."""
-        return self._autopage_cursor(self.get_rewards_user_markets, **kwargs)
+        return self._autopage_cursor(
+            self.get_rewards_user_markets,
+            max_pages=max_pages,
+            date=date,
+            signature_type=signature_type,
+            maker_address=maker_address,
+            sponsored=sponsored,
+            q=q,
+            tag_slug=tag_slug,
+            favorite_markets=favorite_markets,
+            no_competition=no_competition,
+            only_mergeable=only_mergeable,
+            only_open_orders=only_open_orders,
+            only_open_positions=only_open_positions,
+            order_by=order_by,
+            position=position,
+            page_size=page_size,
+        )
 
-    def get_user_trades_all(self, **kwargs) -> pd.DataFrame:
+    def get_user_trades_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        id: str | None = None,
+        taker: str | None = None,
+        maker: str | None = None,
+        market: str | None = None,
+        before: str | None = None,
+        after: str | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all user trades and return a single DataFrame."""
-        return self._autopage_cursor(self.get_user_trades, **kwargs)
+        return self._autopage_cursor(
+            self.get_user_trades,
+            max_pages=max_pages,
+            id=id,
+            taker=taker,
+            maker=maker,
+            market=market,
+            before=before,
+            after=after,
+        )
 
-    def get_active_orders_all(self, **kwargs) -> pd.DataFrame:
+    def get_active_orders_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        id: str | None = None,
+        market: str | None = None,
+        asset_id: str | None = None,
+    ) -> pd.DataFrame:
         """Auto-page through all active orders and return a single DataFrame."""
-        return self._autopage_cursor(self.get_active_orders, **kwargs)
+        return self._autopage_cursor(
+            self.get_active_orders,
+            max_pages=max_pages,
+            id=id,
+            market=market,
+            asset_id=asset_id,
+        )
 
     # ── Order building & submission ─────────────────────────────────────
 

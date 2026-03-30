@@ -88,7 +88,7 @@ class GammaMixin:
         if not data.empty:
             if expand_events or expand_series:
                 data = expand_dataframe(data, field="events", column="events")
-                if expand_series:
+                if expand_series and "eventsSeries" in data.columns:
                     data = expand_dataframe(data, field="eventsSeries", column="eventsSeries")
         data = self.preprocess_dataframe(data)
         if expand_clob_token_ids and not data.empty:
