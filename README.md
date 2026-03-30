@@ -349,7 +349,7 @@ all_sampling = client.get_sampling_simplified_markets_all()
 events = client.get_events(
     closed=False,
     tag_id=1337,
-    limit=500,
+    limit=300,
     expand_markets=True,            # inline market columns (default True)
     expand_clob_token_ids=True,     # explode token rows (default True)
 )
@@ -399,6 +399,10 @@ series = client.get_series(
 )
 ```
 
+#### `get_series_all(**kwargs) → pd.DataFrame`
+
+Auto-paginate all matching series. Works with `expand_events=True`.
+
 #### `get_series_by_id(id, include_chat=None) → dict`
 
 ---
@@ -419,6 +423,8 @@ meta = client.get_sports_metadata(sport="NFL")
 teams = client.get_teams(league=["NFL", "NBA"])
 ```
 
+#### `get_teams_all(**kwargs) → pd.DataFrame`
+
 ---
 
 ### Gamma API — Comments
@@ -433,7 +439,11 @@ comments = client.get_comments(
 )
 ```
 
+#### `get_comments_all(**kwargs) → pd.DataFrame`
+
 #### `get_comments_by_user_address(user_address, **kwargs) → pd.DataFrame`
+
+#### `get_comments_by_user_address_all(user_address, **kwargs) → pd.DataFrame`
 
 #### `get_comment_by_id(id, get_positions=None) → dict`
 
@@ -498,6 +508,12 @@ pos = client.get_market_positions(
 )
 ```
 
+#### `get_positions_all(user, **kwargs) → pd.DataFrame`
+
+#### `get_closed_positions_all(user, **kwargs) → pd.DataFrame`
+
+#### `get_market_positions_all(market, **kwargs) → pd.DataFrame`
+
 #### `get_top_holders(market, limit=100, minBalance=1) → pd.DataFrame`
 
 ```python
@@ -507,6 +523,8 @@ holders = client.get_top_holders(market=["0xConditionId..."])
 #### `get_positions_value(user, market=None) → pd.DataFrame`
 
 #### `get_leaderboard(**kwargs) → pd.DataFrame`
+
+#### `get_leaderboard_all(**kwargs) → pd.DataFrame`
 
 ```python
 lb = client.get_leaderboard(
@@ -519,6 +537,8 @@ lb = client.get_leaderboard(
 
 #### `get_trades(**kwargs) → pd.DataFrame`
 
+#### `get_trades_all(**kwargs) → pd.DataFrame`
+
 ```python
 trades = client.get_trades(
     user="0xYourAddress",
@@ -528,6 +548,8 @@ trades = client.get_trades(
 ```
 
 #### `get_user_activity(user, **kwargs) → pd.DataFrame`
+
+#### `get_user_activity_all(user, **kwargs) → pd.DataFrame`
 
 ```python
 activity = client.get_user_activity(
@@ -574,6 +596,8 @@ count = client.get_traded_markets_count("0xYourAddress")
 ### Data API — Builders
 
 #### `get_builder_leaderboard(timePeriod="DAY", limit=25, offset=0) → pd.DataFrame`
+
+#### `get_builder_leaderboard_all(**kwargs) → pd.DataFrame`
 
 ```python
 lb = client.get_builder_leaderboard(timePeriod="WEEK")
@@ -1230,13 +1254,29 @@ async with session:
 
 ### Offset-based (`_autopage`)
 
-```python
-# Fetch ALL events matching a filter (auto-increments offset)
-all_events = client.get_events_all(closed=False, tag_id=1337)
+Every offset-paginated endpoint has a corresponding `_all()` method that auto-increments
+`offset` and concatenates pages. Works correctly with `expand_*` flags.
 
-# Same for markets and tags
-all_markets = client.get_markets_all(closed=False)
-all_tags    = client.get_tags_all()
+```python
+# Discovery (Gamma API)
+all_markets  = client.get_markets_all(closed=False, expand_events=True)
+all_events   = client.get_events_all(closed=False, tag_id=1337)
+all_series   = client.get_series_all(expand_events=True)
+all_tags     = client.get_tags_all()
+all_teams    = client.get_teams_all(league=["NFL"])
+all_comments = client.get_comments_all(parent_entity_type="event")
+
+# Data API
+all_positions = client.get_positions_all(user="0x...")
+all_closed    = client.get_closed_positions_all(user="0x...")
+all_mkt_pos   = client.get_market_positions_all(market="0xTokenId...")
+all_trades    = client.get_trades_all(market=["0xTokenId..."])
+all_activity  = client.get_user_activity_all(user="0x...")
+all_lb        = client.get_leaderboard_all(timePeriod="WEEK")
+all_builder   = client.get_builder_leaderboard_all()
+
+# Limit pages
+first_5 = client.get_markets_all(max_pages=5)
 ```
 
 ### Cursor-based (`_autopage_cursor`)
@@ -1250,6 +1290,10 @@ all_samp_simple = client.get_sampling_simplified_markets_all()
 # User trades and active orders (CLOB private, cursor-paginated)
 all_trades = client.get_user_trades_all(market="0xConditionId...")
 all_orders = client.get_active_orders_all(market="0xConditionId...")
+
+# Rewards
+all_rewards = client.get_rewards_markets_current_all()
+all_earnings = client.get_rewards_earnings_all(date="2026-03-30")
 
 # Limit pages
 first_3 = client.get_simplified_markets_all(max_pages=3)

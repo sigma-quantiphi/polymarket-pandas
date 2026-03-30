@@ -9,6 +9,135 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.4] — 2026-03-30
+
+### Added
+- **11 new `_all` auto-pagination methods** — `get_series_all`, `get_teams_all`,
+  `get_comments_all`, `get_comments_by_user_address_all`, `get_positions_all`,
+  `get_closed_positions_all`, `get_market_positions_all`, `get_trades_all`,
+  `get_user_activity_all`, `get_leaderboard_all`, `get_builder_leaderboard_all`.
+  All available on both `PolymarketPandas` and `AsyncPolymarketPandas`.
+- **Explicit parameter signatures on all 22 `_all` methods** — mirrors base
+  method parameters (minus `offset`/`next_cursor`) for full IDE autocomplete and
+  type checking. No more `**kwargs`.
+
+### Fixed
+- **`_autopage` now works correctly with `expand_*` flags** — pagination uses
+  pre-expansion API record count (`df.attrs["_raw_count"]`) so offset tracking
+  isn't inflated by `expand_dataframe` or `explode`.
+- **Fixed `_autopage` infinite loop** when `use_tqdm=False` — the stop condition
+  (`len_pages`) was only updated inside the progress bar branch.
+- **Fixed `eventsSeries` KeyError** in `get_markets` — not all records have a
+  series after event expansion; now guarded with column existence check.
+
+### Changed
+- Default `limit` set to `300` across all Gamma endpoints (`get_markets`,
+  `get_events`, `get_series`, `get_teams`, `get_comments`,
+  `get_comments_by_user_address`). Was `500` or `None`.
+
+---
+
+## [0.6.3] — 2026-03-30
+
+### Fixed
+- PyPI release for v0.6.4 changes (intermediate version).
+
+---
+
+## [0.6.2] — 2026-03-28
+
+### Added
+- **MCP server expanded to 74 tools** — near-complete coverage of the Polymarket
+  API. Only CTF on-chain ops, relayer ops, and batch DataFrame-input methods excluded.
+- New MCP tools: `cancel_orders_from_market`, `send_heartbeat`, `get_order_scoring`,
+  `create_api_key`, `delete_api_key`, `get_event_by_id`, `get_tag_by_slug/id`,
+  `get_related_tags`, `get_market_tags`, `get_event_tags`, `get_series_by_id`,
+  `get_sports_market_types`, `get_comment_by_id`, `get_comments_by_user`,
+  `get_server_time`, `get_fee_rate`, `get_market_price`, `get_positions_value`,
+  `get_live_volume`, `get_traded_markets_count`, `get_builder_volume`,
+  `get_rewards_market`, `get_rewards_earnings`, `get_rewards_earnings_total`,
+  `get_rewards_percentages`, `get_rewards_user_markets`.
+
+---
+
+## [0.6.1] — 2026-03-28
+
+### Added
+- **MCP server expanded to 47 tools** — all SDK endpoints now exposed with every
+  API parameter. LLM controls output size via `max_rows`.
+- **6 write tools**: `build_order`, `place_order`, `cancel_order`, `cancel_orders`,
+  `cancel_all_orders`, `derive_api_key`.
+- `POLYMARKET_MCP_MAX_ROWS` env var for default table output size (default 200).
+- Each tool's `max_rows` param overrides per-call (0=unlimited).
+
+---
+
+## [0.6.0] — 2026-03-28
+
+### Added
+- **MCP server (FastMCP)** — query Polymarket data from any MCP client (Claude Code,
+  Claude Desktop, etc.) with 22 read-only tools.
+  `pip install polymarket-pandas[mcp]` then `polymarket-mcp`.
+- **Tags explorer page** with all `get_tags` parameters.
+- All endpoint parameters exposed as interactive sidebar controls in explorer.
+
+### Fixed
+- Added `umaResolutionStatuses` to JSON columns for proper parsing.
+- Fixed `json_normalize` PerformanceWarning with `.copy()` defragmentation.
+
+---
+
+## [0.5.0] — 2026-03-28
+
+### Added
+- **Streamlit Explorer Dashboard** — interactive dashboard for exploring all public
+  Polymarket endpoints with Plotly visualizations. 10 pages: Markets, Events, Series,
+  Orderbook, Prices, Positions, Trades, Leaderboard, Rewards, Bridge.
+  `pip install polymarket-pandas[explorer]` then `polymarket-explore`.
+
+---
+
+## [0.4.1] — 2026-03-27
+
+### Fixed
+- Fix pandera FutureWarning: use `pandera.pandas` submodule instead of deprecated
+  top-level import.
+
+---
+
+## [0.4.0] — 2026-03-27
+
+### Added
+- **12 TypedDicts** for dict-returning endpoints — IDE autocomplete for all keys.
+- **11 specific CursorPage types** (e.g. `OrdersCursorPage`, `UserTradesCursorPage`)
+  with `data: DataFrame[Schema]`.
+- **22 pandera DataFrameModel schemas** — field names verified against official
+  Polymarket OpenAPI specs, `strict=False`, `coerce=True`.
+- `build_order(expiration=...)` now accepts `pd.Timestamp`, ISO-8601 strings, or
+  `datetime` in addition to `int`.
+- `get_user_trades_all()` and `get_active_orders_all()` — auto-paginate cursor methods.
+- `to_unix_timestamp()` helper in `utils.py`.
+
+### Fixed
+- `get_active_orders` / `get_user_trades` — was wrapping pagination envelope into
+  DataFrame columns. Now returns proper `OrdersCursorPage` / `UserTradesCursorPage`.
+
+### Breaking
+- `get_active_orders()` and `get_user_trades()` now return cursor-paginated dicts
+  instead of DataFrames. Access the DataFrame via `result["data"]`.
+
+---
+
+## [0.3.1] — 2026-03-26
+
+### Fixed
+- Fix `AsyncPolymarketPandas` missing `get_tick_size`, `get_neg_risk`, `get_fee_rate`
+  and `preprocess_dict` methods. Async wrapper generator now uses `callable()` to
+  detect all public methods including `cachetools.cachedmethod` descriptors
+  (102 methods, up from 98).
+
+---
+
 ## [0.3.0] — 2026-03-26
 
 ### Added

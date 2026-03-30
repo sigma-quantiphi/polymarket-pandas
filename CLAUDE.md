@@ -183,7 +183,7 @@ The column name lists (`numeric_columns`, `str_datetime_columns`, etc.) are tupl
 
 Two patterns:
 
-- **Offset-based** — `_autopage(fetcher, ...)`: used by `get_tags_all`, `get_events_all`, `get_markets_all`. Reads default `limit` from the fetcher's signature via `inspect.signature`, increments `offset` by returned row count, stops on a short page.
+- **Offset-based** — `_autopage(fetcher, ...)`: used by `get_tags_all`, `get_events_all`, `get_markets_all`, `get_series_all`, `get_teams_all`, `get_comments_all`, `get_comments_by_user_address_all`, `get_positions_all`, `get_closed_positions_all`, `get_market_positions_all`, `get_trades_all`, `get_user_activity_all`, `get_leaderboard_all`, `get_builder_leaderboard_all`. Reads default `limit` from the fetcher's signature via `inspect.signature`, increments `offset` by pre-expansion record count (`page.attrs["_raw_count"]`), stops on a short page. All `_all` methods have explicit parameter signatures matching their base methods.
 - **Cursor-based** — `_autopage_cursor(fetcher, ...)`: used by `get_sampling_markets_all`, `get_simplified_markets_all`, `get_sampling_simplified_markets_all`, `get_user_trades_all`, `get_active_orders_all`, and rewards `_all` methods. Stops when `next_cursor == "LTE="` (sentinel) or falsy.
 
 Cursor-paginated single-page methods (`get_sampling_markets`, `get_simplified_markets`, `get_sampling_simplified_markets`, `get_builder_trades`, `get_user_trades`, `get_active_orders`, and all rewards cursor methods) return `CursorPage` TypedDict: `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}` instead of a bare DataFrame.
