@@ -1,6 +1,6 @@
 [project]
 name = "polymarket-pandas"
-version = "0.6.3"
+version = "0.6.4"
 description = "Pandas API client to Polymarket"
 authors = [
     {name = "Sigma Quantiphi", email = "contact@sqphi.com"}
