@@ -1035,7 +1035,8 @@ class PolymarketPandas(
     ) -> pd.DataFrame:
         """Auto-page through all sampling markets and return a single DataFrame."""
         return self._autopage_cursor(
-            self.get_sampling_markets, max_pages=max_pages,
+            self.get_sampling_markets,
+            max_pages=max_pages,
         )
 
     def get_simplified_markets_all(
@@ -1045,7 +1046,8 @@ class PolymarketPandas(
     ) -> pd.DataFrame:
         """Auto-page through all simplified markets and return a single DataFrame."""
         return self._autopage_cursor(
-            self.get_simplified_markets, max_pages=max_pages,
+            self.get_simplified_markets,
+            max_pages=max_pages,
         )
 
     def get_sampling_simplified_markets_all(
@@ -1055,7 +1057,8 @@ class PolymarketPandas(
     ) -> pd.DataFrame:
         """Auto-page through all sampling simplified markets and return a single DataFrame."""
         return self._autopage_cursor(
-            self.get_sampling_simplified_markets, max_pages=max_pages,
+            self.get_sampling_simplified_markets,
+            max_pages=max_pages,
         )
 
     def get_rewards_markets_current_all(
