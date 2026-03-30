@@ -339,16 +339,19 @@ def snake_columns_to_camel(data: pd.DataFrame) -> pd.DataFrame:
 def expand_dataframe(
     data: pd.DataFrame, field: str = "events", column: str = "event"
 ) -> pd.DataFrame:
-    """Flatten a nested list column via ``pd.json_normalize`` with prefixed columns."""
-    meta = [x for x in data.columns if x != field]
-    data = pd.json_normalize(
-        data=data.to_dict("records"),
-        record_path=field,
-        meta=meta,
-        record_prefix=f"{column}_",
-    ).copy()
-    data = snake_columns_to_camel(data)
-    return data.loc[:, ~data.columns.duplicated(keep="last")]
+    """Flatten a nested list column into rows with prefixed columns."""
+    meta_cols = [c for c in data.columns if c != field]
+    rows = []
+    for rec in data.to_dict("records"):
+        meta = {c: rec[c] for c in meta_cols}
+        for child in rec.get(field) or []:
+            row = {f"{column}_{k}": v for k, v in child.items()}
+            row.update(meta)
+            rows.append(row)
+    if not rows:
+        return pd.DataFrame()
+    result = snake_columns_to_camel(pd.DataFrame(rows))
+    return result.loc[:, ~result.columns.duplicated(keep="last")]
 
 
 _EXPAND_PREFIXES = ("events", "eventsTags", "markets", "eventsSeries")

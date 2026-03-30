@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.6] — 2026-03-30
+
+### Changed
+- **Replaced `pd.json_normalize` with manual list-of-dicts construction** in
+  `expand_dataframe` — 2.8x faster, eliminates `PerformanceWarning: DataFrame
+  is highly fragmented`, and correctly preserves nested dicts for cascading
+  expansion (fixes `expand_series` silently not working).
+
+---
+
 ## [0.6.5] — 2026-03-30
 
 ### Added
