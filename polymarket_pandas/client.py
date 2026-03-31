@@ -1074,12 +1074,14 @@ class PolymarketPandas(
         *,
         max_pages: int | None = None,
         sponsored: bool | None = None,
+        expand_rewards_config: bool = False,
     ) -> pd.DataFrame:
         """Auto-page through all current reward configs and return a single DataFrame."""
         return self._autopage_cursor(
             self.get_rewards_markets_current,
             max_pages=max_pages,
             sponsored=sponsored,
+            expand_rewards_config=expand_rewards_config,
         )
 
     def get_rewards_markets_multi_all(
@@ -1099,6 +1101,8 @@ class PolymarketPandas(
         min_price: float | None = None,
         max_price: float | None = None,
         page_size: int | None = None,
+        expand_rewards_config: bool = False,
+        expand_tokens: bool = False,
     ) -> pd.DataFrame:
         """Auto-page through all reward markets and return a single DataFrame."""
         return self._autopage_cursor(
@@ -1117,6 +1121,8 @@ class PolymarketPandas(
             min_price=min_price,
             max_price=max_price,
             page_size=page_size,
+            expand_rewards_config=expand_rewards_config,
+            expand_tokens=expand_tokens,
         )
 
     def get_rewards_earnings_all(
@@ -1156,6 +1162,9 @@ class PolymarketPandas(
         order_by: str | None = None,
         position: str | None = None,
         page_size: int | None = None,
+        expand_rewards_config: bool = False,
+        expand_tokens: bool = False,
+        expand_earnings: bool = False,
     ) -> pd.DataFrame:
         """Auto-page through all user reward markets and return a single DataFrame."""
         return self._autopage_cursor(
@@ -1175,6 +1184,9 @@ class PolymarketPandas(
             order_by=order_by,
             position=position,
             page_size=page_size,
+            expand_rewards_config=expand_rewards_config,
+            expand_tokens=expand_tokens,
+            expand_earnings=expand_earnings,
         )
 
     def get_user_trades_all(

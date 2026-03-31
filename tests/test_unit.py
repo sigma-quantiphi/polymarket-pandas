@@ -955,27 +955,74 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
 # ── Rewards: Public endpoints ────────────────────────────────────────────────
 
 
+_REWARDS_CURRENT_PAYLOAD = {
+    "limit": 500,
+    "count": 1,
+    "next_cursor": "LTE=",
+    "data": [
+        {
+            "condition_id": "0xabc",
+            "rewards_max_spread": 99,
+            "rewards_min_size": 10,
+            "rewards_config": [
+                {
+                    "id": 0,
+                    "asset_address": "0x9c4E1703476E875070EE25b56A58B008CFb8FA78",
+                    "start_date": "2024-03-01",
+                    "end_date": "2500-12-31",
+                    "rate_per_day": 2,
+                    "total_rewards": 92,
+                },
+                {
+                    "id": 0,
+                    "asset_address": "0x69308FB512518e39F9b16112fA8d994F4e2Bf8bB",
+                    "start_date": "2024-03-01",
+                    "end_date": "2500-12-31",
+                    "rate_per_day": 1,
+                    "total_rewards": 46,
+                },
+            ],
+            "sponsored_daily_rate": 0.5,
+            "sponsors_count": 2,
+            "native_daily_rate": 2.5,
+            "total_daily_rate": 3,
+        }
+    ],
+}
+
+
 def test_get_rewards_markets_current(client: PolymarketPandas, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://clob.polymarket.com/rewards/markets/current",
-        json={
-            "limit": 500,
-            "count": 1,
-            "next_cursor": "LTE=",
-            "data": [
-                {
-                    "condition_id": "0xabc",
-                    "rewards_max_spread": 0.05,
-                    "rewards_min_size": 50,
-                    "rewards_config": [],
-                }
-            ],
-        },
+        json=_REWARDS_CURRENT_PAYLOAD,
     )
     result = client.get_rewards_markets_current()
     assert isinstance(result["data"], pd.DataFrame)
     assert result["next_cursor"] == "LTE="
     assert len(result["data"]) == 1
+    # Without expansion, rewardsConfig is an opaque list column
+    assert "rewardsConfig" in result["data"].columns
+
+
+def test_get_rewards_markets_current_expand(
+    client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/markets/current",
+        json=_REWARDS_CURRENT_PAYLOAD,
+    )
+    result = client.get_rewards_markets_current(expand_rewards_config=True)
+    df = result["data"]
+    assert isinstance(df, pd.DataFrame)
+    # 1 market × 2 config entries = 2 rows
+    assert len(df) == 2
+    # Expanded columns are present
+    assert "rewardsConfigAssetAddress" in df.columns
+    assert "rewardsConfigRatePerDay" in df.columns
+    assert "rewardsConfigTotalRewards" in df.columns
+    # Meta columns are repeated
+    assert df["conditionId"].tolist() == ["0xabc", "0xabc"]
+    assert df["rewardsConfigRatePerDay"].tolist() == [2.0, 1.0]
 
 
 def test_get_rewards_markets_multi(client: PolymarketPandas, httpx_mock: HTTPXMock):
@@ -992,6 +1039,16 @@ def test_get_rewards_markets_multi(client: PolymarketPandas, httpx_mock: HTTPXMo
                     "question": "Test?",
                     "rewards_max_spread": 0.05,
                     "rewards_min_size": 50,
+                    "rewards_config": [
+                        {
+                            "id": 0,
+                            "asset_address": "0xABC",
+                            "start_date": "2024-01-01",
+                            "end_date": "2500-12-31",
+                            "rate_per_day": 5,
+                            "total_rewards": 100,
+                        }
+                    ],
                 }
             ],
         },
@@ -999,6 +1056,89 @@ def test_get_rewards_markets_multi(client: PolymarketPandas, httpx_mock: HTTPXMo
     result = client.get_rewards_markets_multi()
     assert isinstance(result["data"], pd.DataFrame)
     assert len(result["data"]) == 1
+
+
+def test_get_rewards_markets_multi_expand(
+    client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/markets/multi",
+        json={
+            "limit": 100,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "condition_id": "0xabc",
+                    "market_id": "m1",
+                    "question": "Test?",
+                    "rewards_max_spread": 0.05,
+                    "rewards_min_size": 50,
+                    "rewards_config": [
+                        {
+                            "id": 0,
+                            "asset_address": "0xABC",
+                            "start_date": "2024-01-01",
+                            "end_date": "2500-12-31",
+                            "rate_per_day": 5,
+                            "total_rewards": 100,
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    result = client.get_rewards_markets_multi(expand_rewards_config=True)
+    df = result["data"]
+    assert len(df) == 1
+    assert "rewardsConfigAssetAddress" in df.columns
+    assert df["rewardsConfigRatePerDay"].iloc[0] == 5.0
+
+
+def test_get_rewards_markets_multi_expand_tokens(
+    client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rewards/markets/multi",
+        json={
+            "limit": 100,
+            "count": 1,
+            "next_cursor": "LTE=",
+            "data": [
+                {
+                    "condition_id": "0xabc",
+                    "market_id": "m1",
+                    "question": "Test?",
+                    "rewards_max_spread": 0.05,
+                    "rewards_min_size": 50,
+                    "tokens": [
+                        {"token_id": "tok1", "outcome": "YES", "price": 0.8},
+                        {"token_id": "tok2", "outcome": "NO", "price": 0.2},
+                    ],
+                    "rewards_config": [
+                        {
+                            "id": 0,
+                            "asset_address": "0xABC",
+                            "start_date": "2024-01-01",
+                            "end_date": "2500-12-31",
+                            "rate_per_day": 5,
+                            "total_rewards": 100,
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    result = client.get_rewards_markets_multi(
+        expand_tokens=True, expand_rewards_config=True
+    )
+    df = result["data"]
+    # 1 market × 2 tokens × 1 reward config = 2 rows
+    assert len(df) == 2
+    assert "tokensTokenId" in df.columns
+    assert "tokensOutcome" in df.columns
+    assert "rewardsConfigAssetAddress" in df.columns
+    assert df["tokensOutcome"].tolist() == ["YES", "NO"]
 
 
 def test_get_rewards_market(client: PolymarketPandas, httpx_mock: HTTPXMock):

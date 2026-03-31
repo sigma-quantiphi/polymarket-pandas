@@ -411,6 +411,9 @@ class CurrentRewardSchema(_Lenient):
     """Schema for ``get_rewards_markets_current`` data rows.
 
     Source: ``GET clob.polymarket.com/rewards/markets/current``
+
+    When ``expand_rewards_config=True``, the nested ``rewardsConfig`` list is
+    flattened into one row per config entry with ``rewardsConfig*`` columns.
     """
 
     conditionId: str | None = pa.Field(nullable=True)
@@ -421,12 +424,22 @@ class CurrentRewardSchema(_Lenient):
     sponsorsCount: int | None = pa.Field(nullable=True)
     nativeDailyRate: float | None = pa.Field(nullable=True)
     totalDailyRate: float | None = pa.Field(nullable=True)
+    # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
+    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
+    rewardsConfigStartDate: str | None = pa.Field(nullable=True)
+    rewardsConfigEndDate: str | None = pa.Field(nullable=True)
+    rewardsConfigRatePerDay: float | None = pa.Field(nullable=True)
+    rewardsConfigTotalRewards: float | None = pa.Field(nullable=True)
 
 
 class RewardsMarketMultiSchema(_Lenient):
     """Schema for ``get_rewards_markets_multi`` data rows.
 
     Source: ``GET clob.polymarket.com/rewards/markets/multi``
+
+    When ``expand_rewards_config=True``, the nested ``rewardsConfig`` list is
+    flattened into one row per config entry with ``rewardsConfig*`` columns.
     """
 
     conditionId: str | None = pa.Field(nullable=True)
@@ -443,12 +456,26 @@ class RewardsMarketMultiSchema(_Lenient):
     oneDayPriceChange: float | None = pa.Field(nullable=True)
     tokens: object | None = pa.Field(nullable=True)
     rewardsConfig: object | None = pa.Field(nullable=True)
+    # ── Expanded tokens fields (present when expand_tokens=True)
+    tokensTokenId: str | None = pa.Field(nullable=True)
+    tokensOutcome: str | None = pa.Field(nullable=True)
+    tokensPrice: float | None = pa.Field(nullable=True)
+    # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
+    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
+    rewardsConfigStartDate: str | None = pa.Field(nullable=True)
+    rewardsConfigEndDate: str | None = pa.Field(nullable=True)
+    rewardsConfigRatePerDay: float | None = pa.Field(nullable=True)
+    rewardsConfigTotalRewards: float | None = pa.Field(nullable=True)
 
 
 class RewardsMarketSchema(_Lenient):
     """Schema for ``get_rewards_market`` data rows.
 
     Source: ``GET clob.polymarket.com/rewards/markets/{condition_id}``
+
+    When ``expand_rewards_config=True``, the nested ``rewardsConfig`` list is
+    flattened into one row per config entry with ``rewardsConfig*`` columns.
     """
 
     conditionId: str | None = pa.Field(nullable=True)
@@ -460,6 +487,17 @@ class RewardsMarketSchema(_Lenient):
     marketCompetitiveness: float | None = pa.Field(nullable=True)
     tokens: object | None = pa.Field(nullable=True)
     rewardsConfig: object | None = pa.Field(nullable=True)
+    # ── Expanded tokens fields (present when expand_tokens=True)
+    tokensTokenId: str | None = pa.Field(nullable=True)
+    tokensOutcome: str | None = pa.Field(nullable=True)
+    tokensPrice: float | None = pa.Field(nullable=True)
+    # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
+    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
+    rewardsConfigStartDate: str | None = pa.Field(nullable=True)
+    rewardsConfigEndDate: str | None = pa.Field(nullable=True)
+    rewardsConfigRatePerDay: float | None = pa.Field(nullable=True)
+    rewardsConfigTotalRewards: float | None = pa.Field(nullable=True)
 
 
 class UserEarningSchema(_Lenient):
@@ -479,6 +517,9 @@ class UserRewardsMarketSchema(_Lenient):
     """Schema for ``get_rewards_user_markets`` data rows.
 
     Source: ``GET clob.polymarket.com/rewards/user/markets``
+
+    When ``expand_rewards_config=True``, the nested ``rewardsConfig`` list is
+    flattened into one row per config entry with ``rewardsConfig*`` columns.
     """
 
     conditionId: str | None = pa.Field(nullable=True)
@@ -497,6 +538,21 @@ class UserRewardsMarketSchema(_Lenient):
     makerAddress: str | None = pa.Field(nullable=True)
     earningPercentage: float | None = pa.Field(nullable=True)
     earnings: object | None = pa.Field(nullable=True)
+    # ── Expanded tokens fields (present when expand_tokens=True)
+    tokensTokenId: str | None = pa.Field(nullable=True)
+    tokensOutcome: str | None = pa.Field(nullable=True)
+    tokensPrice: float | None = pa.Field(nullable=True)
+    # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
+    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
+    rewardsConfigStartDate: str | None = pa.Field(nullable=True)
+    rewardsConfigEndDate: str | None = pa.Field(nullable=True)
+    rewardsConfigRatePerDay: float | None = pa.Field(nullable=True)
+    rewardsConfigTotalRewards: float | None = pa.Field(nullable=True)
+    # ── Expanded earnings fields (present when expand_earnings=True)
+    earningsAssetAddress: str | None = pa.Field(nullable=True)
+    earningsEarnings: float | None = pa.Field(nullable=True)
+    earningsAssetRate: float | None = pa.Field(nullable=True)
 
 
 __all__ = [

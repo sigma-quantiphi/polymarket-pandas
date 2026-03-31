@@ -285,10 +285,18 @@ def preprocess_dataframe(
         df[int_datetime_to_convert] = df[int_datetime_to_convert].apply(
             pd.to_datetime, utc=True, unit=int_datetime_unit, errors="coerce"
         )
-    if str_datetime_to_convert:
-        df[str_datetime_to_convert] = df[str_datetime_to_convert].apply(
-            pd.to_datetime, utc=True, errors="coerce"
-        )
+    for col in str_datetime_to_convert:
+        series = df[col]
+        numeric = pd.to_numeric(series, errors="coerce")
+        if numeric.dropna().empty:
+            # All non-null values failed numeric conversion → ISO strings
+            df[col] = pd.to_datetime(series, utc=True, errors="coerce")
+        elif numeric.dropna().gt(1e9).all():
+            # Looks like Unix timestamps in seconds
+            df[col] = pd.to_datetime(numeric, utc=True, unit="s", errors="coerce")
+        else:
+            # Mixed or ISO strings — default path
+            df[col] = pd.to_datetime(series, utc=True, errors="coerce")
     if bool_to_convert:
         df[bool_to_convert] = df[bool_to_convert].astype(bool)
     for column in json_to_convert:
@@ -357,7 +365,15 @@ def expand_dataframe(
     return result.loc[:, ~result.columns.duplicated(keep="last")]
 
 
-_EXPAND_PREFIXES = ("events", "eventsTags", "markets", "eventsSeries")
+_EXPAND_PREFIXES = (
+    "events",
+    "eventsTags",
+    "markets",
+    "eventsSeries",
+    "rewardsConfig",
+    "tokens",
+    "earnings",
+)
 
 
 def expand_column_lists(base: tuple, prefixes: tuple = _EXPAND_PREFIXES) -> list:

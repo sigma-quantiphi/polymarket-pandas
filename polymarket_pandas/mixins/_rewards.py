@@ -11,6 +11,7 @@ from polymarket_pandas.types import (
     UserEarningsCursorPage,
     UserRewardsMarketsCursorPage,
 )
+from polymarket_pandas.utils import expand_dataframe, snake_columns_to_camel
 
 
 class RewardsMixin:
@@ -20,6 +21,7 @@ class RewardsMixin:
         self,
         sponsored: bool | None = None,
         next_cursor: str | None = None,
+        expand_rewards_config: bool = False,
     ) -> CurrentRewardsCursorPage:
         """Get all currently active reward configurations, organized by market.
 
@@ -34,6 +36,9 @@ class RewardsMixin:
             sponsored: If True, returns sponsored reward configurations
                 instead of standard ones.
             next_cursor: Opaque cursor from a previous response.
+            expand_rewards_config: If True, expand the nested
+                ``rewards_config`` list into one row per config entry with
+                prefixed columns (e.g. ``rewardsConfigAssetAddress``).
 
         Returns:
             dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
@@ -44,7 +49,10 @@ class RewardsMixin:
             path="rewards/markets/current",
             params={"sponsored": sponsored, "next_cursor": next_cursor},
         )
-        raw["data"] = self.response_to_dataframe(raw.get("data", []))
+        data = pd.DataFrame(raw.get("data", []))
+        if expand_rewards_config and not data.empty:
+            data = expand_dataframe(data, field="rewards_config", column="rewardsConfig")
+        raw["data"] = self.preprocess_dataframe(data)
         return raw
 
     def get_rewards_markets_multi(
@@ -63,6 +71,8 @@ class RewardsMixin:
         max_price: float | None = None,
         page_size: int | None = None,
         next_cursor: str | None = None,
+        expand_rewards_config: bool = False,
+        expand_tokens: bool = False,
     ) -> RewardsMarketMultiCursorPage:
         """Get active markets with their reward configurations.
 
@@ -85,6 +95,12 @@ class RewardsMixin:
             max_price: Maximum first-token price filter.
             page_size: Items per page (max 500, default 100).
             next_cursor: Opaque cursor from a previous response.
+            expand_rewards_config: If True, expand the nested
+                ``rewards_config`` list into one row per config entry with
+                prefixed columns (e.g. ``rewardsConfigAssetAddress``).
+            expand_tokens: If True, expand the nested ``tokens`` list into
+                one row per token with prefixed columns (e.g.
+                ``tokensTokenId``, ``tokensOutcome``, ``tokensPrice``).
 
         Returns:
             dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
@@ -110,7 +126,14 @@ class RewardsMixin:
                 "next_cursor": next_cursor,
             },
         )
-        raw["data"] = self.response_to_dataframe(raw.get("data", []))
+        data = pd.DataFrame(raw.get("data", []))
+        if (expand_tokens or expand_rewards_config) and not data.empty:
+            data = snake_columns_to_camel(data)
+            if expand_tokens:
+                data = expand_dataframe(data, field="tokens", column="tokens")
+            if expand_rewards_config:
+                data = expand_dataframe(data, field="rewardsConfig", column="rewardsConfig")
+        raw["data"] = self.preprocess_dataframe(data)
         return raw
 
     def get_rewards_market(
@@ -118,6 +141,8 @@ class RewardsMixin:
         condition_id: str,
         sponsored: bool | None = None,
         next_cursor: str | None = None,
+        expand_rewards_config: bool = False,
+        expand_tokens: bool = False,
     ) -> RewardsMarketCursorPage:
         """Get reward configurations for a specific market.
 
@@ -128,6 +153,12 @@ class RewardsMixin:
             sponsored: If True, folds sponsored daily rates into each
                 config's rate_per_day.
             next_cursor: Opaque cursor from a previous response.
+            expand_rewards_config: If True, expand the nested
+                ``rewards_config`` list into one row per config entry with
+                prefixed columns (e.g. ``rewardsConfigAssetAddress``).
+            expand_tokens: If True, expand the nested ``tokens`` list into
+                one row per token with prefixed columns (e.g.
+                ``tokensTokenId``, ``tokensOutcome``, ``tokensPrice``).
 
         Returns:
             dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
@@ -138,7 +169,14 @@ class RewardsMixin:
             path=f"rewards/markets/{condition_id}",
             params={"sponsored": sponsored, "next_cursor": next_cursor},
         )
-        raw["data"] = self.response_to_dataframe(raw.get("data", []))
+        data = pd.DataFrame(raw.get("data", []))
+        if (expand_tokens or expand_rewards_config) and not data.empty:
+            data = snake_columns_to_camel(data)
+            if expand_tokens:
+                data = expand_dataframe(data, field="tokens", column="tokens")
+            if expand_rewards_config:
+                data = expand_dataframe(data, field="rewardsConfig", column="rewardsConfig")
+        raw["data"] = self.preprocess_dataframe(data)
         return raw
 
     # ── CLOB API: Rewards (Private — L2 auth) ────────────────────────────
@@ -260,6 +298,9 @@ class RewardsMixin:
         position: str | None = None,
         page_size: int | None = None,
         next_cursor: str | None = None,
+        expand_rewards_config: bool = False,
+        expand_tokens: bool = False,
+        expand_earnings: bool = False,
     ) -> UserRewardsMarketsCursorPage:
         """Get user earnings combined with full market configurations.
 
@@ -284,6 +325,15 @@ class RewardsMixin:
             position: Sort direction: ``"ASC"`` or ``"DESC"``.
             page_size: Items per page (max 500, default 100).
             next_cursor: Opaque cursor from a previous response.
+            expand_rewards_config: If True, expand the nested
+                ``rewards_config`` list into one row per config entry with
+                prefixed columns (e.g. ``rewardsConfigAssetAddress``).
+            expand_tokens: If True, expand the nested ``tokens`` list into
+                one row per token with prefixed columns (e.g.
+                ``tokensTokenId``, ``tokensOutcome``, ``tokensPrice``).
+            expand_earnings: If True, expand the nested ``earnings`` list
+                into one row per earning entry with prefixed columns (e.g.
+                ``earningsAssetAddress``, ``earningsEarnings``).
 
         Returns:
             dict with ``data``, ``next_cursor``, ``count``, ``limit`` keys.
@@ -310,5 +360,14 @@ class RewardsMixin:
                 "next_cursor": next_cursor,
             },
         )
-        raw["data"] = self.response_to_dataframe(raw.get("data", []))
+        data = pd.DataFrame(raw.get("data", []))
+        if (expand_tokens or expand_rewards_config or expand_earnings) and not data.empty:
+            data = snake_columns_to_camel(data)
+            if expand_tokens:
+                data = expand_dataframe(data, field="tokens", column="tokens")
+            if expand_rewards_config:
+                data = expand_dataframe(data, field="rewardsConfig", column="rewardsConfig")
+            if expand_earnings:
+                data = expand_dataframe(data, field="earnings", column="earnings")
+        raw["data"] = self.preprocess_dataframe(data)
         return raw

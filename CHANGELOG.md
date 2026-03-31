@@ -9,6 +9,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.8] — 2026-03-31
+
+### Added
+- **`expand_rewards_config`** flag on `get_rewards_markets_current`,
+  `get_rewards_markets_multi`, `get_rewards_market`, `get_rewards_user_markets`
+  (and their `_all` variants) — flattens nested `rewards_config` list into one
+  row per config entry with `rewardsConfig*` prefixed columns.
+- **`expand_tokens`** flag on `get_rewards_markets_multi`, `get_rewards_market`,
+  `get_rewards_user_markets` — flattens nested `tokens` list into rows with
+  `tokensTokenId`, `tokensOutcome`, `tokensPrice` columns.
+- **`expand_earnings`** flag on `get_rewards_user_markets` — flattens nested
+  `earnings` list into rows with `earningsAssetAddress`, `earningsEarnings`,
+  `earningsAssetRate` columns.
+- Pandera schemas updated with all expanded field annotations.
+- `examples/async_trades_orders.py` — async client example fetching trades and
+  active orders.
+
+### Fixed
+- **Unix-timestamp datetime columns** (`createdAt`, `matchTime`, etc.) from CLOB
+  API were parsed as 1970 dates. `preprocess_dataframe` now auto-detects numeric
+  strings/ints (>1e9) in `str_datetime_columns` and converts with `unit="s"`.
+
+---
+
+## [0.6.7] — 2026-03-30
+
+### Fixed
+- `expand_dataframe` TypeError on NaN fields (e.g. `eventsSeries`).
+
+---
+
 ## [0.6.6] — 2026-03-30
 
 ### Changed
