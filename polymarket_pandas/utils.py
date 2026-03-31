@@ -152,6 +152,7 @@ DEFAULT_STR_DATETIME_COLUMNS = (
     "startTime",
     "umaEndDate",
     "updatedAt",
+    "valuationTime",
 )
 DEFAULT_INT_DATETIME_COLUMNS = ("timestamp",)
 

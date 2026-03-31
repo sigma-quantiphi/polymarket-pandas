@@ -9,6 +9,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.12] — 2026-03-31
+
+### Fixed
+- **`get_accounting_snapshot`** now runs `preprocess_dataframe` on CSV data —
+  `valuationTime` parsed as datetime, numeric coercion applied.
+- Added `valuationTime` to `DEFAULT_STR_DATETIME_COLUMNS`.
+
+### Added
+- `examples/accounting_snapshot.py` — download and display user portfolio.
+
+---
+
 ## [0.6.11] — 2026-03-31
 
 ### Changed
