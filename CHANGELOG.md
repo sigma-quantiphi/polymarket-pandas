@@ -9,6 +9,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.9] — 2026-03-31
+
+### Fixed
+- **Bool columns now use nullable `BooleanDtype`** — previously `astype(bool)`
+  silently converted NaN to `True`. Now NaN is preserved as `pd.NA`.
+- **Added 12 missing bool columns** to `DEFAULT_BOOL_COLUMNS`:
+  `acceptingOrders`, `automaticallyActive`, `enableOrderBook`, `ended`,
+  `featured`, `live`, `negRisk`, `negRiskAugmented`, `new`,
+  `requiresTranslation`, `showAllOutcomes`, `showMarketImages`. These (and
+  their `events*`/`markets*` prefixed variants) were staying as `object` dtype.
+- **Added `finishedTimestamp`** to `DEFAULT_STR_DATETIME_COLUMNS` — sports
+  events `eventsFinishedTimestamp` was not being parsed as datetime.
+
+---
+
 ## [0.6.8] — 2026-03-31
 
 ### Added

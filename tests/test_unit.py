@@ -131,7 +131,7 @@ def test_preprocess_dataframe_datetime_str_coercion(client: PolymarketPandas):
 def test_preprocess_dataframe_bool_coercion(client: PolymarketPandas):
     df = pd.DataFrame([{"active": "True"}])
     result = client.preprocess_dataframe(df)
-    assert result["active"].dtype == bool
+    assert result["active"].dtype == pd.BooleanDtype()
 
 
 def test_preprocess_dataframe_drops_icon_image(client: PolymarketPandas):

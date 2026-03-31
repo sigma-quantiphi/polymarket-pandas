@@ -142,6 +142,7 @@ DEFAULT_STR_DATETIME_COLUMNS = (
     "endDateIso",
     "eventStartTime",
     "expiration",
+    "finishedTimestamp",
     "gameStartTime",
     "matchTime",
     "matchtime",
@@ -155,28 +156,40 @@ DEFAULT_STR_DATETIME_COLUMNS = (
 DEFAULT_INT_DATETIME_COLUMNS = ("timestamp",)
 
 DEFAULT_BOOL_COLUMNS = (
+    "acceptingOrders",
     "active",
     "approved",
     "archived",
+    "automaticallyActive",
     "clearBookOnStart",
     "closed",
     "competitive",
     "cyom",
     "deploying",
+    "enableOrderBook",
+    "ended",
+    "featured",
     "feesEnabled",
     "fpmmLive",
     "funded",
     "hasReviewedDates",
     "holdingRewardsEnabled",
+    "live",
     "manualActivation",
+    "negRisk",
+    "negRiskAugmented",
     "negRiskOther",
+    "new",
     "notificationsEnabled",
     "pagerDutyNotificationEnabled",
     "pendingDeployment",
     "ready",
     "readyForCron",
+    "requiresTranslation",
     "restricted",
     "rfqEnabled",
+    "showAllOutcomes",
+    "showMarketImages",
     "wideFormat",
 )
 
@@ -297,8 +310,10 @@ def preprocess_dataframe(
         else:
             # Mixed or ISO strings — default path
             df[col] = pd.to_datetime(series, utc=True, errors="coerce")
-    if bool_to_convert:
-        df[bool_to_convert] = df[bool_to_convert].astype(bool)
+    _bool_map = {"true": True, "True": True, "1": True, True: True,
+                  "false": False, "False": False, "0": False, "": False, False: False}
+    for col in bool_to_convert:
+        df[col] = df[col].map(_bool_map).astype("boolean")
     for column in json_to_convert:
         df[column] = df[column].apply(lambda x: orjson.loads(x) if pd.notnull(x) else x)
     for column in dict_to_flatten:
