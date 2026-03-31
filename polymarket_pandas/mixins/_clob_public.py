@@ -252,8 +252,8 @@ class ClobPublicMixin:
     def get_price_history(
         self,
         market: str,
-        startTs: int | None = None,
-        endTs: int | None = None,
+        startTs: int | pd.Timestamp | None = None,
+        endTs: int | pd.Timestamp | None = None,
         interval: str | None = None,
         fidelity: int | None = None,
     ) -> DataFrame[PriceHistorySchema]:
@@ -262,8 +262,10 @@ class ClobPublicMixin:
 
         Args:
             market (str): The CLOB token ID for which to fetch price history.
-            startTs (int | None): The start time, as a Unix UTC timestamp.
-            endTs (int | None): The end time, as a Unix UTC timestamp.
+            startTs: The start time, as a Unix UTC timestamp (int) or
+                ``pd.Timestamp``.
+            endTs: The end time, as a Unix UTC timestamp (int) or
+                ``pd.Timestamp``.
             interval (str | None): A duration string ending at the current time.
                 Options: "1m", "1w", "1d", "6h", "1h", "max".
             fidelity (int | None): The resolution of the data, in minutes.
@@ -360,8 +362,8 @@ class ClobPublicMixin:
         builder: str | None = None,
         market: str | None = None,
         asset_id: str | None = None,
-        before: str | None = None,
-        after: str | None = None,
+        before: str | pd.Timestamp | None = None,
+        after: str | pd.Timestamp | None = None,
         next_cursor: str | None = None,
     ) -> BuilderTradesCursorPage:
         """
@@ -383,8 +385,10 @@ class ClobPublicMixin:
             builder: Builder identifier (UUID).
             market: Market condition ID.
             asset_id: Asset / token ID.
-            before: Return trades with matchTime < this Unix timestamp string.
-            after: Return trades with matchTime > this Unix timestamp string.
+            before: Return trades with matchTime < this value. Accepts a
+                Unix timestamp string or ``pd.Timestamp``.
+            after: Return trades with matchTime > this value. Accepts a
+                Unix timestamp string or ``pd.Timestamp``.
             next_cursor: Opaque base64 cursor from a previous response.
 
         Returns:

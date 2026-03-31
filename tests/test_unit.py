@@ -68,21 +68,21 @@ def test_filter_params_keeps_nonempty_lists():
 
 def test_filter_params_converts_timestamp():
     ts = pd.Timestamp("2025-01-15T12:00:00", tz="UTC")
-    result = filter_params({"end_date_min": ts})
-    assert result["end_date_min"].startswith("2025-01-15")
+    result = filter_params({"startTs": ts})
+    assert result["startTs"] == int(ts.timestamp())
 
 
 def test_filter_params_converts_any_timestamp_key():
     ts = pd.Timestamp("2025-06-01T08:00:00", tz="UTC")
     result = filter_params({"before": ts, "after": ts})
-    assert isinstance(result["before"], str)
-    assert result["before"].startswith("2025-06-01")
+    assert result["before"] == int(ts.timestamp())
+    assert result["after"] == int(ts.timestamp())
 
 
 def test_filter_params_converts_naive_timestamp():
     ts = pd.Timestamp("2025-03-01T12:00:00")
     result = filter_params({"start": ts})
-    assert result["start"].endswith("Z")
+    assert result["start"] == int(ts.timestamp())
 
 
 def test_filter_params_all_none_returns_empty():

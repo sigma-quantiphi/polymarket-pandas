@@ -300,8 +300,8 @@ class DataMixin:
         market: list[str] | None = None,
         eventId: list[int] | None = None,
         type: list[str] | None = None,
-        start: int | None = None,
-        end: int | None = None,
+        start: int | pd.Timestamp | None = None,
+        end: int | pd.Timestamp | None = None,
         sortBy: str | None = "TIMESTAMP",
         sortDirection: str | None = "DESC",
         side: str | None = None,
@@ -315,8 +315,8 @@ class DataMixin:
             market: Filter by token ID(s).
             eventId: Filter by event ID(s).
             type: Activity types to include (e.g. ``["TRADE", "REDEEM"]``).
-            start: Start timestamp (Unix seconds).
-            end: End timestamp (Unix seconds).
+            start: Start timestamp (Unix seconds int or ``pd.Timestamp``).
+            end: End timestamp (Unix seconds int or ``pd.Timestamp``).
             sortBy: Column to sort by (e.g. ``"TIMESTAMP"``).
             sortDirection: ``"ASC"`` or ``"DESC"``.
             side: Filter by side (``"BUY"`` or ``"SELL"``).

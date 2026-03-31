@@ -45,8 +45,8 @@ class ClobPrivateMixin:
         taker: str | None = None,
         maker: str | None = None,
         market: str | None = None,
-        before: str | None = None,
-        after: str | None = None,
+        before: str | pd.Timestamp | None = None,
+        after: str | pd.Timestamp | None = None,
         next_cursor: str | None = None,
     ) -> UserTradesCursorPage:
         """Retrieve trades for the authenticated user based on provided filters.
@@ -63,8 +63,10 @@ class ClobPrivateMixin:
             taker: Taker address filter.
             maker: Maker address filter.
             market: Market condition ID.
-            before: Return trades before this Unix timestamp.
-            after: Return trades after this Unix timestamp.
+            before: Return trades before this value. Accepts a Unix
+                timestamp string or ``pd.Timestamp``.
+            after: Return trades after this value. Accepts a Unix
+                timestamp string or ``pd.Timestamp``.
             next_cursor: Opaque base64 cursor from a previous response.
 
         Returns:

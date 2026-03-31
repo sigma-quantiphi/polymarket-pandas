@@ -310,8 +310,17 @@ def preprocess_dataframe(
         else:
             # Mixed or ISO strings — default path
             df[col] = pd.to_datetime(series, utc=True, errors="coerce")
-    _bool_map = {"true": True, "True": True, "1": True, True: True,
-                  "false": False, "False": False, "0": False, "": False, False: False}
+    _bool_map = {
+        "true": True,
+        "True": True,
+        "1": True,
+        True: True,
+        "false": False,
+        "False": False,
+        "0": False,
+        "": False,
+        False: False,
+    }
     for col in bool_to_convert:
         df[col] = df[col].map(_bool_map).astype("boolean")
     for column in json_to_convert:
@@ -326,8 +335,17 @@ def preprocess_dataframe(
     return df
 
 
+def _ts_to_iso(value):
+    """Convert a Timestamp or datetime to an ISO-8601 UTC string. Pass through str/None."""
+    if isinstance(value, pd.Timestamp):
+        return value.tz_convert("UTC").isoformat() if value.tzinfo else value.isoformat() + "Z"
+    if isinstance(value, datetime):
+        return value.astimezone(tz=None).isoformat() if value.tzinfo else value.isoformat() + "Z"
+    return value
+
+
 def filter_params(params: dict | None) -> dict:
-    """Remove None values and empty lists; convert Timestamps to ISO-8601."""
+    """Remove None values and empty lists; convert Timestamps to Unix seconds."""
     if params is None:
         return {}
     new_params = {}
@@ -336,10 +354,8 @@ def filter_params(params: dict | None) -> dict:
             if len(value) > 0:
                 new_params[key] = value
         elif pd.notnull(value):
-            if isinstance(value, pd.Timestamp):
-                value = (
-                    value.tz_convert("UTC").isoformat() if value.tzinfo else value.isoformat() + "Z"
-                )
+            if isinstance(value, (pd.Timestamp, datetime)):
+                value = int(value.timestamp())
             new_params[key] = value
     return new_params
 

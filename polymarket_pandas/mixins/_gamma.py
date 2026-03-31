@@ -6,7 +6,7 @@ import pandas as pd
 from pandera.typing import DataFrame
 
 from polymarket_pandas.schemas import EventSchema, MarketSchema
-from polymarket_pandas.utils import expand_dataframe
+from polymarket_pandas.utils import _ts_to_iso, expand_dataframe
 
 
 def _coerce_outcome_prices(df: pd.DataFrame, col: str) -> pd.DataFrame:
@@ -93,10 +93,10 @@ class GammaMixin:
                 "liquidity_num_max": liquidity_num_max,
                 "volume_num_min": volume_num_min,
                 "volume_num_max": volume_num_max,
-                "start_date_min": start_date_min,
-                "start_date_max": start_date_max,
-                "end_date_min": end_date_min,
-                "end_date_max": end_date_max,
+                "start_date_min": _ts_to_iso(start_date_min),
+                "start_date_max": _ts_to_iso(start_date_max),
+                "end_date_min": _ts_to_iso(end_date_min),
+                "end_date_max": _ts_to_iso(end_date_max),
                 "tag_id": tag_id,
                 "related_tags": related_tags,
                 "cyom": cyom,
@@ -209,10 +209,10 @@ class GammaMixin:
                 "include_template": include_template,
                 "recurrence": recurrence,
                 "closed": closed,
-                "start_date_min": start_date_min,
-                "start_date_max": start_date_max,
-                "end_date_min": end_date_min,
-                "end_date_max": end_date_max,
+                "start_date_min": _ts_to_iso(start_date_min),
+                "start_date_max": _ts_to_iso(start_date_max),
+                "end_date_min": _ts_to_iso(end_date_min),
+                "end_date_max": _ts_to_iso(end_date_max),
             },
         )
         raw_count = len(data)

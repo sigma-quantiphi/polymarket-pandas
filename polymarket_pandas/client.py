@@ -974,8 +974,8 @@ class PolymarketPandas(
         market: list[str] | None = None,
         eventId: list[int] | None = None,
         type: list[str] | None = None,
-        start: int | None = None,
-        end: int | None = None,
+        start: int | pd.Timestamp | None = None,
+        end: int | pd.Timestamp | None = None,
         sortBy: str | None = "TIMESTAMP",
         sortDirection: str | None = "DESC",
         side: str | None = None,
@@ -1197,8 +1197,8 @@ class PolymarketPandas(
         taker: str | None = None,
         maker: str | None = None,
         market: str | None = None,
-        before: str | None = None,
-        after: str | None = None,
+        before: str | pd.Timestamp | None = None,
+        after: str | pd.Timestamp | None = None,
     ) -> pd.DataFrame:
         """Auto-page through all user trades and return a single DataFrame."""
         return self._autopage_cursor(

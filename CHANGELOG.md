@@ -9,6 +9,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.10] — 2026-03-31
+
+### Changed
+- **`pd.Timestamp` accepted in datetime filter params** — `get_price_history`
+  (`startTs`, `endTs`), `get_user_trades` / `get_builder_trades` (`before`,
+  `after`), `get_user_activity` (`start`, `end`), and their `_all` variants
+  now accept `pd.Timestamp` in addition to `int`/`str`. Timestamps are
+  auto-converted to Unix seconds (CLOB) or ISO-8601 (Gamma) as needed.
+- `filter_params` now also converts `datetime.datetime` to ISO-8601.
+
+---
+
 ## [0.6.9] — 2026-03-31
 
 ### Fixed
