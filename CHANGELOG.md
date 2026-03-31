@@ -9,7 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.6.10] — 2026-03-31
+## [0.6.11] — 2026-03-31
 
 ### Changed
 - **`pd.Timestamp` accepted in datetime filter params** — `get_price_history`
