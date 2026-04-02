@@ -5,7 +5,15 @@ from __future__ import annotations
 import pandas as pd
 from pandera.typing import DataFrame
 
-from polymarket_pandas.schemas import EventSchema, MarketSchema
+from polymarket_pandas.schemas import (
+    CommentSchema,
+    EventSchema,
+    MarketSchema,
+    SeriesSchema,
+    SportsMetadataSchema,
+    TagSchema,
+    TeamSchema,
+)
 from polymarket_pandas.utils import _ts_to_iso, expand_dataframe
 
 
@@ -149,7 +157,7 @@ class GammaMixin:
         data = self._request_gamma(path=f"markets/slug/{slug}", params={"include_tag": include_tag})
         return self.preprocess_dict(data)
 
-    def get_market_tags(self, id: int) -> pd.DataFrame:
+    def get_market_tags(self, id: int) -> DataFrame[TagSchema]:
         """Fetch tags associated with a market by its numeric ID.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-tags
@@ -272,7 +280,7 @@ class GammaMixin:
             },
         )
 
-    def get_event_tags(self, id: int) -> pd.DataFrame:
+    def get_event_tags(self, id: int) -> DataFrame[TagSchema]:
         """
         Retrieve tags associated with an event by its ID.
         Args:
@@ -293,7 +301,7 @@ class GammaMixin:
         ascending: bool | None = None,
         include_template: bool | None = None,
         is_carousel: bool | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[TagSchema]:
         """Fetch tags with optional filtering and pagination.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-tags
@@ -329,7 +337,7 @@ class GammaMixin:
 
     def get_related_tags_by_tag_id(
         self, id: int, omit_empty: bool | None = None, status: str | None = None
-    ) -> pd.DataFrame:
+    ) -> DataFrame[TagSchema]:
         """Fetch related tags for a tag by its numeric ID.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-tags
@@ -342,7 +350,7 @@ class GammaMixin:
 
     def get_related_tags_by_tag_slug(
         self, slug: str, omit_empty: bool | None = None, status: str | None = None
-    ) -> pd.DataFrame:
+    ) -> DataFrame[TagSchema]:
         """Fetch related tags for a tag by its URL slug.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-tags
@@ -369,7 +377,7 @@ class GammaMixin:
         recurrence: str | None = None,
         expand_events: bool = False,
         expand_event_tags: bool = False,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[SeriesSchema]:
         """Fetch series with optional filtering, pagination, and nested event expansion.
 
         See: https://docs.polymarket.com/api-reference/gamma/get-series
@@ -419,7 +427,7 @@ class GammaMixin:
         ordering: str | None = None,
         tags: str | None = None,
         series: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[SportsMetadataSchema]:
         """Fetch sports metadata (leagues, resolution sources, ordering, etc.)."""
         data = self._request_gamma(
             path="sports",
@@ -447,7 +455,7 @@ class GammaMixin:
         league: list[str] | None = None,
         name: list[str] | None = None,
         abbreviation: list[str] | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[TeamSchema]:
         """Fetch sports teams with optional filtering by league, name, or abbreviation."""
         data = self._request_gamma(
             path="teams",
@@ -475,7 +483,7 @@ class GammaMixin:
         parent_entity_id: int | None = None,
         get_positions: bool | None = None,
         holders_only: bool | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[CommentSchema]:
         """Fetch comments with optional filtering and pagination."""
         data = self._request_gamma(
             path="comments",
@@ -499,7 +507,7 @@ class GammaMixin:
         offset: int | None = None,
         order: str | None = None,
         ascending: bool | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[CommentSchema]:
         """Fetch comments posted by a specific user address."""
         data = self._request_gamma(
             path=f"comments/user_address/{user_address}",

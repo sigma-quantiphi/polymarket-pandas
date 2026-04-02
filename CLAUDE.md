@@ -37,7 +37,7 @@ uv run python -c "from polymarket_pandas import PolymarketPandas, AsyncPolymarke
 
 ```
 polymarket_pandas/
-  __init__.py          # Public exports (6 classes + 4 exceptions + 22 TypedDicts + 22 schemas)
+  __init__.py          # Public exports (6 classes + 4 exceptions + 22 TypedDicts + 34 schemas)
   client.py            # PolymarketPandas dataclass — core infra + build_order
   async_client.py      # AsyncPolymarketPandas — async wrapper via composition + ThreadPoolExecutor
   exceptions.py        # PolymarketError hierarchy
@@ -252,10 +252,13 @@ A `pandera.DataFrameModel` for validating order DataFrames before passing them t
 
 **Pandera schemas** (`schemas.py`): `DataFrameModel` subclasses (via `pandera.pandas`) for DataFrame-returning endpoints. All use `strict=False` (extra columns allowed) and `coerce=True`. Annotation-only by default (no runtime validation unless user calls `.validate()`). Field names verified against the official Polymarket OpenAPI specs.
 
-- **Gamma API**: `MarketSchema`, `EventSchema`
-- **CLOB API**: `OrderbookSchema`, `ClobTradeSchema`, `ActiveOrderSchema`, `PriceHistorySchema`, `SendOrderResponseSchema`, `SamplingMarketSchema`, `SimplifiedMarketSchema`, `BuilderTradeSchema`
-- **Data API**: `PositionSchema`, `ClosedPositionSchema`, `DataTradeSchema`, `ActivitySchema`, `LeaderboardSchema`, `BuilderLeaderboardSchema`
+**Rule: every public method that returns a `pd.DataFrame` MUST have a pandera schema in `schemas.py` and use `DataFrame[Schema]` as its return type annotation. Integration tests validate live API data against these schemas.**
+
+- **Gamma API**: `MarketSchema`, `EventSchema`, `TagSchema`, `SeriesSchema`, `CommentSchema`, `SportsMetadataSchema`, `TeamSchema`
+- **CLOB API**: `OrderbookSchema`, `ClobTradeSchema`, `ActiveOrderSchema`, `PriceHistorySchema`, `MidpointSchema`, `MarketPriceSchema`, `LastTradePricesSchema`, `SendOrderResponseSchema`, `SamplingMarketSchema`, `SimplifiedMarketSchema`, `BuilderTradeSchema`
+- **Data API**: `PositionSchema`, `ClosedPositionSchema`, `DataTradeSchema`, `ActivitySchema`, `LeaderboardSchema`, `BuilderLeaderboardSchema`, `BuilderVolumeSchema`, `PositionValueSchema`
 - **Rewards API**: `CurrentRewardSchema`, `RewardsMarketMultiSchema`, `RewardsMarketSchema`, `UserEarningSchema`, `UserRewardsMarketSchema`, `RebateSchema`
+- **Bridge API**: `BridgeSupportedAssetSchema`, `BridgeTransactionSchema`
 
 ### `to_unix_timestamp` (`utils.py`)
 

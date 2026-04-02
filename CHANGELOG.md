@@ -9,6 +9,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.13] — 2026-04-02
+
+### Added
+- **13 new pandera schemas** — every `pd.DataFrame`-returning method now has a
+  schema: `TagSchema`, `SeriesSchema`, `CommentSchema`, `SportsMetadataSchema`,
+  `TeamSchema`, `MidpointSchema`, `MarketPriceSchema`, `LastTradePricesSchema`,
+  `BuilderVolumeSchema`, `PositionValueSchema`, `BridgeSupportedAssetSchema`,
+  `BridgeTransactionSchema`. Return types updated to `DataFrame[Schema]`.
+- **`ms_int_datetime_columns`** — new preprocessing field for Unix-millisecond
+  timestamps (`createdTimeMs`, `estCheckoutTimeMs`), parallel to the existing
+  `int_datetime_columns` (seconds). Wired through client, sync WS, async WS.
+- **58 live integration tests** covering all non-authenticated endpoints with
+  pandera schema validation against real API responses.
+
+### Fixed
+- **`get_price_history`** — now extracts the `history` list from the response
+  dict and converts `t` to UTC `datetime64`. Previously returned a single
+  `history` column of raw dicts.
+- **`get_bridge_supported_assets`** — now returns a `DataFrame` with `token`
+  object flattened via `json_normalize` into `tokenName`, `tokenSymbol`,
+  `tokenAddress`, `tokenDecimals` columns. Previously returned `list[dict]`.
+- **`PriceHistorySchema.t`** — changed from `int` to `Timestamp`.
+- **`CurrentRewardSchema.sponsorsCount`** — changed from `int` to `float`
+  (API returns NaN when absent).
+
+---
+
 ## [0.6.12] — 2026-03-31
 
 ### Fixed

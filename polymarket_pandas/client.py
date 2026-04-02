@@ -40,6 +40,7 @@ from polymarket_pandas.utils import (
     DEFAULT_DROP_COLUMNS,
     DEFAULT_INT_DATETIME_COLUMNS,
     DEFAULT_JSON_COLUMNS,
+    DEFAULT_MS_INT_DATETIME_COLUMNS,
     DEFAULT_NUMERIC_COLUMNS,
     DEFAULT_STR_DATETIME_COLUMNS,
     expand_column_lists,
@@ -147,6 +148,7 @@ class PolymarketPandas(
     numeric_columns: tuple = field(default=DEFAULT_NUMERIC_COLUMNS)
     str_datetime_columns: tuple = field(default=DEFAULT_STR_DATETIME_COLUMNS)
     int_datetime_columns: tuple = field(default=DEFAULT_INT_DATETIME_COLUMNS)
+    ms_int_datetime_columns: tuple = field(default=DEFAULT_MS_INT_DATETIME_COLUMNS)
     bool_columns: tuple = field(default=DEFAULT_BOOL_COLUMNS)
     drop_columns: tuple = field(default=DEFAULT_DROP_COLUMNS)
     json_columns: tuple = field(default=DEFAULT_JSON_COLUMNS)
@@ -182,6 +184,7 @@ class PolymarketPandas(
         self._numeric_columns = expand_column_lists(self.numeric_columns)
         self._str_datetime_columns = expand_column_lists(self.str_datetime_columns)
         self._int_datetime_columns = expand_column_lists(self.int_datetime_columns)
+        self._ms_int_datetime_columns = expand_column_lists(self.ms_int_datetime_columns)
         self._bool_columns = expand_column_lists(self.bool_columns)
         self._drop_columns = expand_column_lists(self.drop_columns)
         self._json_columns = expand_column_lists(self.json_columns)
@@ -548,6 +551,7 @@ class PolymarketPandas(
             numeric_columns=self._numeric_columns,
             str_datetime_columns=self._str_datetime_columns,
             int_datetime_columns=self._int_datetime_columns,
+            ms_int_datetime_columns=self._ms_int_datetime_columns,
             bool_columns=self._bool_columns,
             drop_columns=self._drop_columns,
             json_columns=self._json_columns,
@@ -561,6 +565,7 @@ class PolymarketPandas(
             numeric_columns=self.numeric_columns,
             str_datetime_columns=self.str_datetime_columns,
             int_datetime_columns=self.int_datetime_columns,
+            ms_int_datetime_columns=self.ms_int_datetime_columns,
             bool_columns=self.bool_columns,
             drop_columns=self.drop_columns,
             json_columns=self.json_columns,

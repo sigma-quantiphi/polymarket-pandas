@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import pandas as pd
+from pandera.typing import DataFrame
 
+from polymarket_pandas.schemas import BridgeSupportedAssetSchema, BridgeTransactionSchema
 from polymarket_pandas.types import BridgeAddress
 
 
@@ -79,14 +81,22 @@ class BridgeMixin:
             },
         )
 
-    def get_bridge_supported_assets(self) -> list[dict]:
+    def get_bridge_supported_assets(self) -> DataFrame[BridgeSupportedAssetSchema]:
         """
         Get the list of chains and tokens supported by the Polymarket bridge.
+
+        The nested ``token`` object is flattened into ``tokenName``,
+        ``tokenSymbol``, ``tokenAddress``, and ``tokenDecimals`` columns.
+
+        Returns:
+            pd.DataFrame: One row per chain/token combination.
         """
         data = self._request_bridge("supported-assets")
-        return data.get("supportedAssets", data)
+        assets = data.get("supportedAssets", data)
+        df = pd.json_normalize(assets, sep="_")
+        return self.preprocess_dataframe(df)
 
-    def get_bridge_transaction_status(self, address: str) -> pd.DataFrame:
+    def get_bridge_transaction_status(self, address: str) -> DataFrame[BridgeTransactionSchema]:
         """
         Get the status of bridge transactions associated with a deposit or
         withdrawal address.

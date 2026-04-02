@@ -6,6 +6,9 @@ import pandas as pd
 from pandera.typing import DataFrame
 
 from polymarket_pandas.schemas import (
+    LastTradePricesSchema,
+    MarketPriceSchema,
+    MidpointSchema,
     OrderbookSchema,
     PriceHistorySchema,
     RebateSchema,
@@ -124,7 +127,7 @@ class ClobPublicMixin:
         data = self._request_clob(path="price", params={"token_id": token_id, "side": side})
         return float(self._extract(data, "price"))
 
-    def get_market_prices(self, token_sides: list[dict]) -> pd.DataFrame:
+    def get_market_prices(self, token_sides: list[dict]) -> DataFrame[MarketPriceSchema]:
         """
         Retrieve market prices for multiple tokens and sides.
         Args:
@@ -137,7 +140,9 @@ class ClobPublicMixin:
         data = self._request_clob(path="prices", method="POST", data=token_sides)
         return self.response_to_dataframe(data)
 
-    def get_multiple_market_prices_by_request(self, data: pd.DataFrame) -> pd.DataFrame:
+    def get_multiple_market_prices_by_request(
+        self, data: pd.DataFrame
+    ) -> DataFrame[MarketPriceSchema]:
         """
         Retrieves market prices for specified tokens and sides via a POST request.
         """
@@ -163,7 +168,7 @@ class ClobPublicMixin:
         data = self._request_clob(path="midpoint", params={"token_id": token_id})
         return float(self._extract(data, "mid"))
 
-    def get_midpoints(self, token_ids: list[str]) -> pd.DataFrame:
+    def get_midpoints(self, token_ids: list[str]) -> DataFrame[MidpointSchema]:
         """Get midpoint prices for multiple tokens.
 
         https://docs.polymarket.com/api-reference/clob/get-midpoints
@@ -178,7 +183,7 @@ class ClobPublicMixin:
         rows = [{"tokenId": k, "mid": v} for k, v in data.items()]
         return self.response_to_dataframe(rows)
 
-    def get_midpoints_by_request(self, data: pd.DataFrame) -> pd.DataFrame:
+    def get_midpoints_by_request(self, data: pd.DataFrame) -> DataFrame[MidpointSchema]:
         """Get midpoint prices for tokens specified in a DataFrame.
 
         https://docs.polymarket.com/api-reference/clob/get-midpoints
@@ -231,7 +236,7 @@ class ClobPublicMixin:
         """
         return self._request_clob(path="last-trade-price", params={"token_id": token_id})
 
-    def get_last_trade_prices(self, data: pd.DataFrame) -> pd.DataFrame:
+    def get_last_trade_prices(self, data: pd.DataFrame) -> DataFrame[LastTradePricesSchema]:
         """Get last traded prices for multiple tokens.
 
         https://docs.polymarket.com/api-reference/clob/get-last-trades-prices
@@ -283,7 +288,11 @@ class ClobPublicMixin:
                 "fidelity": fidelity,
             },
         )
-        return self.response_to_dataframe(data)
+        history = data.get("history", []) if isinstance(data, dict) else data
+        df = self.response_to_dataframe(history)
+        if "t" in df.columns:
+            df["t"] = pd.to_datetime(df["t"], unit="s", utc=True)
+        return df
 
     # ── CLOB API: Sampling / Simplified Markets ──────────────────────────
 

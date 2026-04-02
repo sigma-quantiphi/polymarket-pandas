@@ -11,10 +11,12 @@ from pandera.typing import DataFrame
 from polymarket_pandas.schemas import (
     ActivitySchema,
     BuilderLeaderboardSchema,
+    BuilderVolumeSchema,
     ClosedPositionSchema,
     DataTradeSchema,
     LeaderboardSchema,
     PositionSchema,
+    PositionValueSchema,
 )
 
 
@@ -188,7 +190,7 @@ class DataMixin:
         self,
         user: str,
         market: list[str] | None = None,
-    ) -> pd.DataFrame:
+    ) -> DataFrame[PositionValueSchema]:
         """Fetch the current USD value of a user's positions.
 
         Args:
@@ -437,7 +439,7 @@ class DataMixin:
         )
         return self.response_to_dataframe(data)
 
-    def get_builder_volume(self, timePeriod: str | None = "DAY") -> pd.DataFrame:
+    def get_builder_volume(self, timePeriod: str | None = "DAY") -> DataFrame[BuilderVolumeSchema]:
         """Fetch builder volume breakdown by time period.
 
         Args:

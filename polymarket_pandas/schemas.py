@@ -1,5 +1,10 @@
 """Pandera DataFrameModel schemas for DataFrame-returning endpoints.
 
+**Convention**: Every public method that returns a ``pd.DataFrame`` MUST have
+a corresponding ``DataFrameModel`` schema defined here and annotated as
+``DataFrame[SomeSchema]`` in its return type.  Integration tests validate
+live API responses against these schemas.
+
 All schemas use ``strict=False`` (extra columns allowed) and
 ``coerce=True`` to avoid breaking when the Polymarket API adds new fields.
 
@@ -96,6 +101,65 @@ class EventSchema(_Lenient):
     volume1yr: float | None = pa.Field(nullable=True)
 
 
+class TagSchema(_Lenient):
+    """Schema for ``get_tags``, ``get_market_tags``, ``get_event_tags``,
+    ``get_related_tags_by_tag_id``, ``get_related_tags_by_tag_slug``.
+
+    Source: ``GET gamma-api.polymarket.com/tags``
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    label: str | None = pa.Field(nullable=True)
+    slug: str | None = pa.Field(nullable=True)
+
+
+class SeriesSchema(_Lenient):
+    """Schema for ``get_series`` / ``get_series_all``.
+
+    Source: ``GET gamma-api.polymarket.com/series``
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    ticker: str | None = pa.Field(nullable=True)
+    slug: str | None = pa.Field(nullable=True)
+    title: str | None = pa.Field(nullable=True)
+    active: bool | None = pa.Field(nullable=True)
+    closed: bool | None = pa.Field(nullable=True)
+    volume: float | None = pa.Field(nullable=True)
+    liquidity: float | None = pa.Field(nullable=True)
+
+
+class CommentSchema(_Lenient):
+    """Schema for ``get_comments`` / ``get_comments_by_user_address``.
+
+    Source: ``GET gamma-api.polymarket.com/comments``
+    """
+
+    id: str | None = pa.Field(nullable=True)
+
+
+class SportsMetadataSchema(_Lenient):
+    """Schema for ``get_sports_metadata``.
+
+    Source: ``GET gamma-api.polymarket.com/sports``
+    """
+
+    id: int | None = pa.Field(nullable=True)
+    sport: str | None = pa.Field(nullable=True)
+
+
+class TeamSchema(_Lenient):
+    """Schema for ``get_teams`` / ``get_teams_all``.
+
+    Source: ``GET gamma-api.polymarket.com/teams``
+    """
+
+    id: int | None = pa.Field(nullable=True)
+    name: str | None = pa.Field(nullable=True)
+    league: str | None = pa.Field(nullable=True)
+    abbreviation: str | None = pa.Field(nullable=True)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # CLOB API schemas (snake_case → camelCase after preprocess_dataframe)
 # ═══════════════════════════════════════════════════════════════════════
@@ -161,8 +225,40 @@ class PriceHistorySchema(_Lenient):
     Source: ``GET clob.polymarket.com/prices-history``
     """
 
-    t: int = pa.Field(description="Unix timestamp")
+    t: pa.Timestamp = pa.Field(description="UTC datetime (converted from Unix timestamp)")
     p: float = pa.Field(description="Price")
+
+
+class MidpointSchema(_Lenient):
+    """Schema for ``get_midpoints`` / ``get_midpoints_by_request``.
+
+    Source: ``GET/POST clob.polymarket.com/midpoints``
+    """
+
+    tokenId: str | None = pa.Field(nullable=True)
+    mid: str | None = pa.Field(nullable=True)
+
+
+class MarketPriceSchema(_Lenient):
+    """Schema for ``get_multiple_market_prices_by_request``.
+
+    Source: ``POST clob.polymarket.com/prices``
+    """
+
+    tokenId: str | None = pa.Field(nullable=True)
+    side: str | None = pa.Field(nullable=True)
+    price: float | None = pa.Field(nullable=True)
+
+
+class LastTradePricesSchema(_Lenient):
+    """Schema for ``get_last_trade_prices``.
+
+    Source: ``POST clob.polymarket.com/last-trades-prices``
+    """
+
+    tokenId: str | None = pa.Field(nullable=True)
+    price: float | None = pa.Field(nullable=True)
+    side: str | None = pa.Field(nullable=True)
 
 
 class SendOrderResponseSchema(_Lenient):
@@ -309,6 +405,65 @@ class BuilderLeaderboardSchema(_Lenient):
     verified: bool | None = pa.Field(nullable=True)
 
 
+class BuilderVolumeSchema(_Lenient):
+    """Schema for ``get_builder_volume``.
+
+    Source: ``GET data-api.polymarket.com/v1/builders/volume``
+    """
+
+    builder: str | None = pa.Field(nullable=True)
+    volume: float | None = pa.Field(nullable=True)
+    verified: bool | None = pa.Field(nullable=True)
+
+
+class PositionValueSchema(_Lenient):
+    """Schema for ``get_positions_value``.
+
+    Source: ``GET data-api.polymarket.com/value``
+    """
+
+    user: str | None = pa.Field(nullable=True)
+    value: float | None = pa.Field(nullable=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Bridge API schemas
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class BridgeSupportedAssetSchema(_Lenient):
+    """Schema for ``get_bridge_supported_assets``.
+
+    Source: ``GET bridge.polymarket.com/supported-assets``
+    """
+
+    chainId: str | None = pa.Field(nullable=True)
+    chainName: str | None = pa.Field(nullable=True)
+    minCheckoutUsd: int | None = pa.Field(nullable=True)
+    tokenName: str | None = pa.Field(nullable=True)
+    tokenSymbol: str | None = pa.Field(nullable=True)
+    tokenAddress: str | None = pa.Field(nullable=True)
+    tokenDecimals: int | None = pa.Field(nullable=True)
+
+
+class BridgeTransactionSchema(_Lenient):
+    """Schema for ``get_bridge_transaction_status``.
+
+    Source: ``GET bridge.polymarket.com/status/{address}``
+    """
+
+    fromChainId: str | None = pa.Field(nullable=True)
+    fromTokenAddress: str | None = pa.Field(nullable=True)
+    fromAmountBaseUnit: str | None = pa.Field(nullable=True)
+    toChainId: str | None = pa.Field(nullable=True)
+    toTokenAddress: str | None = pa.Field(nullable=True)
+    status: str | None = pa.Field(nullable=True)
+    txHash: str | None = pa.Field(nullable=True)
+    createdTimeMs: pa.Timestamp | None = pa.Field(
+        nullable=True, description="UTC datetime (converted from Unix ms)"
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Rewards API schemas (snake_case → camelCase after preprocessing)
 # ═══════════════════════════════════════════════════════════════════════
@@ -421,7 +576,7 @@ class CurrentRewardSchema(_Lenient):
     rewardsMinSize: float | None = pa.Field(nullable=True)
     rewardsConfig: object | None = pa.Field(nullable=True)
     sponsoredDailyRate: float | None = pa.Field(nullable=True)
-    sponsorsCount: int | None = pa.Field(nullable=True)
+    sponsorsCount: float | None = pa.Field(nullable=True)
     nativeDailyRate: float | None = pa.Field(nullable=True)
     totalDailyRate: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
@@ -558,24 +713,36 @@ class UserRewardsMarketSchema(_Lenient):
 __all__ = [
     "ActiveOrderSchema",
     "ActivitySchema",
+    "BridgeSupportedAssetSchema",
+    "BridgeTransactionSchema",
     "BuilderLeaderboardSchema",
     "BuilderTradeSchema",
+    "BuilderVolumeSchema",
     "ClobTradeSchema",
     "ClosedPositionSchema",
+    "CommentSchema",
     "CurrentRewardSchema",
     "DataTradeSchema",
     "EventSchema",
+    "LastTradePricesSchema",
     "LeaderboardSchema",
+    "MarketPriceSchema",
     "MarketSchema",
+    "MidpointSchema",
     "OrderbookSchema",
     "PositionSchema",
+    "PositionValueSchema",
     "PriceHistorySchema",
     "RebateSchema",
     "RewardsMarketMultiSchema",
     "RewardsMarketSchema",
     "SamplingMarketSchema",
     "SendOrderResponseSchema",
+    "SeriesSchema",
     "SimplifiedMarketSchema",
+    "SportsMetadataSchema",
+    "TagSchema",
+    "TeamSchema",
     "UserEarningSchema",
     "UserRewardsMarketSchema",
 ]

@@ -12,6 +12,7 @@ __all__ = [
     "DEFAULT_DROP_COLUMNS",
     "DEFAULT_INT_DATETIME_COLUMNS",
     "DEFAULT_JSON_COLUMNS",
+    "DEFAULT_MS_INT_DATETIME_COLUMNS",
     "DEFAULT_NUMERIC_COLUMNS",
     "DEFAULT_STR_DATETIME_COLUMNS",
     "expand_column_lists",
@@ -155,6 +156,7 @@ DEFAULT_STR_DATETIME_COLUMNS = (
     "valuationTime",
 )
 DEFAULT_INT_DATETIME_COLUMNS = ("timestamp",)
+DEFAULT_MS_INT_DATETIME_COLUMNS = ("createdTimeMs", "estCheckoutTimeMs")
 
 DEFAULT_BOOL_COLUMNS = (
     "acceptingOrders",
@@ -205,6 +207,7 @@ def preprocess_dict(
     numeric_columns: tuple = DEFAULT_NUMERIC_COLUMNS,
     str_datetime_columns: tuple = DEFAULT_STR_DATETIME_COLUMNS,
     int_datetime_columns: tuple = DEFAULT_INT_DATETIME_COLUMNS,
+    ms_int_datetime_columns: tuple = DEFAULT_MS_INT_DATETIME_COLUMNS,
     bool_columns: tuple = DEFAULT_BOOL_COLUMNS,
     drop_columns: tuple = DEFAULT_DROP_COLUMNS,
     json_columns: tuple = DEFAULT_JSON_COLUMNS,
@@ -229,7 +232,7 @@ def preprocess_dict(
                 data[key] = orjson.loads(val)
             except Exception:
                 pass
-        elif key in numeric_columns or key in int_datetime_columns:
+        elif key in (*numeric_columns, *int_datetime_columns, *ms_int_datetime_columns):
             try:
                 data[key] = float(val)
             except (ValueError, TypeError):
@@ -248,6 +251,15 @@ def preprocess_dict(
         if isinstance(val, (int, float)):
             try:
                 data[key] = pd.Timestamp(val, unit="s", tz="UTC")
+            except Exception:
+                pass
+
+    # Convert millisecond int timestamps to pd.Timestamp
+    for key in ms_int_datetime_columns:
+        val = data.get(key)
+        if isinstance(val, (int, float)):
+            try:
+                data[key] = pd.Timestamp(val, unit="ms", tz="UTC")
             except Exception:
                 pass
 
@@ -277,6 +289,7 @@ def preprocess_dataframe(
     numeric_columns: list,
     str_datetime_columns: list,
     int_datetime_columns: list,
+    ms_int_datetime_columns: list,
     bool_columns: list,
     drop_columns: list,
     json_columns: list,
@@ -287,8 +300,11 @@ def preprocess_dataframe(
     df = snake_columns_to_camel(df)
     df = df.drop(columns=drop_columns, errors="ignore")
     columns = df.columns
-    numeric_to_convert = [x for x in columns if x in numeric_columns + int_datetime_columns]
+    numeric_to_convert = [
+        x for x in columns if x in numeric_columns + int_datetime_columns + ms_int_datetime_columns
+    ]
     int_datetime_to_convert = [x for x in columns if x in int_datetime_columns]
+    ms_int_datetime_to_convert = [x for x in columns if x in ms_int_datetime_columns]
     str_datetime_to_convert = [x for x in columns if x in str_datetime_columns]
     bool_to_convert = [x for x in columns if x in bool_columns]
     json_to_convert = [x for x in columns if x in json_columns]
@@ -298,6 +314,10 @@ def preprocess_dataframe(
     if int_datetime_to_convert:
         df[int_datetime_to_convert] = df[int_datetime_to_convert].apply(
             pd.to_datetime, utc=True, unit=int_datetime_unit, errors="coerce"
+        )
+    if ms_int_datetime_to_convert:
+        df[ms_int_datetime_to_convert] = df[ms_int_datetime_to_convert].apply(
+            pd.to_datetime, utc=True, unit="ms", errors="coerce"
         )
     for col in str_datetime_to_convert:
         series = df[col]
