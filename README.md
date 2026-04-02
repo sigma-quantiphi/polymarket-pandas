@@ -140,7 +140,7 @@ You can also pass them directly as constructor arguments.
 | `POLYMARKET_RELAYER_API_KEY` | `_relayer_api_key` | Relayer API key |
 | `POLYMARKET_RELAYER_API_KEY_ADDRESS` | `_relayer_api_key_address` | Address owning the relayer key |
 | `POLYMARKET_RPC_URL` | `rpc_url` | Polygon RPC URL (default: `https://polygon-rpc.com`) |
-| `FIXIE_URL` | `proxy_url` | HTTP proxy URL |
+| `HTTP_PROXY` | `proxy_url` | HTTP proxy URL |
 
 ```python
 # Explicit credentials
@@ -1354,7 +1354,7 @@ POLYMARKET_RELAYER_API_KEY_ADDRESS=0xAddressThatOwnsRelayerKey
 
 # Network
 POLYMARKET_RPC_URL=https://polygon-bor-rpc.publicnode.com  # Polygon RPC for CTF ops
-FIXIE_URL=http://proxy:8080                                # HTTP proxy (optional)
+HTTP_PROXY=http://proxy:8080                                # HTTP proxy (optional)
 ```
 
 ---

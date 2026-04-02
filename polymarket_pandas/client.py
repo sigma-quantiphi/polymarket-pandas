@@ -158,7 +158,7 @@ class PolymarketPandas(
     _ENV_DEFAULTS: dict = field(
         default_factory=lambda: {
             "rpc_url": ("POLYMARKET_RPC_URL", "https://polygon-rpc.com"),
-            "proxy_url": ("FIXIE_URL", None),
+            "proxy_url": ("HTTP_PROXY", None),
             "address": ("POLYMARKET_ADDRESS", None),
             "private_funder_key": ("POLYMARKET_FUNDER", None),
             "private_key": ("POLYMARKET_PRIVATE_KEY", None),

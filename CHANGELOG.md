@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.14] — 2026-04-02
+
+### Changed
+- Renamed `FIXIE_URL` env var to `HTTP_PROXY` for proxy configuration
+
+---
+
 ## [0.6.13] — 2026-04-02
 
 ### Added
