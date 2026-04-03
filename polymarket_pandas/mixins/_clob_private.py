@@ -150,7 +150,13 @@ class ClobPrivateMixin:
         data = self._request_clob_private(path="order-scoring", params={"order_id": order_id})
         return bool(self._extract(data, "scoring"))
 
-    def place_order(self, order: dict, owner: str, orderType: str) -> SendOrderResponse:
+    def place_order(
+        self,
+        order: dict,
+        owner: str,
+        orderType: str,
+        post_only: bool = False,
+    ) -> SendOrderResponse:
         """
         Create and place an order using the Polymarket CLOB API.
 
@@ -158,14 +164,21 @@ class ClobPrivateMixin:
             order (dict): The signed order object.
             owner (str): API key of the order owner.
             orderType (str): The order type, e.g., "FOK", "GTC", "GTD".
+            post_only: If True, reject the order if it would immediately
+                match (maker-only). Only valid with GTC/GTD.
 
         Returns:
             dict: Response from the API.
         """
+        if post_only and orderType not in ("GTC", "GTD"):
+            raise ValueError(f"post_only is only valid with GTC or GTD, got {orderType!r}")
+        data: dict = {"order": order, "owner": owner, "orderType": orderType}
+        if post_only:
+            data["postOnly"] = True
         return self._request_clob_private(
             path="order",
             method="POST",
-            data={"order": order, "owner": owner, "orderType": orderType},
+            data=data,
         )
 
     def place_orders(self, orders: pd.DataFrame) -> DataFrame[SendOrderResponseSchema]:
@@ -180,18 +193,34 @@ class ClobPrivateMixin:
 
         Returns:
             pd.DataFrame: API responses.
+
+        Raises:
+            pandera.errors.SchemaError: If the DataFrame fails validation.
+            ValueError: If more than 15 orders are provided.
         """
-        order_cols = [c for c in orders.columns if c not in ("owner", "orderType")]
+        from polymarket_pandas.order_schema import PlaceOrderSchema
+
+        if len(orders) > 15:
+            raise ValueError(f"CLOB API accepts at most 15 orders per call, got {len(orders)}")
+        PlaceOrderSchema.validate(orders)
+        envelope_cols = {"owner", "orderType", "postOnly"}
+        order_cols = [c for c in orders.columns if c not in envelope_cols]
+        has_post_only = "postOnly" in orders.columns
         orders_data = []
         for row in orders.itertuples(index=False):
             order_dict = {c: getattr(row, c) for c in order_cols}
-            orders_data.append(
-                {
-                    "order": order_dict,
-                    "owner": row.owner,
-                    "orderType": row.orderType,
-                }
-            )
+            entry: dict = {
+                "order": order_dict,
+                "owner": row.owner,
+                "orderType": row.orderType,
+            }
+            if has_post_only and getattr(row, "postOnly", False):
+                if row.orderType not in ("GTC", "GTD"):
+                    raise ValueError(
+                        f"postOnly is only valid with GTC or GTD, got {row.orderType!r}"
+                    )
+                entry["postOnly"] = True
+            orders_data.append(entry)
         response = self._request_clob_private(
             path="orders",
             method="POST",

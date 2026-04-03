@@ -9,6 +9,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.15] — 2026-04-03
+
+### Added
+- `PlaceOrderSchema` and `SubmitOrderSchema` pandera input validation for `place_orders` / `submit_orders`
+- `post_only` parameter on `place_order`, `submit_order`, `place_orders`, `submit_orders`
+- 15-order batch limit validation on `place_orders`
+
+### Changed
+- `SubmitOrderSchema` uses camelCase column names (`tokenId`, `orderType`, `postOnly`, `negRisk`, `tickSize`, `feeRateBps`) to match API convention
+- `OrderSchema` is now an alias for `PlaceOrderSchema`
+
+---
+
 ## [0.6.14] — 2026-04-02
 
 ### Changed

@@ -1394,6 +1394,7 @@ class PolymarketPandas(
         size: float,
         side: str,
         order_type: str = "GTC",
+        post_only: bool = False,
         **kwargs,
     ) -> SendOrderResponse:
         """Build, sign, and place an order in a single call.
@@ -1404,6 +1405,8 @@ class PolymarketPandas(
             size: Number of shares (conditional tokens).
             side: ``"BUY"`` or ``"SELL"``.
             order_type: ``"GTC"`` (default), ``"FOK"``, ``"GTD"``, or ``"FAK"``.
+            post_only: If True, reject the order if it would immediately
+                match (maker-only). Only valid with GTC/GTD.
             **kwargs: Forwarded to :meth:`build_order` (``neg_risk``,
                 ``tick_size``, ``fee_rate_bps``, ``expiration``, ``nonce``).
 
@@ -1412,7 +1415,9 @@ class PolymarketPandas(
         """
         self._require_l2_auth()
         order = self.build_order(token_id, price, size, side, **kwargs)
-        return self.place_order(order=order, owner=self._api_key, orderType=order_type)
+        return self.place_order(
+            order=order, owner=self._api_key, orderType=order_type, post_only=post_only
+        )
 
     _BATCH_SIZE = 15  # CLOB API max orders per /orders call
 
@@ -1422,10 +1427,11 @@ class PolymarketPandas(
     ) -> pd.DataFrame:
         """Build, sign, and place multiple orders from a DataFrame.
 
-        Required columns: ``token_id``, ``price``, ``size``, ``side``.
+        Required columns: ``tokenId``, ``price``, ``size``, ``side``.
 
-        Optional columns: ``order_type`` (default ``"GTC"``), ``expiration``,
-        ``nonce``, ``neg_risk``, ``tick_size``, ``fee_rate_bps``.
+        Optional columns: ``orderType`` (default ``"GTC"``), ``postOnly``
+        (default ``False``), ``expiration``, ``nonce``, ``negRisk``,
+        ``tickSize``, ``feeRateBps``.
 
         Market parameters (``neg_risk``, ``tick_size``, ``fee_rate_bps``) are
         auto-fetched from the CLOB API (and cached) when not provided.
@@ -1441,24 +1447,30 @@ class PolymarketPandas(
         """
         self._require_l2_auth()
 
+        from polymarket_pandas.order_schema import SubmitOrderSchema
+
+        SubmitOrderSchema.validate(orders)
+
         # Build and sign each order
         signed = []
         for row in orders.itertuples(index=False):
             order: dict = dict(
                 self.build_order(
-                    token_id=str(row.token_id),
+                    token_id=str(row.tokenId),
                     price=float(row.price),
                     size=float(row.size),
                     side=str(row.side),
-                    fee_rate_bps=getattr(row, "fee_rate_bps", None),
+                    fee_rate_bps=getattr(row, "feeRateBps", None),
                     expiration=getattr(row, "expiration", 0),
                     nonce=getattr(row, "nonce", 0),
-                    neg_risk=getattr(row, "neg_risk", None),
-                    tick_size=getattr(row, "tick_size", None),
+                    neg_risk=getattr(row, "negRisk", None),
+                    tick_size=getattr(row, "tickSize", None),
                 )
             )
             order["owner"] = self._api_key
-            order["orderType"] = getattr(row, "order_type", "GTC") or "GTC"
+            order["orderType"] = getattr(row, "orderType", "GTC") or "GTC"
+            if getattr(row, "postOnly", False):
+                order["postOnly"] = True
             signed.append(order)
 
         # Batch submit via /orders endpoint (max 15 per call)

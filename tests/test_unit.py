@@ -8,11 +8,13 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from polymarket_pandas import (
+    PlaceOrderSchema,
     PolymarketAPIError,
     PolymarketAuthError,
     PolymarketPandas,
     PolymarketRateLimitError,
     PolymarketWebSocket,
+    SubmitOrderSchema,
 )
 from polymarket_pandas.client import (
     _decimal_places,
@@ -885,7 +887,7 @@ def test_submit_orders_dataframe(authed_client: PolymarketPandas, httpx_mock: HT
 
     orders_df = pd.DataFrame(
         {
-            "token_id": ["11111111111111111111", "11111111111111111111"],
+            "tokenId": ["11111111111111111111", "11111111111111111111"],
             "price": [0.50, 0.60],
             "size": [10.0, 5.0],
             "side": ["BUY", "SELL"],
@@ -903,6 +905,56 @@ def test_submit_orders_dataframe(authed_client: PolymarketPandas, httpx_mock: HT
     assert len(body) == 2
     assert "order" in body[0]
     assert body[0]["orderType"] == "GTC"
+
+
+def test_submit_orders_post_only(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    """submit_orders passes postOnly flag through to the /orders payload."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=11111111111111111111",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=11111111111111111111",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/fee-rate?token_id=11111111111111111111",
+        json={"base_fee": 1000},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/orders",
+        json=[{"orderID": "0xabc", "status": "live"}],
+    )
+
+    orders_df = pd.DataFrame(
+        {
+            "tokenId": ["11111111111111111111"],
+            "price": [0.50],
+            "size": [10.0],
+            "side": ["BUY"],
+            "postOnly": [True],
+        }
+    )
+    result = authed_client.submit_orders(orders_df)
+    assert isinstance(result, pd.DataFrame)
+
+    orders_requests = [r for r in httpx_mock.get_requests() if r.url.path == "/orders"]
+    body = orjson.loads(orders_requests[0].content)
+    assert body[0]["postOnly"] is True
+
+
+def test_place_order_post_only_rejects_fok(authed_client: PolymarketPandas):
+    """place_order raises ValueError when post_only is used with FOK."""
+    with pytest.raises(ValueError, match="post_only is only valid with GTC or GTD"):
+        authed_client.place_order(
+            order={"fake": "order"},
+            owner="key",
+            orderType="FOK",
+            post_only=True,
+        )
 
 
 def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
@@ -934,7 +986,7 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
 
     orders_df = pd.DataFrame(
         {
-            "token_id": ["22222222222222222222"] * 16,
+            "tokenId": ["22222222222222222222"] * 16,
             "price": [0.50] * 16,
             "size": [1.0] * 16,
             "side": ["BUY"] * 16,
@@ -1463,3 +1515,162 @@ def test_get_user_trades_returns_cursor_page(
     assert "next_cursor" in result
     assert isinstance(result["data"], pd.DataFrame)
     assert len(result["data"]) == 1
+
+
+# ── Order input validation schemas ────────────────────────────────────
+
+
+def test_place_order_schema_valid():
+    """PlaceOrderSchema accepts a well-formed signed-order DataFrame."""
+    df = pd.DataFrame(
+        [
+            {
+                "salt": 12345,
+                "maker": "0x" + "ab" * 20,
+                "signer": "0x" + "cd" * 20,
+                "taker": "0x" + "00" * 20,
+                "tokenId": "111222333",
+                "makerAmount": "5000000",
+                "takerAmount": "10000000",
+                "side": "BUY",
+                "expiration": "0",
+                "nonce": "0",
+                "feeRateBps": "30",
+                "signature": "0xdeadbeef",
+                "signatureType": 1,
+                "owner": "my-api-key",
+                "orderType": "GTC",
+            }
+        ]
+    )
+    validated = PlaceOrderSchema.validate(df)
+    assert len(validated) == 1
+
+
+def test_place_order_schema_rejects_bad_side():
+    """PlaceOrderSchema rejects invalid side values."""
+    import pandera
+
+    df = pd.DataFrame(
+        [
+            {
+                "salt": 1,
+                "maker": "0x" + "ab" * 20,
+                "signer": "0x" + "cd" * 20,
+                "taker": "0x" + "00" * 20,
+                "tokenId": "111",
+                "makerAmount": "100",
+                "takerAmount": "200",
+                "side": "HOLD",
+                "expiration": "0",
+                "nonce": "0",
+                "feeRateBps": "0",
+                "signature": "0xaa",
+                "signatureType": 1,
+                "owner": "key",
+                "orderType": "GTC",
+            }
+        ]
+    )
+    with pytest.raises(pandera.errors.SchemaError):
+        PlaceOrderSchema.validate(df)
+
+
+def test_place_order_schema_rejects_bad_address():
+    """PlaceOrderSchema rejects malformed Ethereum addresses."""
+    import pandera
+
+    df = pd.DataFrame(
+        [
+            {
+                "salt": 1,
+                "maker": "not-an-address",
+                "signer": "0x" + "cd" * 20,
+                "taker": "0x" + "00" * 20,
+                "tokenId": "111",
+                "makerAmount": "100",
+                "takerAmount": "200",
+                "side": "BUY",
+                "expiration": "0",
+                "nonce": "0",
+                "feeRateBps": "0",
+                "signature": "0xaa",
+                "signatureType": 1,
+                "owner": "key",
+                "orderType": "GTC",
+            }
+        ]
+    )
+    with pytest.raises(pandera.errors.SchemaError):
+        PlaceOrderSchema.validate(df)
+
+
+def test_submit_order_schema_valid():
+    """SubmitOrderSchema accepts a well-formed intent DataFrame."""
+    df = pd.DataFrame(
+        {
+            "tokenId": ["111222333"],
+            "price": [0.55],
+            "size": [10.0],
+            "side": ["BUY"],
+        }
+    )
+    validated = SubmitOrderSchema.validate(df)
+    assert len(validated) == 1
+
+
+def test_submit_order_schema_rejects_bad_price():
+    """SubmitOrderSchema rejects price > 1."""
+    import pandera
+
+    df = pd.DataFrame(
+        {
+            "tokenId": ["111"],
+            "price": [1.5],
+            "size": [10.0],
+            "side": ["BUY"],
+        }
+    )
+    with pytest.raises(pandera.errors.SchemaError):
+        SubmitOrderSchema.validate(df)
+
+
+def test_submit_order_schema_rejects_zero_size():
+    """SubmitOrderSchema rejects size <= 0."""
+    import pandera
+
+    df = pd.DataFrame(
+        {
+            "tokenId": ["111"],
+            "price": [0.5],
+            "size": [0.0],
+            "side": ["BUY"],
+        }
+    )
+    with pytest.raises(pandera.errors.SchemaError):
+        SubmitOrderSchema.validate(df)
+
+
+def test_place_orders_rejects_over_15(authed_client: PolymarketPandas):
+    """place_orders raises ValueError when given >15 orders."""
+    df = pd.DataFrame(
+        {
+            "salt": range(16),
+            "maker": ["0x" + "ab" * 20] * 16,
+            "signer": ["0x" + "cd" * 20] * 16,
+            "taker": ["0x" + "00" * 20] * 16,
+            "tokenId": ["111"] * 16,
+            "makerAmount": ["100"] * 16,
+            "takerAmount": ["200"] * 16,
+            "side": ["BUY"] * 16,
+            "expiration": ["0"] * 16,
+            "nonce": ["0"] * 16,
+            "feeRateBps": ["0"] * 16,
+            "signature": ["0xaa"] * 16,
+            "signatureType": [1] * 16,
+            "owner": ["key"] * 16,
+            "orderType": ["GTC"] * 16,
+        }
+    )
+    with pytest.raises(ValueError, match="at most 15"):
+        authed_client.place_orders(df)

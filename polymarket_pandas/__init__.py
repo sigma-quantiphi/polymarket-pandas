@@ -10,6 +10,7 @@ from polymarket_pandas.exceptions import (
     PolymarketError,
     PolymarketRateLimitError,
 )
+from polymarket_pandas.order_schema import OrderSchema, PlaceOrderSchema, SubmitOrderSchema
 from polymarket_pandas.schemas import (
     ActiveOrderSchema,
     ActivitySchema,
@@ -109,6 +110,10 @@ __all__ = [
     "SignedOrder",
     "SubmitTransactionResponse",
     "TransactionReceipt",
+    # Pandera schemas (order input validation)
+    "OrderSchema",
+    "PlaceOrderSchema",
+    "SubmitOrderSchema",
     # Pandera schemas (DataFrame-returning endpoints)
     "ActiveOrderSchema",
     "ActivitySchema",

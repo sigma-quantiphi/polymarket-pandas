@@ -37,7 +37,7 @@ uv run python -c "from polymarket_pandas import PolymarketPandas, AsyncPolymarke
 
 ```
 polymarket_pandas/
-  __init__.py          # Public exports (6 classes + 4 exceptions + 22 TypedDicts + 34 schemas)
+  __init__.py          # Public exports (6 classes + 4 exceptions + 22 TypedDicts + 37 schemas)
   client.py            # PolymarketPandas dataclass — core infra + build_order
   async_client.py      # AsyncPolymarketPandas — async wrapper via composition + ThreadPoolExecutor
   exceptions.py        # PolymarketError hierarchy

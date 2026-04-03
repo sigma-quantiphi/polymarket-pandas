@@ -1,28 +1,112 @@
-"""Pandera DataFrameModel for validating EIP-712 CLOB order DataFrames."""
+"""Pandera DataFrameModel schemas for validating order input DataFrames.
+
+``PlaceOrderSchema`` validates signed-order DataFrames passed to
+:meth:`~polymarket_pandas.PolymarketPandas.place_orders`.
+
+``SubmitOrderSchema`` validates unsigned-intent DataFrames passed to
+:meth:`~polymarket_pandas.PolymarketPandas.submit_orders`.
+"""
+
+from __future__ import annotations
 
 import pandera.pandas as pa
 
 
-class OrderSchema(pa.DataFrameModel):
-    """Base schema for orders (general for any exchange)."""
+class PlaceOrderSchema(pa.DataFrameModel):
+    """Schema for signed-order DataFrames submitted to ``place_orders``.
 
-    salt: int = pa.Field(ge=0, description="Random salt used to create unique order")
-    maker: str = pa.Field(description="Maker address (funder)")
-    signer: str = pa.Field(description="Signer address")
-    taker: str = pa.Field(description="Taker address (operator)")
-    tokenId: str = pa.Field(description="ERC1155 token ID of conditional token being traded")
-    makerAmount: str = pa.Field(description="Maximum amount maker is willing to spend")
-    takerAmount: str = pa.Field(description="Minimum amount taker will pay the maker in return")
-    expiration: str = pa.Field(description="Unix expiration timestamp")
-    nonce: str = pa.Field(description="Maker’s exchange nonce of the order is associated")
-    feeRateBps: str = pa.Field(description="Fee rate basis points as required by the operator")
-    side: str = pa.Field(isin=["BUY", "SELL"], description="Buy or sell enum index")
-    signatureType: int = pa.Field(ge=0, description="Signature type enum index")
-    signature: str = pa.Field(description="Hex encoded signature")
+    Field constraints mirror the CLOB ``POST /orders`` request body.
+    """
 
-    @classmethod
-    def validate_price_for_limit_orders(cls, df):
-        """Raise ValueError if any non-market order is missing a price."""
-        limit_orders = df.query("type != 'market'")
-        if limit_orders["price"].isnull().any():
-            raise ValueError("Non market orders must include a price.")
+    # ── Signed order fields (from build_order / API spec) ──────────────
+    salt: int = pa.Field(ge=0, description="Random salt for order uniqueness")
+    maker: str = pa.Field(
+        str_matches=r"^0x[0-9a-fA-F]{40}$",
+        description="Maker (funder) Ethereum address",
+    )
+    signer: str = pa.Field(
+        str_matches=r"^0x[0-9a-fA-F]{40}$",
+        description="Signer Ethereum address",
+    )
+    taker: str = pa.Field(
+        str_matches=r"^0x[0-9a-fA-F]{40}$",
+        description="Taker Ethereum address (0x0…0 for open orders)",
+    )
+    tokenId: str = pa.Field(str_length={"min_value": 1}, description="ERC-1155 token ID")
+    makerAmount: str = pa.Field(
+        str_matches=r"^\d+$",
+        description="Maker amount in fixed-math (6 decimals)",
+    )
+    takerAmount: str = pa.Field(
+        str_matches=r"^\d+$",
+        description="Taker amount in fixed-math (6 decimals)",
+    )
+    side: str = pa.Field(isin=["BUY", "SELL"], description="Order side")
+    expiration: str = pa.Field(
+        str_matches=r"^\d+$",
+        description="Unix expiration timestamp (0 = GTC)",
+    )
+    nonce: str = pa.Field(str_matches=r"^\d+$", description="Maker nonce")
+    feeRateBps: str = pa.Field(
+        str_matches=r"^\d+$",
+        description="Fee rate in basis points",
+    )
+    signature: str = pa.Field(
+        str_matches=r"^0x[0-9a-fA-F]+$",
+        description="EIP-712 hex signature",
+    )
+    signatureType: int = pa.Field(isin=[0, 1, 2], description="Signature type enum")
+
+    # ── Envelope fields added by submit_orders / build_and_submit ──────
+    owner: str = pa.Field(description="API key of the order owner")
+    orderType: str = pa.Field(
+        isin=["FOK", "GTC", "GTD"],
+        description="Order time-in-force type",
+    )
+    postOnly: bool | None = pa.Field(
+        nullable=True,
+        description="If True, reject order if it would immediately match (GTC/GTD only)",
+    )
+
+    class Config:
+        strict = False
+        coerce = True
+
+
+class SubmitOrderSchema(pa.DataFrameModel):
+    """Schema for unsigned-intent DataFrames submitted to ``submit_orders``.
+
+    Required columns: ``token_id``, ``price``, ``size``, ``side``.
+    Optional columns are nullable.
+    """
+
+    tokenId: str = pa.Field(str_length={"min_value": 1}, description="CLOB token ID")
+    price: float = pa.Field(gt=0, le=1, description="Limit price (0, 1]")
+    size: float = pa.Field(gt=0, description="Order size in shares")
+    side: str = pa.Field(isin=["BUY", "SELL"], description="Order side")
+
+    # ── Optional columns ───────────────────────────────────────────────
+    postOnly: bool | None = pa.Field(
+        nullable=True,
+        description="If True, reject order if it would immediately match (GTC/GTD only)",
+    )
+    orderType: str | None = pa.Field(
+        isin=["FOK", "GTC", "GTD"],
+        nullable=True,
+        description="Time-in-force (default GTC)",
+    )
+    expiration: object | None = pa.Field(nullable=True, description="Expiry (int/str/Timestamp)")
+    nonce: object | None = pa.Field(nullable=True, description="Order nonce")
+    negRisk: object | None = pa.Field(nullable=True, description="Neg-risk flag")
+    tickSize: float | None = pa.Field(nullable=True, gt=0, description="Tick size override")
+    feeRateBps: object | None = pa.Field(nullable=True, description="Fee rate bps override")
+
+    class Config:
+        strict = False
+        coerce = True
+
+
+# Keep backward compat alias
+OrderSchema = PlaceOrderSchema
+
+__all__ = ["OrderSchema", "PlaceOrderSchema", "SubmitOrderSchema"]
