@@ -216,7 +216,7 @@ class ActiveOrderSchema(_Lenient):
     price: float | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
     orderType: str | None = pa.Field(nullable=True)
-    expiration: str | None = pa.Field(nullable=True)
+    expiration: pa.Timestamp | None = pa.Field(nullable=True)
     createdAt: pa.Timestamp | None = pa.Field(nullable=True)
     associateTrades: object | None = pa.Field(nullable=True)
 

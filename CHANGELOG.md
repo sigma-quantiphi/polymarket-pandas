@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.17] — 2026-04-03
+
+### Fixed
+- `ActiveOrderSchema.expiration` — changed from `str` to `pa.Timestamp` (matches preprocessing)
+
+---
+
 ## [0.6.16] — 2026-04-03
 
 ### Fixed
