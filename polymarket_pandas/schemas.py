@@ -216,6 +216,8 @@ class ActiveOrderSchema(_Lenient):
     price: float | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
     orderType: str | None = pa.Field(nullable=True)
+    expiration: str | None = pa.Field(nullable=True)
+    createdAt: pa.Timestamp | None = pa.Field(nullable=True)
     associateTrades: object | None = pa.Field(nullable=True)
 
 
@@ -309,6 +311,8 @@ class PositionSchema(_Lenient):
     outcomeIndex: int | None = pa.Field(nullable=True)
     oppositeOutcome: str | None = pa.Field(nullable=True)
     oppositeAsset: str | None = pa.Field(nullable=True)
+    endDate: pa.Timestamp | None = pa.Field(nullable=True)
+    eventId: str | None = pa.Field(nullable=True)
 
 
 class ClosedPositionSchema(_Lenient):

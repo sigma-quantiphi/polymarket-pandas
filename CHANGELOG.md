@@ -9,6 +9,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.16] — 2026-04-03
+
+### Fixed
+- `ActiveOrderSchema` — added missing `expiration` and `createdAt` fields
+- `PositionSchema` — added missing `endDate` and `eventId` fields
+
+---
+
 ## [0.6.15] — 2026-04-03
 
 ### Added

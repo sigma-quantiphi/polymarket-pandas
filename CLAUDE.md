@@ -47,7 +47,7 @@ polymarket_pandas/
   #                      instance_cache, to_unix_timestamp, etc.
   ws.py                # PolymarketWebSocket + PolymarketWebSocketSession (sync, websocket-client)
   async_ws.py          # AsyncPolymarketWebSocket + AsyncPolymarketWebSocketSession (async, websockets)
-  order_schema.py      # pandera DataFrameModel for validating place_orders input
+  order_schema.py      # pandera DataFrameModels for validating place_orders / submit_orders input
   py.typed             # PEP 561 marker
   mixins/
     __init__.py        # Re-exports all 8 mixin classes
@@ -239,9 +239,23 @@ Same type coercion as `preprocess_dataframe` but for single dict responses: snak
 
 All `_request_*` helpers pass `params` through `filter_params` before sending. It removes `None` values and empty lists, and converts `pd.Timestamp` values to ISO-8601 strings for date-range parameters.
 
-### `OrderSchema` (`order_schema.py`)
+### Order input schemas (`order_schema.py`)
 
-A `pandera.DataFrameModel` for validating order DataFrames before passing them to `place_orders`. Fields match the CLOB signed-order struct. Side validation: uppercase `"BUY"` / `"SELL"`.
+Two `pandera.DataFrameModel` schemas for **runtime input validation** (validated automatically, not annotation-only):
+
+- **`PlaceOrderSchema`** — validates signed-order DataFrames for `place_orders()`. Enforces Ethereum address format, numeric string patterns for amounts/nonce/expiration/feeRateBps, `side` ∈ `["BUY","SELL"]`, `signatureType` ∈ `[0,1,2]`, `orderType` ∈ `["FOK","GTC","GTD"]`. Optional `postOnly` bool.
+- **`SubmitOrderSchema`** — validates unsigned-intent DataFrames for `submit_orders()`. Required camelCase columns: `tokenId`, `price` (0,1], `size` (>0), `side`. Optional: `orderType`, `postOnly`, `expiration`, `nonce`, `negRisk`, `tickSize`, `feeRateBps`.
+- **`OrderSchema`** — backward-compat alias for `PlaceOrderSchema`.
+
+`place_orders()` also enforces the CLOB API's 15-order-per-call limit.
+
+### Post-only orders
+
+`place_order`, `place_orders`, `submit_order`, and `submit_orders` support post-only mode. `postOnly` is a **JSON envelope field** (not part of the signed EIP-712 struct) that tells the matching engine to reject the order if it would immediately fill.
+
+- `place_order(..., post_only=True)` / `submit_order(..., post_only=True)` — function arg (snake_case)
+- `place_orders` / `submit_orders` — read `postOnly` column from DataFrame (camelCase)
+- Only valid with `GTC` / `GTD` order types; raises `ValueError` otherwise.
 
 ### Typed returns (`types.py` and `schemas.py`)
 
@@ -299,7 +313,7 @@ Each page shows: raw DataFrame, Plotly visualization, and collapsible Python cod
 
 ## Tests
 
-- `tests/test_unit.py` — 112 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
+- `tests/test_unit.py` — 108 sync unit tests, all HTTP mocked via `pytest-httpx` or `unittest.mock`. No live API calls.
 - `tests/test_async_unit.py` — 16 async tests using `pytest-asyncio`.
 - `tests/test_integration.py` — 13 integration tests (live API, optional).
 - `tests/conftest.py` — `client` (unauthenticated), `authed_client` (stub L2 credentials), and `ctf_client` (stub private key) fixtures.
