@@ -29,8 +29,8 @@ class DataMixin:
         market: list[str] | None = None,
         eventId: list[int] | None = None,
         sizeThreshold: float | None = 1,
-        redeemable: bool | None = False,
-        mergeable: bool | None = False,
+        redeemable: bool | None = None,
+        mergeable: bool | None = None,
         limit: int | None = 100,
         offset: int | None = 0,
         sortBy: str | None = "TOKENS",
@@ -44,8 +44,13 @@ class DataMixin:
             market: Filter by token ID(s).
             eventId: Filter by event ID(s).
             sizeThreshold: Minimum position size to include.
-            redeemable: Only show redeemable positions.
-            mergeable: Only show mergeable positions.
+            redeemable: If ``True``, return only redeemable positions; if
+                ``False``, return only non-redeemable; if ``None`` (default),
+                no filter. Note: passing the literal ``False`` to the data
+                API silently excludes most open positions, so the default
+                here is ``None``.
+            mergeable: Same semantics as ``redeemable`` for mergeable
+                positions.
             limit: Max rows per page.
             offset: Pagination offset.
             sortBy: Column to sort by (e.g. ``"TOKENS"``).
