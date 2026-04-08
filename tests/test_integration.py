@@ -5,6 +5,7 @@ Run with:
     pytest tests/test_integration.py -v
 """
 
+import os
 import time as _time
 
 import pandas as pd
@@ -15,6 +16,7 @@ from polymarket_pandas.schemas import (
     ActivitySchema,
     BridgeSupportedAssetSchema,
     BuilderLeaderboardSchema,
+    BuilderTradeSchema,
     BuilderVolumeSchema,
     ClosedPositionSchema,
     CommentSchema,
@@ -47,6 +49,22 @@ from polymarket_pandas.schemas import (
 
 @pytest.fixture(scope="session")
 def client() -> PolymarketPandas:
+    return PolymarketPandas(use_tqdm=False)
+
+
+@pytest.fixture(scope="session")
+def builder_client() -> PolymarketPandas:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    required = (
+        "POLYMARKET_BUILDER_API_KEY",
+        "POLYMARKET_BUILDER_API_SECRET",
+        "POLYMARKET_BUILDER_API_PASSPHRASE",
+    )
+    missing = [v for v in required if not os.getenv(v)]
+    if missing:
+        pytest.skip(f"Builder credentials not set: {', '.join(missing)}")
     return PolymarketPandas(use_tqdm=False)
 
 
@@ -536,6 +554,15 @@ def test_get_builder_volume(client: PolymarketPandas) -> None:
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     BuilderVolumeSchema.validate(df)
+
+
+def test_get_builder_trades(builder_client: PolymarketPandas) -> None:
+    result = builder_client.get_builder_trades(builder="betmoar")
+    assert isinstance(result, dict)
+    assert set(result.keys()) >= {"data", "next_cursor", "count", "limit"}
+    assert isinstance(result["data"], pd.DataFrame)
+    if not result["data"].empty:
+        BuilderTradeSchema.validate(result["data"])
 
 
 # ---------------------------------------------------------------------------
