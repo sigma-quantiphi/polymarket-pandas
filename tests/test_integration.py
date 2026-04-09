@@ -298,9 +298,7 @@ def test_get_event_tags(client: PolymarketPandas, event_id: int) -> None:
 
 
 def test_get_comments(client: PolymarketPandas, event_id: int) -> None:
-    df = client.get_comments(
-        limit=5, parent_entity_type="Event", parent_entity_id=event_id
-    )
+    df = client.get_comments(limit=5, parent_entity_type="Event", parent_entity_id=event_id)
     assert isinstance(df, pd.DataFrame)
     if not df.empty:
         CommentSchema.validate(df)
@@ -395,9 +393,7 @@ def test_get_midpoints(client: PolymarketPandas, active_token_ids: pd.DataFrame)
     MidpointSchema.validate(df)
 
 
-def test_get_midpoints_by_request(
-    client: PolymarketPandas, active_token_ids: pd.DataFrame
-) -> None:
+def test_get_midpoints_by_request(client: PolymarketPandas, active_token_ids: pd.DataFrame) -> None:
     df = client.get_midpoints_by_request(active_token_ids.head(5))
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
@@ -424,9 +420,7 @@ def test_get_last_trade_price(client: PolymarketPandas, token: str) -> None:
     assert "price" in result
 
 
-def test_get_last_trade_prices(
-    client: PolymarketPandas, active_token_ids: pd.DataFrame
-) -> None:
+def test_get_last_trade_prices(client: PolymarketPandas, active_token_ids: pd.DataFrame) -> None:
     df = client.get_last_trade_prices(active_token_ids.head(5))
     assert isinstance(df, pd.DataFrame)
     if not df.empty:

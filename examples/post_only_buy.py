@@ -67,18 +67,28 @@ def main() -> None:
     # Respect the market's min order size; 1¢ * min_size must also clear
     # the notional minimum (Polymarket requires ~$1 notional for buys, so
     # size at 1¢ needs to be at least 100 shares).
-    size = max(min_size, 100)
+    size = max(min_size, 5)
 
     print(f"\nPlacing post-only BUY {size} @ ${price:.2f} ...")
-    resp = client.submit_order(
-        token_id=token_id,
-        price=0.8,
-        size=size,
-        side="BUY",
-        order_type="GTC",
-        post_only=True,
-    )
-    print(f"Response: {resp}")
+    # resp = client.submit_order(
+    #     token_id=token_id,
+    #     price=0.8,
+    #     size=size,
+    #     side="BUY",
+    #     order_type="GTC",
+    #     post_only=True,
+    # )
+    # print(f"Response: {resp}")
+
+    # ── 3. Show recent builder-attributed trades ──────────────────────
+    # If POLYMARKET_BUILDER_API_KEY/SECRET/PASSPHRASE are set, place_order
+    # auto-attaches POLY_BUILDER_* headers and matched fills are credited
+    # to this builder UUID.
+    builder_id = "0xc057648431f6da6f4e2ce80011cd856824dd239e"
+    print(f"\nRecent builder trades for {builder_id}:")
+    builder_trades = client.get_builder_trades(builder=builder_id)
+    print(builder_trades["data"].dtypes)
+    print(builder_trades["data"])
 
     client.close()
 

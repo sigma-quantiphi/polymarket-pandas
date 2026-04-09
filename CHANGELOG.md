@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.19] — 2026-04-09
+
+### Added
+- Builder attribution on order placement: when `POLYMARKET_BUILDER_API_KEY` / `_SECRET` / `_PASSPHRASE` are configured, `place_order`, `place_orders`, `submit_order`, and `submit_orders` automatically attach `POLY_BUILDER_*` headers alongside L2 auth so matched fills are credited to the builder for rewards. Header-only — no changes to the signed EIP-712 order struct.
+- `_request_clob_private(..., attribute=True)` keyword flag and `_has_builder_creds()` helper.
+- `builder_client` test fixture and 4 unit tests covering header attach/skip behavior.
+
+---
+
 ## [0.6.17] — 2026-04-03
 
 ### Fixed

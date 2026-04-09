@@ -100,7 +100,7 @@ A `@dataclass` that inherits from all 8 mixins. `client.py` contains infrastruct
 **Authentication layers:**
 - **L1 (EIP-712)** — `_build_l1_headers`: used only for `create_api_key` / `derive_api_key`. Requires `private_key`.
 - **L2 (HMAC-SHA256)** — `_build_l2_headers`: all private CLOB endpoints. Requires `_api_key` / `_api_secret` / `_api_passphrase`.
-- **Builder HMAC** — `_build_builder_headers`: same scheme as L2 but with `POLY_BUILDER_*` headers and builder credentials.
+- **Builder HMAC** — `_build_builder_headers`: same scheme as L2 but with `POLY_BUILDER_*` headers and builder credentials. Used by the dedicated `_request_clob_builder` helper for `get_builder_trades`, **and** auto-attached as **attribution headers** alongside L2 on `place_order` / `place_orders` (via `_request_clob_private(..., attribute=True)`) when builder credentials are configured — fills are then credited to the builder for rewards.
 - **Relayer key** — plain headers `RELAYER_API_KEY` + `RELAYER_API_KEY_ADDRESS` (no signing). Built by `_relayer_auth_headers()`.
 
 All credentials fall back to env vars (`POLYMARKET_ADDRESS`, `POLYMARKET_PRIVATE_KEY`, `POLYMARKET_API_KEY`, etc.).

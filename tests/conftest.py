@@ -26,3 +26,18 @@ def authed_client() -> PolymarketPandas:
         _api_secret=_TEST_SECRET,
         _api_passphrase="test-passphrase",
     )
+
+
+@pytest.fixture
+def builder_client() -> PolymarketPandas:
+    """Client with stub L2 + builder credentials for attribution tests."""
+    return PolymarketPandas(
+        use_tqdm=False,
+        address="0xDEADBEEFdeadbeefDEADBEEFdeadbeef00000000",
+        _api_key="test-api-key",
+        _api_secret=_TEST_SECRET,
+        _api_passphrase="test-passphrase",
+        _builder_api_key="test-builder-api-key",
+        _builder_api_secret=_TEST_SECRET,
+        _builder_api_passphrase="test-builder-passphrase",
+    )

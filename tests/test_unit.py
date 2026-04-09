@@ -1004,6 +1004,108 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
     assert len(second_batch) == 1
 
 
+# ── Builder attribution headers ──────────────────────────────────────────────
+
+
+_BUILDER_HEADERS = {
+    "POLY_BUILDER_API_KEY",
+    "POLY_BUILDER_PASSPHRASE",
+    "POLY_BUILDER_TIMESTAMP",
+    "POLY_BUILDER_SIGNATURE",
+}
+
+
+def test_place_order_attaches_builder_headers_when_set(
+    builder_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """When builder creds are set, place_order attaches POLY_BUILDER_* headers."""
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/order",
+        json={"orderID": "0xabc", "status": "live"},
+    )
+    builder_client.place_order(
+        order={"fake": "signed-order"},
+        owner="test-api-key",
+        orderType="GTC",
+    )
+    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/order")
+    assert "POLY_API_KEY" in req.headers  # L2 still attached
+    for h in _BUILDER_HEADERS:
+        assert h in req.headers, f"missing builder header {h}"
+    assert req.headers["POLY_BUILDER_API_KEY"] == "test-builder-api-key"
+    assert req.headers["POLY_BUILDER_PASSPHRASE"] == "test-builder-passphrase"
+
+
+def test_place_order_no_builder_headers_when_unset(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """Without builder creds, place_order sends only L2 headers."""
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/order",
+        json={"orderID": "0xabc", "status": "live"},
+    )
+    authed_client.place_order(
+        order={"fake": "signed-order"},
+        owner="test-api-key",
+        orderType="GTC",
+    )
+    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/order")
+    assert "POLY_API_KEY" in req.headers
+    for h in _BUILDER_HEADERS:
+        assert h not in req.headers, f"unexpected builder header {h}"
+
+
+def test_place_orders_attaches_builder_headers_when_set(
+    builder_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """When builder creds are set, place_orders attaches POLY_BUILDER_* headers."""
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/orders",
+        json=[{"orderID": "0xabc", "status": "live"}],
+    )
+    # Build a minimal valid signed-order DataFrame matching PlaceOrderSchema.
+    orders_df = pd.DataFrame(
+        [
+            {
+                "salt": "1",
+                "maker": "0x" + "00" * 20,
+                "signer": "0x" + "00" * 20,
+                "taker": "0x" + "00" * 20,
+                "tokenId": "1" * 20,
+                "makerAmount": "1000000",
+                "takerAmount": "2000000",
+                "expiration": "0",
+                "nonce": "0",
+                "feeRateBps": "0",
+                "side": "BUY",
+                "signatureType": 1,
+                "signature": "0x" + "ab" * 32,
+                "owner": "test-api-key",
+                "orderType": "GTC",
+            }
+        ]
+    )
+    builder_client.place_orders(orders_df)
+    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/orders")
+    for h in _BUILDER_HEADERS:
+        assert h in req.headers, f"missing builder header {h}"
+
+
+def test_get_active_orders_does_not_attach_builder_headers(
+    builder_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """Non-order private endpoints (attribute=False default) skip builder headers."""
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/data/orders",
+        json={"data": [], "next_cursor": "LTE=", "count": 0, "limit": 100},
+    )
+    builder_client.get_active_orders()
+    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/data/orders")
+    assert "POLY_API_KEY" in req.headers
+    for h in _BUILDER_HEADERS:
+        assert h not in req.headers, f"unexpected builder header {h} on get_active_orders"
+
+
 # ── Rewards: Public endpoints ────────────────────────────────────────────────
 
 
@@ -1056,9 +1158,7 @@ def test_get_rewards_markets_current(client: PolymarketPandas, httpx_mock: HTTPX
     assert "rewardsConfig" in result["data"].columns
 
 
-def test_get_rewards_markets_current_expand(
-    client: PolymarketPandas, httpx_mock: HTTPXMock
-):
+def test_get_rewards_markets_current_expand(client: PolymarketPandas, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://clob.polymarket.com/rewards/markets/current",
         json=_REWARDS_CURRENT_PAYLOAD,
@@ -1110,9 +1210,7 @@ def test_get_rewards_markets_multi(client: PolymarketPandas, httpx_mock: HTTPXMo
     assert len(result["data"]) == 1
 
 
-def test_get_rewards_markets_multi_expand(
-    client: PolymarketPandas, httpx_mock: HTTPXMock
-):
+def test_get_rewards_markets_multi_expand(client: PolymarketPandas, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://clob.polymarket.com/rewards/markets/multi",
         json={
@@ -1147,9 +1245,7 @@ def test_get_rewards_markets_multi_expand(
     assert df["rewardsConfigRatePerDay"].iloc[0] == 5.0
 
 
-def test_get_rewards_markets_multi_expand_tokens(
-    client: PolymarketPandas, httpx_mock: HTTPXMock
-):
+def test_get_rewards_markets_multi_expand_tokens(client: PolymarketPandas, httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://clob.polymarket.com/rewards/markets/multi",
         json={
@@ -1181,9 +1277,7 @@ def test_get_rewards_markets_multi_expand_tokens(
             ],
         },
     )
-    result = client.get_rewards_markets_multi(
-        expand_tokens=True, expand_rewards_config=True
-    )
+    result = client.get_rewards_markets_multi(expand_tokens=True, expand_rewards_config=True)
     df = result["data"]
     # 1 market × 2 tokens × 1 reward config = 2 rows
     assert len(df) == 2

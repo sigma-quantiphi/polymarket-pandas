@@ -378,10 +378,13 @@ class PolymarketPandas(
                 )
             )
 
-    def _require_builder_auth(self) -> None:
-        if not (
+    def _has_builder_creds(self) -> bool:
+        return bool(
             self._builder_api_key and self._builder_api_secret and self._builder_api_passphrase
-        ):
+        )
+
+    def _require_builder_auth(self) -> None:
+        if not self._has_builder_creds():
             raise PolymarketAuthError(
                 detail=(
                     "Builder API credentials not set. "
@@ -445,6 +448,8 @@ class PolymarketPandas(
         method: str = "GET",
         params: dict | None = None,
         data: dict | list | None = None,
+        *,
+        attribute: bool = False,
     ) -> dict:
         self._require_l2_auth()
         headers = self._build_l2_headers(
@@ -452,6 +457,14 @@ class PolymarketPandas(
             request_path=f"/{path}",
             body=data,
         )
+        if attribute and self._has_builder_creds():
+            headers.update(
+                self._build_builder_headers(
+                    method=method,
+                    request_path=f"/{path}",
+                    body=data,
+                )
+            )
         response = self._client.request(
             method=method,
             url=f"{self.clob_url}{path}",
@@ -1412,6 +1425,14 @@ class PolymarketPandas(
 
         Returns:
             dict: API response from the CLOB order endpoint.
+
+        Note:
+            If builder API credentials are configured on the client
+            (``_builder_api_key`` / ``_builder_api_secret`` /
+            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
+            vars), ``POLY_BUILDER_*`` attribution headers are automatically
+            attached and matched fills will be credited to the builder for
+            rewards.
         """
         self._require_l2_auth()
         order = self.build_order(token_id, price, size, side, **kwargs)
@@ -1444,6 +1465,14 @@ class PolymarketPandas(
 
         Returns:
             pd.DataFrame: API responses for each batch.
+
+        Note:
+            If builder API credentials are configured on the client
+            (``_builder_api_key`` / ``_builder_api_secret`` /
+            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
+            vars), ``POLY_BUILDER_*`` attribution headers are automatically
+            attached and matched fills will be credited to the builder for
+            rewards.
         """
         self._require_l2_auth()
 

@@ -169,6 +169,14 @@ class ClobPrivateMixin:
 
         Returns:
             dict: Response from the API.
+
+        Note:
+            If builder API credentials are configured on the client
+            (``_builder_api_key`` / ``_builder_api_secret`` /
+            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
+            vars), ``POLY_BUILDER_*`` attribution headers are automatically
+            attached to this request and matched fills will be credited to
+            the builder for rewards.
         """
         if post_only and orderType not in ("GTC", "GTD"):
             raise ValueError(f"post_only is only valid with GTC or GTD, got {orderType!r}")
@@ -179,6 +187,7 @@ class ClobPrivateMixin:
             path="order",
             method="POST",
             data=data,
+            attribute=True,
         )
 
     def place_orders(self, orders: pd.DataFrame) -> DataFrame[SendOrderResponseSchema]:
@@ -197,6 +206,14 @@ class ClobPrivateMixin:
         Raises:
             pandera.errors.SchemaError: If the DataFrame fails validation.
             ValueError: If more than 15 orders are provided.
+
+        Note:
+            If builder API credentials are configured on the client
+            (``_builder_api_key`` / ``_builder_api_secret`` /
+            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
+            vars), ``POLY_BUILDER_*`` attribution headers are automatically
+            attached to this request and matched fills will be credited to
+            the builder for rewards.
         """
         from polymarket_pandas.order_schema import PlaceOrderSchema
 
@@ -225,6 +242,7 @@ class ClobPrivateMixin:
             path="orders",
             method="POST",
             data=orders_data,
+            attribute=True,
         )
         return self.response_to_dataframe(response)
 
