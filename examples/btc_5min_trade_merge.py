@@ -94,12 +94,8 @@ def main() -> None:
     print(f"Condition ID: {condition_id}")
     print(f"Neg-risk:     {neg_risk}")
     print(f"Tick size:    {tick_size}")
-    print(
-        f"Up  token:    {up_row['clobTokenIds']}  price={up_row['outcomePrices']:.3f}"
-    )
-    print(
-        f"Down token:   {down_row['clobTokenIds']}  price={down_row['outcomePrices']:.3f}"
-    )
+    print(f"Up  token:    {up_row['clobTokenIds']}  price={up_row['outcomePrices']:.3f}")
+    print(f"Down token:   {down_row['clobTokenIds']}  price={down_row['outcomePrices']:.3f}")
 
     # ── 2. Submit limit orders at min price via DataFrame ──────────────
     #   Place cheap limit orders (unlikely to fill) to demo submit_orders.

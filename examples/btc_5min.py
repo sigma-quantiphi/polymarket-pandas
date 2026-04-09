@@ -35,9 +35,7 @@ series = client.get_series(
     expand_events=True,
     closed=False,
 )
-series = series.loc[series["eventsEndDate"] >= now].sort_values(
-    "eventsEndDate", ignore_index=True
-)
+series = series.loc[series["eventsEndDate"] >= now].sort_values("eventsEndDate", ignore_index=True)
 if series.empty:
     print("No active BTC 5-min events found.")
     sys.exit(1)

@@ -31,20 +31,12 @@ if not user_addr:
 with st.sidebar:
     st.subheader("Position Filters")
     tab = st.radio("View", ["Open", "Closed"], key="positions_tab")
-    limit = st.number_input(
-        "Limit", min_value=1, max_value=500, value=100, key="positions_limit"
-    )
-    offset = st.number_input(
-        "Offset", min_value=0, value=0, step=10, key="positions_offset"
-    )
+    limit = st.number_input("Limit", min_value=1, max_value=500, value=100, key="positions_limit")
+    offset = st.number_input("Offset", min_value=0, value=0, step=10, key="positions_offset")
 
     if tab == "Open":
-        sort_by = st.selectbox(
-            "Sort by", ["TOKENS", "VALUE"], key="positions_sort_open"
-        )
-        sort_dir = st.selectbox(
-            "Sort direction", ["DESC", "ASC"], key="positions_dir_open"
-        )
+        sort_by = st.selectbox("Sort by", ["TOKENS", "VALUE"], key="positions_sort_open")
+        sort_dir = st.selectbox("Sort direction", ["DESC", "ASC"], key="positions_dir_open")
         size_threshold = st.number_input(
             "Size threshold",
             min_value=0.0,
@@ -53,26 +45,18 @@ with st.sidebar:
             key="positions_size_thresh",
             help="Min position size to include",
         )
-        redeemable = st.checkbox(
-            "Redeemable only", value=False, key="positions_redeemable"
-        )
-        mergeable = st.checkbox(
-            "Mergeable only", value=False, key="positions_mergeable"
-        )
+        redeemable = st.checkbox("Redeemable only", value=False, key="positions_redeemable")
+        mergeable = st.checkbox("Mergeable only", value=False, key="positions_mergeable")
     else:
         sort_by = st.selectbox(
             "Sort by",
             ["REALIZEDPNL", "TOTAL_PNL", "TOKENS"],
             key="positions_sort_closed",
         )
-        sort_dir = st.selectbox(
-            "Sort direction", ["DESC", "ASC"], key="positions_dir_closed"
-        )
+        sort_dir = st.selectbox("Sort direction", ["DESC", "ASC"], key="positions_dir_closed")
 
     with st.expander("Filter by Market/Event"):
-        market_ids = st.text_input(
-            "Market token IDs (comma-separated)", key="pos_market_ids"
-        )
+        market_ids = st.text_input("Market token IDs (comma-separated)", key="pos_market_ids")
         event_ids = st.text_input("Event IDs (comma-separated)", key="pos_event_ids")
         title = st.text_input("Title search", key="pos_title")
 
@@ -133,9 +117,7 @@ for candidate in ["currentValue", "size", "initialValue"]:
         size_col = candidate
         break
 
-label_col = (
-    "title" if "title" in df.columns else "slug" if "slug" in df.columns else None
-)
+label_col = "title" if "title" in df.columns else "slug" if "slug" in df.columns else None
 
 if size_col and label_col:
     st.subheader("Portfolio Breakdown")

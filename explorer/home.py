@@ -23,19 +23,14 @@ with st.sidebar.expander("API Credentials (optional)", expanded=False):
     _addr = st.text_input("Wallet address", key="cfg_address", type="default")
     _api_key = st.text_input("API key", key="cfg_api_key", type="password")
     _api_secret = st.text_input("API secret", key="cfg_api_secret", type="password")
-    _api_passphrase = st.text_input(
-        "API passphrase", key="cfg_api_passphrase", type="password"
-    )
+    _api_passphrase = st.text_input("API passphrase", key="cfg_api_passphrase", type="password")
 
 
 def get_client() -> PolymarketPandas:
     """Return a shared ``PolymarketPandas`` client, cached in session state."""
     # Build a cache key from credentials so the client refreshes when they change
     cache_key = (_addr, _api_key, _api_secret, _api_passphrase)
-    if (
-        "client" not in st.session_state
-        or st.session_state.get("_client_key") != cache_key
-    ):
+    if "client" not in st.session_state or st.session_state.get("_client_key") != cache_key:
         kwargs: dict = {}
         if _addr:
             kwargs["address"] = _addr

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -65,7 +65,7 @@ def show_fields(label: str, payload: dict) -> None:
 
 
 def main() -> None:
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     week_ago = today - timedelta(days=7)
     fortnight_ago = today - timedelta(days=14)
 

@@ -23,12 +23,8 @@ client = get_client()
 
 with st.sidebar:
     st.subheader("Filters")
-    limit = st.number_input(
-        "Limit", min_value=1, max_value=500, value=100, key="events_limit"
-    )
-    offset = st.number_input(
-        "Offset", min_value=0, value=0, step=10, key="events_offset"
-    )
+    limit = st.number_input("Limit", min_value=1, max_value=500, value=100, key="events_limit")
+    offset = st.number_input("Offset", min_value=0, value=0, step=10, key="events_offset")
     closed = st.selectbox(
         "Status",
         [None, False, True],
@@ -47,12 +43,8 @@ with st.sidebar:
     )
 
     st.subheader("Expansion")
-    expand_markets = st.checkbox(
-        "Expand markets", value=True, key="events_expand_markets"
-    )
-    expand_tokens = st.checkbox(
-        "Expand CLOB token IDs", value=True, key="events_expand_tokens"
-    )
+    expand_markets = st.checkbox("Expand markets", value=True, key="events_expand_markets")
+    expand_tokens = st.checkbox("Expand CLOB token IDs", value=True, key="events_expand_tokens")
 
     with st.expander("Date Range"):
         start_date_min = st.date_input("Start date min", value=None, key="ev_sd_min")
@@ -62,9 +54,7 @@ with st.sidebar:
 
     with st.expander("Sorting"):
         order = st.text_input("Order by (comma-separated fields)", key="ev_order")
-        ascending = st.selectbox(
-            "Ascending", [None, True, False], format_func=_tri, key="ev_asc"
-        )
+        ascending = st.selectbox("Ascending", [None, True, False], format_func=_tri, key="ev_asc")
 
     with st.expander("Lookup / Tags"):
         slug_input = st.text_input("Slugs (comma-separated)", key="ev_slugs")
@@ -76,17 +66,13 @@ with st.sidebar:
             key="ev_tag_id",
             help="0 = no filter",
         )
-        exclude_tag_ids = st.text_input(
-            "Exclude tag IDs (comma-separated)", key="ev_excl_tags"
-        )
+        exclude_tag_ids = st.text_input("Exclude tag IDs (comma-separated)", key="ev_excl_tags")
         related_tags = st.selectbox(
             "Related tags", [None, True, False], format_func=_tri, key="ev_related_tags"
         )
 
     with st.expander("Advanced"):
-        cyom = st.selectbox(
-            "CYOM", [None, True, False], format_func=_tri, key="ev_cyom"
-        )
+        cyom = st.selectbox("CYOM", [None, True, False], format_func=_tri, key="ev_cyom")
         include_chat = st.selectbox(
             "Include chat", [None, True, False], format_func=_tri, key="ev_chat"
         )
@@ -114,8 +100,7 @@ kwargs: dict = {
     "ascending": ascending,
     "slug": [s.strip() for s in slug_input.split(",") if s.strip()] or None,
     "tag_id": tag_id if tag_id > 0 else None,
-    "exclude_tag_id": [int(s.strip()) for s in exclude_tag_ids.split(",") if s.strip()]
-    or None,
+    "exclude_tag_id": [int(s.strip()) for s in exclude_tag_ids.split(",") if s.strip()] or None,
     "related_tags": related_tags,
     "cyom": cyom,
     "include_chat": include_chat,

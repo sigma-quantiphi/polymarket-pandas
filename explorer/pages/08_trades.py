@@ -18,15 +18,9 @@ client = get_client()
 
 with st.sidebar:
     st.subheader("Trade Filters")
-    limit = st.number_input(
-        "Limit", min_value=1, max_value=500, value=100, key="trades_limit"
-    )
-    offset = st.number_input(
-        "Offset", min_value=0, value=0, step=10, key="trades_offset"
-    )
-    user = st.text_input(
-        "User address (optional)", key="trades_user", placeholder="0x..."
-    )
+    limit = st.number_input("Limit", min_value=1, max_value=500, value=100, key="trades_limit")
+    offset = st.number_input("Offset", min_value=0, value=0, step=10, key="trades_offset")
+    user = st.text_input("User address (optional)", key="trades_user", placeholder="0x...")
     side = st.selectbox(
         "Side",
         [None, "BUY", "SELL"],
@@ -36,9 +30,7 @@ with st.sidebar:
     taker_only = st.checkbox("Taker only", value=True, key="trades_taker_only")
 
     with st.expander("Filter by Market/Event"):
-        market_ids = st.text_input(
-            "Market token IDs (comma-separated)", key="trades_market_ids"
-        )
+        market_ids = st.text_input("Market token IDs (comma-separated)", key="trades_market_ids")
         event_ids = st.text_input("Event IDs (comma-separated)", key="trades_event_ids")
 
     with st.expander("Amount Filter"):

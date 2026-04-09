@@ -44,11 +44,7 @@ def section(title: str) -> None:
 
 def main() -> None:
     client = PolymarketPandas()
-    date = (
-        sys.argv[1]
-        if len(sys.argv) > 1
-        else pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
-    )
+    date = sys.argv[1] if len(sys.argv) > 1 else pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
     print(f"Address: {client.address}")
     print(f"Date:    {date}")
 
@@ -100,9 +96,7 @@ def main() -> None:
 
     # ── 4. Per-market earnings on the given date ──────────────────────
     section(f"4. get_rewards_earnings(date={date!r})")
-    earnings = client.get_rewards_earnings(
-        date=date, signature_type=sig_type, maker_address=maker
-    )
+    earnings = client.get_rewards_earnings(date=date, signature_type=sig_type, maker_address=maker)
     print(f"count={earnings['count']} next_cursor={earnings['next_cursor']}")
     print(earnings["data"])
     print(earnings["data"].dtypes.to_string())

@@ -72,9 +72,7 @@ with st.sidebar:
         start_ts = st.number_input(
             "Start timestamp", min_value=0, value=0, step=1, key="ph_start_ts"
         )
-        end_ts = st.number_input(
-            "End timestamp", min_value=0, value=0, step=1, key="ph_end_ts"
-        )
+        end_ts = st.number_input("End timestamp", min_value=0, value=0, step=1, key="ph_end_ts")
 
 ph_kwargs: dict = {
     "market": token_id,

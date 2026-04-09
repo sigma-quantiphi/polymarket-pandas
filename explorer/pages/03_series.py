@@ -23,12 +23,8 @@ client = get_client()
 
 with st.sidebar:
     st.subheader("Filters")
-    limit = st.number_input(
-        "Limit", min_value=1, max_value=500, value=100, key="series_limit"
-    )
-    offset = st.number_input(
-        "Offset", min_value=0, value=0, step=10, key="series_offset"
-    )
+    limit = st.number_input("Limit", min_value=1, max_value=500, value=100, key="series_limit")
+    offset = st.number_input("Offset", min_value=0, value=0, step=10, key="series_offset")
     closed = st.selectbox(
         "Status",
         [None, False, True],
@@ -37,27 +33,17 @@ with st.sidebar:
     )
 
     st.subheader("Expansion")
-    expand_events = st.checkbox(
-        "Expand events", value=False, key="series_expand_events"
-    )
-    expand_event_tags = st.checkbox(
-        "Expand event tags", value=False, key="series_expand_tags"
-    )
+    expand_events = st.checkbox("Expand events", value=False, key="series_expand_events")
+    expand_event_tags = st.checkbox("Expand event tags", value=False, key="series_expand_tags")
 
     with st.expander("Sorting"):
         order = st.text_input("Order by (comma-separated fields)", key="ser_order")
-        ascending = st.selectbox(
-            "Ascending", [None, True, False], format_func=_tri, key="ser_asc"
-        )
+        ascending = st.selectbox("Ascending", [None, True, False], format_func=_tri, key="ser_asc")
 
     with st.expander("Lookup / Categories"):
         slug_input = st.text_input("Slugs (comma-separated)", key="ser_slugs")
-        categories_ids = st.text_input(
-            "Category IDs (comma-separated)", key="ser_cat_ids"
-        )
-        categories_labels = st.text_input(
-            "Category labels (comma-separated)", key="ser_cat_labels"
-        )
+        categories_ids = st.text_input("Category IDs (comma-separated)", key="ser_cat_ids")
+        categories_labels = st.text_input("Category labels (comma-separated)", key="ser_cat_labels")
 
     with st.expander("Advanced"):
         include_chat = st.selectbox(
@@ -78,10 +64,8 @@ kwargs: dict = {
     "order": [s.strip() for s in order.split(",") if s.strip()] or None,
     "ascending": ascending,
     "slug": [s.strip() for s in slug_input.split(",") if s.strip()] or None,
-    "categories_ids": [int(s.strip()) for s in categories_ids.split(",") if s.strip()]
-    or None,
-    "categories_labels": [s.strip() for s in categories_labels.split(",") if s.strip()]
-    or None,
+    "categories_ids": [int(s.strip()) for s in categories_ids.split(",") if s.strip()] or None,
+    "categories_labels": [s.strip() for s in categories_labels.split(",") if s.strip()] or None,
     "include_chat": include_chat,
     "recurrence": recurrence,
 }

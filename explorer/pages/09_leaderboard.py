@@ -19,12 +19,8 @@ client = get_client()
 with st.sidebar:
     st.subheader("Leaderboard Filters")
     board_type = st.radio("Type", ["Traders", "Builders"], key="lb_type")
-    time_period = st.selectbox(
-        "Time period", ["DAY", "WEEK", "MONTH", "ALL"], key="lb_period"
-    )
-    limit = st.number_input(
-        "Limit", min_value=1, max_value=100, value=25, key="lb_limit"
-    )
+    time_period = st.selectbox("Time period", ["DAY", "WEEK", "MONTH", "ALL"], key="lb_period")
+    limit = st.number_input("Limit", min_value=1, max_value=100, value=25, key="lb_limit")
     offset = st.number_input("Offset", min_value=0, value=0, step=10, key="lb_offset")
 
     if board_type == "Traders":
