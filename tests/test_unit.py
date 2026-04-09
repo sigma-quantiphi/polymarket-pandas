@@ -1,5 +1,7 @@
 """Unit tests — no live API calls, all HTTP interactions mocked via pytest-httpx."""
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import orjson
@@ -15,6 +17,11 @@ from polymarket_pandas import (
     PolymarketRateLimitError,
     PolymarketWebSocket,
     SubmitOrderSchema,
+    XTrackerDailyStatSchema,
+    XTrackerMetricSchema,
+    XTrackerPostSchema,
+    XTrackerTrackingSchema,
+    XTrackerUserSchema,
 )
 from polymarket_pandas.client import (
     _decimal_places,
@@ -28,6 +35,8 @@ from polymarket_pandas.utils import (
     filter_params,
     snake_to_camel,
 )
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 # ── Utility: snake_to_camel ──────────────────────────────────────────────────
 
@@ -287,6 +296,71 @@ def test_get_markets_returns_dataframe(client: PolymarketPandas, httpx_mock: HTT
     df = client.get_markets(expand_events=False, expand_series=False)
     assert isinstance(df, pd.DataFrame)
     assert "slug" in df.columns
+
+
+def test_fetch_sports_event_filters_by_condition_id(
+    client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """fetch_sports_event uses conditionId from the markets query to slice
+    the parent event response, dropping markets of other types."""
+    import re
+
+    cond_a = "0xaaa"
+    cond_b = "0xbbb"
+    cond_other = "0xccc"
+
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/markets\?.*"),
+        json=[
+            {
+                "id": 1,
+                "conditionId": cond_a,
+                "question": "Spread: A (-1.5)",
+                "groupItemTitle": "Spread -1.5",
+                "events": [{"id": 99, "slug": "game-event"}],
+            },
+            {
+                "id": 2,
+                "conditionId": cond_b,
+                "question": "Spread: B (+1.5)",
+                "groupItemTitle": "Spread +1.5",
+                "events": [{"id": 99, "slug": "game-event"}],
+            },
+        ],
+    )
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/events\?.*"),
+        json=[
+            {
+                "id": 99,
+                "slug": "game-event",
+                "title": "Game Event",
+                "markets": [
+                    {"conditionId": cond_a, "question": "Spread A"},
+                    {"conditionId": cond_b, "question": "Spread B"},
+                    {"conditionId": cond_other, "question": "Moneyline"},
+                ],
+            }
+        ],
+    )
+
+    result = client.fetch_sports_event("spreads")
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 2
+    assert set(result["marketsConditionId"]) == {cond_a, cond_b}
+
+
+def test_fetch_sports_event_empty_markets(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    """If the discovery query returns nothing, return an empty DataFrame."""
+    import re
+
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/markets\?.*"),
+        json=[],
+    )
+    result = client.fetch_sports_event("totals")
+    assert isinstance(result, pd.DataFrame)
+    assert result.empty
 
 
 def test_get_tags_returns_dataframe(client: PolymarketPandas, httpx_mock: HTTPXMock):
@@ -700,7 +774,12 @@ def _mock_web3(ctf_client, monkeypatch):
 
     # Make build_transaction return a plain dict
     for contract in (ct, nr, usdc):
-        for fn_name in ("splitPosition", "mergePositions", "redeemPositions", "approve"):
+        for fn_name in (
+            "splitPosition",
+            "mergePositions",
+            "redeemPositions",
+            "approve",
+        ):
             fn = getattr(contract.functions, fn_name, MagicMock())
             fn.return_value.build_transaction.return_value = {"data": "0x"}
 
@@ -1768,3 +1847,127 @@ def test_place_orders_rejects_over_15(authed_client: PolymarketPandas):
     )
     with pytest.raises(ValueError, match="at most 15"):
         authed_client.place_orders(df)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# xtracker API tests (fixtures captured from the live service)
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _xt_fixture(name: str) -> dict:
+    return json.loads((FIXTURES / f"xtracker_{name}.json").read_text())
+
+
+def test_get_xtracker_users(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://xtracker.polymarket.com/api/users?platform=X",
+        json=_xt_fixture("users"),
+    )
+    df = client.get_xtracker_users(platform="X")
+    assert isinstance(df, pd.DataFrame)
+    assert {"id", "handle", "platform"} <= set(df.columns)
+    XTrackerUserSchema.validate(df)
+
+
+def test_get_xtracker_user(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://xtracker.polymarket.com/api/users/ZelenskyyUa?platform=X",
+        json=_xt_fixture("user"),
+    )
+    user = client.get_xtracker_user("ZelenskyyUa", platform="X")
+    assert isinstance(user, dict)
+    assert user["handle"] == "ZelenskyyUa"
+    assert user["platform"] == "X"
+
+
+def test_get_xtracker_user_posts(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url=(
+            "https://xtracker.polymarket.com/api/users/ZelenskyyUa/posts"
+            "?platform=X&startDate=2026-04-02&endDate=2026-04-09&timezone=EST"
+        ),
+        json=_xt_fixture("user_posts"),
+    )
+    df = client.get_xtracker_user_posts(
+        "ZelenskyyUa",
+        platform="X",
+        start_date="2026-04-02",
+        end_date="2026-04-09",
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert {"id", "userId", "content"} <= set(df.columns)
+    XTrackerPostSchema.validate(df)
+
+
+def test_get_xtracker_user_trackings(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://xtracker.polymarket.com/api/users/ZelenskyyUa/trackings?activeOnly=true",
+        json=_xt_fixture("user_trackings"),
+    )
+    df = client.get_xtracker_user_trackings("ZelenskyyUa", active_only=True)
+    assert isinstance(df, pd.DataFrame)
+    XTrackerTrackingSchema.validate(df)
+
+
+def test_get_xtracker_trackings(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://xtracker.polymarket.com/api/trackings?activeOnly=true",
+        json=_xt_fixture("trackings"),
+    )
+    df = client.get_xtracker_trackings(active_only=True)
+    assert isinstance(df, pd.DataFrame)
+    assert "marketLink" in df.columns
+    XTrackerTrackingSchema.validate(df)
+
+
+def test_get_xtracker_tracking_with_stats(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    fixture = _xt_fixture("tracking")
+    tid = fixture["data"]["id"]
+    httpx_mock.add_response(
+        url=f"https://xtracker.polymarket.com/api/trackings/{tid}?includeStats=true",
+        json=fixture,
+    )
+    res = client.get_xtracker_tracking(tid, include_stats=True)
+    assert isinstance(res, dict)
+    assert res["id"] == tid
+    # `stats` was materialised as a DataFrame and the scalar aggregates
+    # were lifted onto .attrs
+    assert isinstance(res["stats"], pd.DataFrame)
+    assert {"date", "count", "cumulative"} <= set(res["stats"].columns)
+    assert "total" in res["stats"].attrs
+    assert "pace" in res["stats"].attrs
+    XTrackerDailyStatSchema.validate(res["stats"])
+
+
+def test_get_xtracker_metrics(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    fixture = _xt_fixture("metrics")
+    user_id = fixture["data"][0]["userId"]
+    httpx_mock.add_response(
+        url=(
+            f"https://xtracker.polymarket.com/api/metrics/{user_id}"
+            "?type=daily&startDate=2026-03-26&endDate=2026-04-09"
+        ),
+        json=fixture,
+    )
+    df = client.get_xtracker_metrics(
+        user_id,
+        type="daily",
+        start_date="2026-03-26",
+        end_date="2026-04-09",
+    )
+    assert isinstance(df, pd.DataFrame)
+    # nested `data` object flattened with sep="_"
+    assert {"dataCount", "dataCumulative", "dataTrackingId"} <= set(df.columns)
+    XTrackerMetricSchema.validate(df)
+
+
+def test_xtracker_envelope_unwrap_raises_on_failure(
+    client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """When xtracker returns {success: false, error: ...} we raise PolymarketAPIError."""
+    httpx_mock.add_response(
+        url="https://xtracker.polymarket.com/api/trackings?activeOnly=true",
+        json={"success": False, "error": "kaboom"},
+    )
+    with pytest.raises(PolymarketAPIError, match="kaboom"):
+        client.get_xtracker_trackings(active_only=True)

@@ -32,6 +32,7 @@ from polymarket_pandas.mixins import (
     GammaMixin,
     RelayerMixin,
     RewardsMixin,
+    XTrackerMixin,
 )
 from polymarket_pandas.types import SendOrderResponse, SignedOrder
 from polymarket_pandas.utils import (
@@ -111,6 +112,7 @@ class PolymarketPandas(
     BridgeMixin,
     CTFMixin,
     RewardsMixin,
+    XTrackerMixin,
 ):
     """Polymarket HTTP client that returns preprocessed pandas DataFrames.
 
@@ -126,6 +128,7 @@ class PolymarketPandas(
     clob_url: str = "https://clob.polymarket.com/"
     relayer_url: str = field(default="https://relayer-v2.polymarket.com/", repr=False)
     bridge_url: str = field(default="https://bridge.polymarket.com/", repr=False)
+    xtracker_url: str = field(default="https://xtracker.polymarket.com/api/", repr=False)
     rpc_url: str | None = field(default=None, repr=False)
     proxy_url: str | None = field(default=None, repr=False)
     address: str | None = field(default=None, repr=False)
@@ -546,6 +549,32 @@ class PolymarketPandas(
             json=data,
         )
         return self._handle_response(response)
+
+    def _request_xtracker(
+        self,
+        path: str,
+        method: str = "GET",
+        params: dict | None = None,
+        data: dict | list | None = None,
+    ) -> dict | list:
+        response = self._client.request(
+            method=method,
+            url=f"{self.xtracker_url}{path}",
+            params=filter_params(params),
+            json=data,
+        )
+        payload = self._handle_response(response)
+        # xtracker wraps every response in {success, data, message}; unwrap
+        # once here so mixin methods stay one-liners.
+        if isinstance(payload, dict) and "success" in payload:
+            if not payload.get("success", True):
+                raise PolymarketAPIError(
+                    status_code=response.status_code,
+                    url=str(response.request.url),
+                    detail=payload.get("error") or payload.get("message"),
+                )
+            return payload.get("data", payload)
+        return payload
 
     def _relayer_auth_headers(self) -> dict:
         return {

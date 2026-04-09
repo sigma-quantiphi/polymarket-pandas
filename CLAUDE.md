@@ -37,7 +37,7 @@ uv run python -c "from polymarket_pandas import PolymarketPandas, AsyncPolymarke
 
 ```
 polymarket_pandas/
-  __init__.py          # Public exports (6 classes + 4 exceptions + 22 TypedDicts + 37 schemas)
+  __init__.py          # Public exports (6 classes + 4 exceptions + 24 TypedDicts + 42 schemas)
   client.py            # PolymarketPandas dataclass — core infra + build_order
   async_client.py      # AsyncPolymarketPandas — async wrapper via composition + ThreadPoolExecutor
   exceptions.py        # PolymarketError hierarchy
@@ -45,13 +45,17 @@ polymarket_pandas/
   schemas.py           # pandera DataFrameModels for DataFrame-returning endpoints
   utils.py             # Stateless helpers: preprocess_dataframe, preprocess_dict, filter_params,
   #                      instance_cache, to_unix_timestamp, etc.
+  parsers.py           # Vectorized regex enrichers for marketsGroupItemTitle:
+  #                      classify_event_structure, parse_title_bounds, parse_title_sports,
+  #                      coalesce_end_date_from_title
   ws.py                # PolymarketWebSocket + PolymarketWebSocketSession (sync, websocket-client)
   async_ws.py          # AsyncPolymarketWebSocket + AsyncPolymarketWebSocketSession (async, websockets)
   order_schema.py      # pandera DataFrameModels for validating place_orders / submit_orders input
   py.typed             # PEP 561 marker
   mixins/
-    __init__.py        # Re-exports all 8 mixin classes
-    _gamma.py          # GammaMixin   — markets, events, tags, series, sports, comments, search, profiles
+    __init__.py        # Re-exports all 9 mixin classes
+    _gamma.py          # GammaMixin   — markets, events, tags, series, sports, comments, search,
+    #                                    profiles, fetch_sports_event (multi-call discovery helper)
     _data.py           # DataMixin    — positions, trades, leaderboard, accounting snapshot, builders
     _clob_public.py    # ClobPublicMixin — orderbook, prices, midpoints, spreads, price history,
     #                                      sampling/simplified markets, builder trades, rebates
@@ -60,6 +64,8 @@ polymarket_pandas/
     _relayer.py        # RelayerMixin — Safe deployment, nonces, transactions, relay payload, submit
     _bridge.py         # BridgeMixin  — deposit/withdrawal addresses, quotes, supported assets, status
     _ctf.py            # CTFMixin     — on-chain merge, split, redeem positions (requires web3)
+    _xtracker.py       # XTrackerMixin — xtracker.polymarket.com post-counter API
+    #                                    (X / Truth Social tracking, feeds counter markets)
 ```
 
 ## Entity Relationships
@@ -79,7 +85,7 @@ Full reference with workflows, expansion logic, and lookup methods: `.claude/ski
 
 ### `PolymarketPandas` — HTTP client
 
-A `@dataclass` that inherits from all 8 mixins. `client.py` contains infrastructure, order building, and pagination; all endpoint methods live in the mixins. The class has six base URLs:
+A `@dataclass` that inherits from all 9 mixins. `client.py` contains infrastructure, order building, and pagination; all endpoint methods live in the mixins. The class has seven base URLs:
 
 | Field | Base URL | Auth |
 |---|---|---|
@@ -88,6 +94,7 @@ A `@dataclass` that inherits from all 8 mixins. `client.py` contains infrastruct
 | `clob_url` | `https://clob.polymarket.com/` | none / L2 / builder |
 | `relayer_url` | `https://relayer-v2.polymarket.com/` | relayer key |
 | `bridge_url` | `https://bridge.polymarket.com/` | none |
+| `xtracker_url` | `https://xtracker.polymarket.com/api/` | none |
 | `rpc_url` | `https://polygon-rpc.com` (configurable) | none (used by CTFMixin) |
 
 **Request helpers** (all call `_handle_response` which maps HTTP errors to custom exceptions):
@@ -96,6 +103,7 @@ A `@dataclass` that inherits from all 8 mixins. `client.py` contains infrastruct
 - `_request_clob_builder` — builder HMAC auth, calls `_require_builder_auth()` guard first
 - `_request_relayer` — accepts optional `auth_headers` dict (relayer API key)
 - `_request_bridge` — unauthenticated
+- `_request_xtracker` — unauthenticated, auto-unwraps the `{success, data, message}` envelope and raises `PolymarketAPIError` when `success=false`
 
 **Authentication layers:**
 - **L1 (EIP-712)** — `_build_l1_headers`: used only for `create_api_key` / `derive_api_key`. Requires `private_key`.

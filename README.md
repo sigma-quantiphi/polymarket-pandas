@@ -217,6 +217,45 @@ Field names verified against the official Polymarket OpenAPI specs. All 11 curso
 endpoints have specific CursorPage types (e.g. `OrdersCursorPage`, `UserTradesCursorPage`)
 that inherit from a `CursorPage` base and specify `data: DataFrame[Schema]`.
 
+### Title parsers (`polymarket_pandas.parsers`)
+
+Polymarket exposes bracket bounds, directional thresholds, and sports
+spread/total lines only as free-text inside `marketsGroupItemTitle`
+("280-299", "↑ 200,000", "Spread -1.5", "O/U 8.5"). The `parsers` module
+ships vectorized regex extractors that turn those strings into structured
+columns:
+
+```python
+from polymarket_pandas import (
+    PolymarketPandas,
+    classify_event_structure,
+    parse_title_bounds,
+    parse_title_sports,
+    coalesce_end_date_from_title,
+)
+
+client = PolymarketPandas()
+df = client.get_events(closed=False, limit=300, expand_markets=True)
+
+df = pd.concat([df, parse_title_bounds(df), parse_title_sports(df)], axis=1)
+df["structure"] = classify_event_structure(df)        # 5 event-shape labels
+df["marketsEndDate"] = coalesce_end_date_from_title(df)  # fill NaT from title
+```
+
+| Function | Adds columns |
+|---|---|
+| `classify_event_structure` | one of `Single-Outcome`, `negRisk Multi-Outcome`, `Non-negRisk Multi-Outcome`, `Directional / Counter-Based`, `Bracketed` |
+| `parse_title_bounds` | `boundLow`, `boundHigh`, `direction`, `threshold` |
+| `parse_title_sports` | `spreadLine`, `totalLine`, `side` |
+| `coalesce_end_date_from_title` | fills NaT in `marketsEndDate` by parsing "Month Day" titles, inferring the year from `marketsStartDate` (with Dec→Jan rollover) |
+
+All parsers default to the `markets`-prefixed column names produced by
+`get_events(expand_markets=True)`. Pass the unprefixed equivalents
+(`title_col="groupItemTitle"`, etc.) to use them on raw `get_markets`
+output. See `examples/market_structures.py` for an end-to-end demo
+covering all 10 event shapes (5 core + BTC up/down + 4 sports market
+types).
+
 ---
 
 ## REST API Reference
@@ -424,6 +463,25 @@ teams = client.get_teams(league=["NFL", "NBA"])
 ```
 
 #### `get_teams_all(**kwargs) → pd.DataFrame`
+
+#### `fetch_sports_event(sports_market_type, **kwargs) → pd.DataFrame`
+
+Convenience method that bridges `get_markets(sports_market_types=[...])` and
+`get_events(slug=[...], expand_markets=True)`. Sports events are usually
+"More Markets" bundles mixing moneyline + spreads + totals + props at the
+same parent event id; this picks one event and slices it down to just the
+markets of the requested type using `conditionId` as the join key.
+
+```python
+spreads = client.fetch_sports_event("spreads")          # MLB / NBA spread lines
+totals  = client.fetch_sports_event("totals")           # over/under lines
+btts    = client.fetch_sports_event("both_teams_to_score")
+ml      = client.fetch_sports_event("moneyline")
+```
+
+See `get_sports_market_types()` for the full list of valid type names.
+The discovery filters mirror `get_markets` (`closed`, `start_date_min/max`,
+`liquidity_num_min/max`, `tag_id`, `order`, `ascending`, `limit`, ...).
 
 ---
 

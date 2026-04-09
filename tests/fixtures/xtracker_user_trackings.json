@@ -1,0 +1,47 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "dd724dc1-6543-49b8-9e64-107d5561fe8f",
+      "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+      "title": "Zelenskyy # posts April 10 - April 17, 2026?",
+      "startDate": "2026-04-10T16:00:00.000Z",
+      "endDate": "2026-04-17T15:59:59.000Z",
+      "target": null,
+      "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-april-10-april-17-2026",
+      "isActive": true,
+      "metrics": {},
+      "config": {},
+      "createdAt": "2026-04-07T04:00:03.482Z",
+      "updatedAt": "2026-04-07T04:00:03.482Z"
+    },
+    {
+      "id": "1a0dbb72-055f-4c77-949b-5e3734eb3d6d",
+      "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+      "title": "Zelenskyy # posts April 7 - April 14, 2026?",
+      "startDate": "2026-04-07T16:00:00.000Z",
+      "endDate": "2026-04-14T15:59:59.000Z",
+      "target": null,
+      "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-april-7-april-14-2026",
+      "isActive": true,
+      "metrics": {},
+      "config": {},
+      "createdAt": "2026-04-04T04:00:04.051Z",
+      "updatedAt": "2026-04-04T04:00:04.051Z"
+    },
+    {
+      "id": "07060383-f1b0-4c2d-8943-ce3fafd56f74",
+      "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+      "title": "Zelenskyy # posts April 3 - April 10, 2026?",
+      "startDate": "2026-04-03T16:00:00.000Z",
+      "endDate": "2026-04-10T15:59:59.000Z",
+      "target": null,
+      "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-april-3-april-10-2026",
+      "isActive": true,
+      "metrics": {},
+      "config": {},
+      "createdAt": "2026-03-31T04:00:03.220Z",
+      "updatedAt": "2026-03-31T04:00:03.220Z"
+    }
+  ]
+}

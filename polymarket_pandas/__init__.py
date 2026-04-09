@@ -10,7 +10,17 @@ from polymarket_pandas.exceptions import (
     PolymarketError,
     PolymarketRateLimitError,
 )
-from polymarket_pandas.order_schema import OrderSchema, PlaceOrderSchema, SubmitOrderSchema
+from polymarket_pandas.order_schema import (
+    OrderSchema,
+    PlaceOrderSchema,
+    SubmitOrderSchema,
+)
+from polymarket_pandas.parsers import (
+    classify_event_structure,
+    coalesce_end_date_from_title,
+    parse_title_bounds,
+    parse_title_sports,
+)
 from polymarket_pandas.schemas import (
     ActiveOrderSchema,
     ActivitySchema,
@@ -46,6 +56,11 @@ from polymarket_pandas.schemas import (
     TeamSchema,
     UserEarningSchema,
     UserRewardsMarketSchema,
+    XTrackerDailyStatSchema,
+    XTrackerMetricSchema,
+    XTrackerPostSchema,
+    XTrackerTrackingSchema,
+    XTrackerUserSchema,
 )
 from polymarket_pandas.types import (
     ApiCredentials,
@@ -70,6 +85,8 @@ from polymarket_pandas.types import (
     UserEarningsCursorPage,
     UserRewardsMarketsCursorPage,
     UserTradesCursorPage,
+    XTrackerTracking,
+    XTrackerUser,
 )
 from polymarket_pandas.ws import PolymarketWebSocket, PolymarketWebSocketSession
 
@@ -110,6 +127,8 @@ __all__ = [
     "SignedOrder",
     "SubmitTransactionResponse",
     "TransactionReceipt",
+    "XTrackerTracking",
+    "XTrackerUser",
     # Pandera schemas (order input validation)
     "OrderSchema",
     "PlaceOrderSchema",
@@ -149,4 +168,14 @@ __all__ = [
     "TeamSchema",
     "UserEarningSchema",
     "UserRewardsMarketSchema",
+    "XTrackerDailyStatSchema",
+    "XTrackerMetricSchema",
+    "XTrackerPostSchema",
+    "XTrackerTrackingSchema",
+    "XTrackerUserSchema",
+    # DataFrame parsers / enrichers
+    "classify_event_structure",
+    "coalesce_end_date_from_title",
+    "parse_title_bounds",
+    "parse_title_sports",
 ]

@@ -446,6 +446,95 @@ class GammaMixin:
         """Fetch the list of supported sports market types."""
         return self._request_gamma(path="sports/market-types")
 
+    def fetch_sports_event(
+        self,
+        sports_market_type: str,
+        *,
+        limit: int = 20,
+        order: list[str] | None = None,
+        ascending: bool | None = False,
+        closed: bool | None = False,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        liquidity_num_min: float | None = None,
+        liquidity_num_max: float | None = None,
+        volume_num_min: float | None = None,
+        volume_num_max: float | None = None,
+        tag_id: int | None = None,
+        related_tags: bool | None = None,
+        expand_clob_token_ids: bool = False,
+        expand_outcomes: bool = False,
+    ) -> DataFrame[EventSchema]:
+        """Find an open event containing markets of the given
+        ``sports_market_type`` and return its rows with markets expanded,
+        sliced to just the markets of the requested type.
+
+        Sports events are usually 'More Markets' bundles that mix moneyline
+        + spreads + totals + props at a single ``conditionId``-per-market
+        level. To get only the markets of one type, this convenience method:
+
+        1. Calls ``get_markets(sports_market_types=[sports_market_type])``
+           with the discovery filters (date / liquidity / volume / ordering)
+           below to find a matching event.
+        2. Collects the matching ``conditionId``s from that response.
+        3. Re-fetches the parent event via
+           ``get_events(slug=[...], expand_markets=True)`` and filters by
+           ``marketsConditionId.isin(...)``.
+
+        ``conditionId`` is the stable join key across both Gamma endpoints.
+        Returns an empty DataFrame if nothing is found.
+
+        Parameters
+        ----------
+        sports_market_type :
+            The sports market type to filter on. See
+            ``get_sports_market_types()`` for valid values
+            (e.g. ``"moneyline"``, ``"spreads"``, ``"totals"``,
+            ``"both_teams_to_score"``).
+        limit, order, ascending, closed, start_date_min, start_date_max,
+        end_date_min, end_date_max, liquidity_num_min, liquidity_num_max,
+        volume_num_min, volume_num_max, tag_id, related_tags :
+            Pass-throughs to the underlying ``get_markets`` discovery call.
+            Defaults pick the highest-liquidity open event.
+        expand_clob_token_ids, expand_outcomes :
+            Pass-throughs to the ``get_events`` re-fetch call.
+            ``expand_markets`` is always True — it's required for the
+            ``conditionId`` slice to work.
+        """
+        mkts = self.get_markets(
+            sports_market_types=[sports_market_type],
+            closed=closed,
+            limit=limit,
+            order=order if order is not None else ["liquidityNum"],
+            ascending=ascending,
+            start_date_min=start_date_min,
+            start_date_max=start_date_max,
+            end_date_min=end_date_min,
+            end_date_max=end_date_max,
+            liquidity_num_min=liquidity_num_min,
+            liquidity_num_max=liquidity_num_max,
+            volume_num_min=volume_num_min,
+            volume_num_max=volume_num_max,
+            tag_id=tag_id,
+            related_tags=related_tags,
+            expand_clob_token_ids=False,
+        )
+        if mkts.empty or "eventsSlug" not in mkts.columns:
+            return pd.DataFrame()
+        event_slug = mkts["eventsSlug"].dropna().iloc[0]
+        cond_ids = set(mkts.loc[mkts["eventsSlug"] == event_slug, "conditionId"].dropna())
+        ev = self.get_events(
+            slug=[event_slug],
+            expand_markets=True,
+            expand_clob_token_ids=expand_clob_token_ids,
+            expand_outcomes=expand_outcomes,
+        )
+        if cond_ids and "marketsConditionId" in ev.columns:
+            ev = ev[ev["marketsConditionId"].isin(cond_ids)]
+        return ev
+
     def get_teams(
         self,
         limit: int | None = 300,

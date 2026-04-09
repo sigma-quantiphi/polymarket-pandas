@@ -23,7 +23,9 @@ client = get_client()
 
 with st.sidebar:
     st.subheader("Filters")
-    limit = st.number_input("Limit", min_value=1, max_value=500, value=300, key="tags_limit")
+    limit = st.number_input(
+        "Limit", min_value=1, max_value=500, value=300, key="tags_limit"
+    )
     offset = st.number_input("Offset", min_value=0, value=0, step=10, key="tags_offset")
 
     with st.expander("Sorting"):

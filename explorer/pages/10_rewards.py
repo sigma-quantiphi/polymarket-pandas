@@ -34,11 +34,15 @@ if endpoint == "Current Reward Configs":
         sponsored = st.selectbox(
             "Sponsored",
             [None, True, False],
-            format_func=lambda x: {None: "All", True: "Sponsored", False: "Standard"}[x],
+            format_func=lambda x: {None: "All", True: "Sponsored", False: "Standard"}[
+                x
+            ],
             key="rewards_sponsored",
         )
         next_cursor = st.text_input(
-            "Next cursor", key="rewards_cursor", help="Paste cursor from previous page to continue"
+            "Next cursor",
+            key="rewards_cursor",
+            help="Paste cursor from previous page to continue",
         )
 
     with st.spinner("Fetching current rewards..."):
@@ -69,7 +73,9 @@ if endpoint == "Current Reward Configs":
             st.subheader("Reward Rate Distribution")
             chart_df = df.dropna(subset=[rate_col]).copy()
             chart_df[rate_col] = chart_df[rate_col].astype(float)
-            fig = px.histogram(chart_df, x=rate_col, nbins=30, title="Distribution of Reward Rates")
+            fig = px.histogram(
+                chart_df, x=rate_col, nbins=30, title="Distribution of Reward Rates"
+            )
             st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("View Code"):
@@ -99,7 +105,9 @@ elif endpoint == "Markets with Rewards":
             [None, "rate_per_day", "volume_24hr", "spread", "competitiveness"],
             key="rewards_order",
         )
-        position = st.selectbox("Sort direction", [None, "ASC", "DESC"], key="rewards_position")
+        position = st.selectbox(
+            "Sort direction", [None, "ASC", "DESC"], key="rewards_position"
+        )
         page_size = st.number_input(
             "Page size", min_value=1, max_value=500, value=100, key="rewards_page_size"
         )
@@ -112,7 +120,11 @@ elif endpoint == "Markets with Rewards":
 
         with st.expander("Numeric Filters"):
             min_volume_24hr = st.number_input(
-                "Min 24h volume", min_value=0.0, value=0.0, step=100.0, key="rewards_min_vol"
+                "Min 24h volume",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+                key="rewards_min_vol",
             )
             max_volume_24hr = st.number_input(
                 "Max 24h volume",
@@ -123,7 +135,11 @@ elif endpoint == "Markets with Rewards":
                 help="0 = no limit",
             )
             min_spread = st.number_input(
-                "Min spread", min_value=0.0, value=0.0, step=0.01, key="rewards_min_spread"
+                "Min spread",
+                min_value=0.0,
+                value=0.0,
+                step=0.01,
+                key="rewards_min_spread",
             )
             max_spread = st.number_input(
                 "Max spread",
@@ -134,7 +150,11 @@ elif endpoint == "Markets with Rewards":
                 help="0 = no limit",
             )
             min_price = st.number_input(
-                "Min price", min_value=0.0, value=0.0, step=0.01, key="rewards_min_price"
+                "Min price",
+                min_value=0.0,
+                value=0.0,
+                step=0.01,
+                key="rewards_min_price",
             )
             max_price = st.number_input(
                 "Max price",
@@ -211,7 +231,9 @@ else:
         sponsored = st.selectbox(
             "Sponsored",
             [None, True, False],
-            format_func=lambda x: {None: "All", True: "Sponsored", False: "Standard"}[x],
+            format_func=lambda x: {None: "All", True: "Sponsored", False: "Standard"}[
+                x
+            ],
             key="rewards_mkt_sponsored",
         )
         next_cursor = st.text_input("Next cursor", key="rewards_mkt_cursor")

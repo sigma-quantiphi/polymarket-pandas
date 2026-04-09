@@ -1,0 +1,120 @@
+{
+  "success": true,
+  "data": {
+    "id": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+    "handle": "ZelenskyyUa",
+    "name": "Volodymyr Zelenskyy / \u0412\u043e\u043b\u043e\u0434\u0438\u043c\u0438\u0440 \u0417\u0435\u043b\u0435\u043d\u0441\u044c\u043a\u0438\u0439",
+    "platform": "X",
+    "platformId": "1120633726478823425",
+    "avatarUrl": "https://pbs.twimg.com/profile_images/1585550046740848642/OpGKpqx9_normal.jpg",
+    "bio": "President of Ukraine / \u041f\u0440\u0435\u0437\u0438\u0434\u0435\u043d\u0442 \u0423\u043a\u0440\u0430\u0457\u043d\u0438",
+    "verified": true,
+    "lastSync": "2026-04-09T13:55:50.431Z",
+    "lastSyncError": null,
+    "createdAt": "2026-03-16T19:09:10.124Z",
+    "updatedAt": "2026-04-09T13:55:50.432Z",
+    "trackings": [
+      {
+        "id": "dd724dc1-6543-49b8-9e64-107d5561fe8f",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts April 10 - April 17, 2026?",
+        "startDate": "2026-04-10T16:00:00.000Z",
+        "endDate": "2026-04-17T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-april-10-april-17-2026",
+        "isActive": true,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-04-07T04:00:03.482Z",
+        "updatedAt": "2026-04-07T04:00:03.482Z"
+      },
+      {
+        "id": "1a0dbb72-055f-4c77-949b-5e3734eb3d6d",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts April 7 - April 14, 2026?",
+        "startDate": "2026-04-07T16:00:00.000Z",
+        "endDate": "2026-04-14T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-april-7-april-14-2026",
+        "isActive": true,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-04-04T04:00:04.051Z",
+        "updatedAt": "2026-04-04T04:00:04.051Z"
+      },
+      {
+        "id": "07060383-f1b0-4c2d-8943-ce3fafd56f74",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts April 3 - April 10, 2026?",
+        "startDate": "2026-04-03T16:00:00.000Z",
+        "endDate": "2026-04-10T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-april-3-april-10-2026",
+        "isActive": true,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-03-31T04:00:03.220Z",
+        "updatedAt": "2026-03-31T04:00:03.220Z"
+      },
+      {
+        "id": "2a6ece61-02d8-401f-93a1-9e470e07a2fa",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts March 31 - April 7, 2026?",
+        "startDate": "2026-03-31T16:00:00.000Z",
+        "endDate": "2026-04-07T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-march-31-april-7-2026",
+        "isActive": false,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-03-28T04:00:03.348Z",
+        "updatedAt": "2026-04-07T16:00:08.639Z"
+      },
+      {
+        "id": "6d35415b-7204-43de-b831-f74f022e1e9b",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts March 27 - April 3, 2026?",
+        "startDate": "2026-03-27T16:00:00.000Z",
+        "endDate": "2026-04-03T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-march-27-april-3-2026",
+        "isActive": false,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-03-24T04:00:03.343Z",
+        "updatedAt": "2026-04-03T16:00:08.975Z"
+      },
+      {
+        "id": "5610bf89-2a71-4692-a081-83003dd54e49",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts March 24 - March 31, 2026?",
+        "startDate": "2026-03-24T16:00:00.000Z",
+        "endDate": "2026-03-31T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-march-24-march-31-2026",
+        "isActive": false,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-03-21T04:00:03.906Z",
+        "updatedAt": "2026-03-31T16:00:08.421Z"
+      },
+      {
+        "id": "de46685d-4f14-44b7-a32f-03ab2ecb56aa",
+        "userId": "0479a0ae-931d-4c31-91fc-d4f72e6dc8f2",
+        "title": "Zelenskyy # posts March 20 - March 27, 2026?",
+        "startDate": "2026-03-20T16:00:00.000Z",
+        "endDate": "2026-03-27T15:59:59.000Z",
+        "target": null,
+        "marketLink": "https://polymarket.com/event/zelenskyy-of-tweets-march-20-march-27-2026",
+        "isActive": false,
+        "metrics": {},
+        "config": {},
+        "createdAt": "2026-03-17T04:00:03.552Z",
+        "updatedAt": "2026-03-27T16:00:08.375Z"
+      }
+    ],
+    "_count": {
+      "posts": 185
+    }
+  }
+}

@@ -44,7 +44,11 @@ def section(title: str) -> None:
 
 def main() -> None:
     client = PolymarketPandas()
-    date = sys.argv[1] if len(sys.argv) > 1 else pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
+    date = (
+        sys.argv[1]
+        if len(sys.argv) > 1
+        else pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
+    )
     print(f"Address: {client.address}")
     print(f"Date:    {date}")
 
@@ -135,7 +139,7 @@ def main() -> None:
         page_size=100,
         expand_earnings=True,
         expand_tokens=True,
-        expand_rewards_config=True
+        expand_rewards_config=True,
     )
     print(f"count={user_markets['count']} next_cursor={user_markets['next_cursor']}")
     print(user_markets["data"])

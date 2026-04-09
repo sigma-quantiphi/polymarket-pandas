@@ -40,6 +40,11 @@ from polymarket_pandas.schemas import (
     SportsMetadataSchema,
     TagSchema,
     TeamSchema,
+    XTrackerDailyStatSchema,
+    XTrackerMetricSchema,
+    XTrackerPostSchema,
+    XTrackerTrackingSchema,
+    XTrackerUserSchema,
 )
 
 # ---------------------------------------------------------------------------
@@ -601,3 +606,73 @@ def test_get_bridge_supported_assets(client: PolymarketPandas) -> None:
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     BridgeSupportedAssetSchema.validate(df)
+
+
+# ---------------------------------------------------------------------------
+# xtracker API tests (public)
+# ---------------------------------------------------------------------------
+
+
+def test_get_xtracker_users(client: PolymarketPandas) -> None:
+    df = client.get_xtracker_users(platform="X")
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    XTrackerUserSchema.validate(df)
+
+
+def test_get_xtracker_user(client: PolymarketPandas) -> None:
+    user = client.get_xtracker_user("elonmusk", platform="X")
+    assert isinstance(user, dict)
+    assert user.get("handle") == "elonmusk"
+    assert user.get("platform") == "X"
+
+
+def test_get_xtracker_user_posts(client: PolymarketPandas) -> None:
+    end = pd.Timestamp.now(tz="UTC").normalize()
+    df = client.get_xtracker_user_posts(
+        "elonmusk",
+        platform="X",
+        start_date=end - pd.Timedelta(days=2),
+        end_date=end,
+    )
+    assert isinstance(df, pd.DataFrame)
+    if not df.empty:
+        XTrackerPostSchema.validate(df)
+
+
+def test_get_xtracker_trackings(client: PolymarketPandas) -> None:
+    df = client.get_xtracker_trackings(active_only=True)
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    XTrackerTrackingSchema.validate(df)
+
+
+def test_get_xtracker_tracking_with_stats(client: PolymarketPandas) -> None:
+    trks = client.get_xtracker_trackings(active_only=True)
+    tracking_id = trks["id"].iloc[0]
+    res = client.get_xtracker_tracking(tracking_id, include_stats=True)
+    assert isinstance(res, dict)
+    assert res["id"] == tracking_id
+    stats = res["stats"]
+    assert isinstance(stats, pd.DataFrame)
+    # Aggregate scalars surfaced via .attrs
+    assert "total" in stats.attrs
+    assert "pace" in stats.attrs
+    if not stats.empty:
+        XTrackerDailyStatSchema.validate(stats)
+
+
+def test_get_xtracker_metrics(client: PolymarketPandas) -> None:
+    users = client.get_xtracker_users(platform="X")
+    user_id = users["id"].iloc[0]
+    end = pd.Timestamp.now(tz="UTC").normalize()
+    df = client.get_xtracker_metrics(
+        user_id,
+        type="daily",
+        start_date=end - pd.Timedelta(days=14),
+        end_date=end,
+    )
+    assert isinstance(df, pd.DataFrame)
+    if not df.empty:
+        assert {"dataCount", "dataCumulative"} <= set(df.columns)
+        XTrackerMetricSchema.validate(df)

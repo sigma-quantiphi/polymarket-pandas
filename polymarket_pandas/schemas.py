@@ -16,6 +16,7 @@ OpenAPI specs at ``docs.polymarket.com/api-spec/clob-openapi.yaml`` and
 
 from __future__ import annotations
 
+import pandas as pd
 import pandera.pandas as pa
 
 
@@ -91,7 +92,10 @@ class EventSchema(_Lenient):
     archived: bool | None = pa.Field(nullable=True)
     featured: bool | None = pa.Field(nullable=True)
     restricted: bool | None = pa.Field(nullable=True)
-    negRisk: bool | None = pa.Field(nullable=True)
+    # pd.BooleanDtype (not bool) so the upstream API's nulls survive
+    # — preprocess_dataframe already produces pandas nullable boolean,
+    # and coercing back to numpy bool would crash on <NA> values.
+    negRisk: pd.BooleanDtype = pa.Field(nullable=True)
     # Numeric
     liquidity: float | None = pa.Field(nullable=True)
     volume: float | None = pa.Field(nullable=True)
@@ -714,6 +718,92 @@ class UserRewardsMarketSchema(_Lenient):
     earningsAssetRate: float | None = pa.Field(nullable=True)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# xtracker API schemas (camelCase natively)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class XTrackerUserSchema(_Lenient):
+    """Schema for ``get_xtracker_users`` and the ``trackings[].user`` field.
+
+    Source: ``GET xtracker.polymarket.com/api/users``
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    handle: str | None = pa.Field(nullable=True)
+    name: str | None = pa.Field(nullable=True)
+    platform: str | None = pa.Field(nullable=True)
+    platformId: str | None = pa.Field(nullable=True)
+    avatarUrl: str | None = pa.Field(nullable=True)
+    bio: str | None = pa.Field(nullable=True)
+    verified: bool | None = pa.Field(nullable=True)
+    lastSync: pa.Timestamp | None = pa.Field(nullable=True)
+    lastSyncError: str | None = pa.Field(nullable=True)
+    createdAt: pa.Timestamp | None = pa.Field(nullable=True)
+    updatedAt: pa.Timestamp | None = pa.Field(nullable=True)
+
+
+class XTrackerPostSchema(_Lenient):
+    """Schema for ``get_xtracker_user_posts``.
+
+    Source: ``GET xtracker.polymarket.com/api/users/{handle}/posts``
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    userId: str | None = pa.Field(nullable=True)
+    platformId: str | None = pa.Field(nullable=True)
+    content: str | None = pa.Field(nullable=True)
+    createdAt: pa.Timestamp | None = pa.Field(nullable=True)
+    importedAt: pa.Timestamp | None = pa.Field(nullable=True)
+
+
+class XTrackerTrackingSchema(_Lenient):
+    """Schema for ``get_xtracker_trackings`` and ``get_xtracker_user_trackings``.
+
+    Source: ``GET xtracker.polymarket.com/api/trackings``
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    userId: str | None = pa.Field(nullable=True)
+    title: str | None = pa.Field(nullable=True)
+    startDate: pa.Timestamp | None = pa.Field(nullable=True)
+    endDate: pa.Timestamp | None = pa.Field(nullable=True)
+    target: float | None = pa.Field(nullable=True)
+    marketLink: str | None = pa.Field(nullable=True)
+    isActive: bool | None = pa.Field(nullable=True)
+    createdAt: pa.Timestamp | None = pa.Field(nullable=True)
+    updatedAt: pa.Timestamp | None = pa.Field(nullable=True)
+
+
+class XTrackerDailyStatSchema(_Lenient):
+    """Schema for the ``daily`` array inside ``get_xtracker_tracking(include_stats=True)``.
+
+    Source: ``GET xtracker.polymarket.com/api/trackings/{id}?includeStats=true``
+    """
+
+    date: pa.Timestamp | None = pa.Field(nullable=True)
+    count: float | None = pa.Field(nullable=True)
+    cumulative: float | None = pa.Field(nullable=True)
+
+
+class XTrackerMetricSchema(_Lenient):
+    """Schema for ``get_xtracker_metrics``.
+
+    Source: ``GET xtracker.polymarket.com/api/metrics/{userId}``
+
+    The nested ``data`` object is flattened with ``sep="_"`` and then renamed
+    to camelCase, producing ``dataCount``, ``dataCumulative``, ``dataTrackingId``.
+    """
+
+    id: str | None = pa.Field(nullable=True)
+    userId: str | None = pa.Field(nullable=True)
+    date: pa.Timestamp | None = pa.Field(nullable=True)
+    type: str | None = pa.Field(nullable=True)
+    dataCount: float | None = pa.Field(nullable=True)
+    dataCumulative: float | None = pa.Field(nullable=True)
+    dataTrackingId: str | None = pa.Field(nullable=True)
+
+
 __all__ = [
     "ActiveOrderSchema",
     "ActivitySchema",
@@ -749,4 +839,9 @@ __all__ = [
     "TeamSchema",
     "UserEarningSchema",
     "UserRewardsMarketSchema",
+    "XTrackerDailyStatSchema",
+    "XTrackerMetricSchema",
+    "XTrackerPostSchema",
+    "XTrackerTrackingSchema",
+    "XTrackerUserSchema",
 ]

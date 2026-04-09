@@ -22,6 +22,8 @@ from polymarket_pandas.schemas import (
     SimplifiedMarketSchema,
     UserEarningSchema,
     UserRewardsMarketSchema,
+    XTrackerDailyStatSchema,
+    XTrackerTrackingSchema,
 )
 
 # ── Cursor-paginated responses ────────────────────────────────────────
@@ -239,6 +241,54 @@ class LastTradePrice(TypedDict):
     side: str
 
 
+# ── xtracker single-resource responses ────────────────────────────────
+# Used by: get_xtracker_user, get_xtracker_tracking
+
+
+class XTrackerUser(TypedDict, total=False):
+    """Single user response from ``GET xtracker.polymarket.com/api/users/{handle}``.
+
+    Same shape as a row from ``get_xtracker_users``, plus a nested
+    ``trackings`` list and a ``_count`` summary.
+    """
+
+    id: str
+    handle: str
+    name: str
+    platform: str
+    platformId: str
+    avatarUrl: str
+    bio: str
+    verified: bool
+    lastSync: pd.Timestamp
+    createdAt: pd.Timestamp
+    updatedAt: pd.Timestamp
+    trackings: DataFrame[XTrackerTrackingSchema]
+
+
+class XTrackerTracking(TypedDict, total=False):
+    """Single tracking response from ``GET xtracker.polymarket.com/api/trackings/{id}``.
+
+    When ``include_stats=True``, the ``stats`` field is materialised as a
+    DataFrame of the daily counter (one row per bucket) with the
+    aggregate ``total`` / ``cumulative`` / ``pace`` / ``percentComplete`` /
+    ``daysElapsed`` / ``daysRemaining`` / ``daysTotal`` / ``isComplete``
+    fields exposed via ``stats.attrs``.
+    """
+
+    id: str
+    userId: str
+    title: str
+    startDate: pd.Timestamp
+    endDate: pd.Timestamp
+    target: int
+    marketLink: str
+    isActive: bool
+    createdAt: pd.Timestamp
+    updatedAt: pd.Timestamp
+    stats: DataFrame[XTrackerDailyStatSchema]
+
+
 __all__ = [
     "ApiCredentials",
     "BalanceAllowance",
@@ -262,4 +312,6 @@ __all__ = [
     "UserEarningsCursorPage",
     "UserRewardsMarketsCursorPage",
     "UserTradesCursorPage",
+    "XTrackerTracking",
+    "XTrackerUser",
 ]

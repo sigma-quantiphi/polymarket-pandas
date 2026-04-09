@@ -98,7 +98,12 @@ class AsyncPolymarketWebSocketSession:
 
     async def unsubscribe(self, asset_ids: list[str], **kwargs) -> None:
         """Unsubscribe from assets on a live connection."""
-        msg = {"assets_ids": asset_ids, "type": "market", "action": "unsubscribe", **kwargs}
+        msg = {
+            "assets_ids": asset_ids,
+            "type": "market",
+            "action": "unsubscribe",
+            **kwargs,
+        }
         await self._ws.send(orjson.dumps(msg))
 
     async def __aiter__(self) -> AsyncIterator[tuple[str, pd.DataFrame | dict]]:

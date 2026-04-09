@@ -1,0 +1,170 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "8efc4a76-dfbc-4abd-999a-23727513f12c",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-03-26T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 34,
+        "cumulative": 269,
+        "trackingId": "d861bacb-6108-45d6-9a14-47b9e58ea095"
+      }
+    },
+    {
+      "id": "0ce50ad3-09f2-4db7-91fb-488dfb75ab6f",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-03-27T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 42,
+        "cumulative": 76,
+        "trackingId": "8de1e223-72a8-4e85-9dfa-89797d6f7acc"
+      }
+    },
+    {
+      "id": "67351b68-c19b-4691-b398-54008739f577",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-03-28T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 12,
+        "cumulative": 12,
+        "trackingId": "fecb5a8f-4f9a-4bd5-9824-8b0f418eb2fc"
+      }
+    },
+    {
+      "id": "7dd6febd-4a67-4bfe-bcd1-bdf707d1b71c",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-03-29T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 48,
+        "cumulative": 60,
+        "trackingId": "fecb5a8f-4f9a-4bd5-9824-8b0f418eb2fc"
+      }
+    },
+    {
+      "id": "8a4c4313-fb04-456e-9cf1-15b2388659dc",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-03-30T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 38,
+        "cumulative": 236,
+        "trackingId": "984d5404-60ec-4389-97ee-f20360811006"
+      }
+    },
+    {
+      "id": "bfb22261-abea-4500-a9ff-1e714a84d085",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-03-31T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 60,
+        "cumulative": 98,
+        "trackingId": "4af17967-a797-4a2c-a040-a4b2a291e2c5"
+      }
+    },
+    {
+      "id": "ef881dec-5867-46a1-82fc-19ac2e8a2ebe",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-01T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 9,
+        "cumulative": 209,
+        "trackingId": "ef92feb7-cee0-427b-b6b9-efcc92a43c97"
+      }
+    },
+    {
+      "id": "4e87c08a-6d3a-4fe3-b605-a8b1a8eb9dc9",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-02T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 68,
+        "cumulative": 277,
+        "trackingId": "ef92feb7-cee0-427b-b6b9-efcc92a43c97"
+      }
+    },
+    {
+      "id": "b32ad4eb-7801-407e-9655-d0d5e9a19c07",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-03T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 30,
+        "cumulative": 98,
+        "trackingId": "40f92d42-c78b-4a12-99e8-0f530ecbbc36"
+      }
+    },
+    {
+      "id": "70f40a1b-0220-4142-bcfe-33a2d55bb25d",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-04T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 29,
+        "cumulative": 29,
+        "trackingId": "76faf18a-71d3-469c-b074-aa51e7392897"
+      }
+    },
+    {
+      "id": "fb83d81a-5d10-48e1-844b-fd7a9d830bc0",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-05T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 37,
+        "cumulative": 66,
+        "trackingId": "76faf18a-71d3-469c-b074-aa51e7392897"
+      }
+    },
+    {
+      "id": "2dc206a4-64c1-4c07-b269-3a1d6197ff58",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-06T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 42,
+        "cumulative": 275,
+        "trackingId": "429493e4-835a-4105-a95c-725a3d2ef944"
+      }
+    },
+    {
+      "id": "33cd3374-9cd1-4268-9c80-4ab17e0c0725",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-07T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 38,
+        "cumulative": 80,
+        "trackingId": "51557c8b-7834-4f3a-b7fd-923034183ebe"
+      }
+    },
+    {
+      "id": "49dd45fc-eba5-4680-88e5-d51ce5c02d67",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-08T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 36,
+        "cumulative": 212,
+        "trackingId": "b7b6c523-af5c-48f0-8fd8-be602c6e484e"
+      }
+    },
+    {
+      "id": "a1b4b1a2-b7d2-4a83-b67d-00ec807ad64b",
+      "userId": "c4e2a911-36ec-4453-8a39-1edb5e6b2969",
+      "date": "2026-04-09T00:00:00.000Z",
+      "type": "daily",
+      "data": {
+        "count": 0,
+        "cumulative": 212,
+        "trackingId": "b7b6c523-af5c-48f0-8fd8-be602c6e484e"
+      }
+    }
+  ]
+}

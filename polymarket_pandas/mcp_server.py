@@ -1538,6 +1538,177 @@ def get_rewards_user_markets(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# XTRACKER (Polymarket post-counter API — feeds Elon-tweet bracketed markets)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.tool()
+def get_xtracker_users(
+    platform: str | None = None,
+    stats: bool | None = None,
+    include_inactive: bool | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """List tracked users on the xtracker post-counter service.
+
+    Polymarket runs xtracker.polymarket.com to count social-media activity
+    (X / Truth Social) for the markets that resolve from post counts (e.g.
+    "Elon Musk # tweets in <window>?"). Use this to discover the handles
+    being tracked and their internal user IDs.
+
+    Args:
+        platform: ``"X"`` or ``"TRUTH_SOCIAL"``. None = all platforms.
+        stats: When True, include per-user aggregate stats.
+        include_inactive: When True, include users no longer being tracked.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_xtracker_users(
+        platform=platform,
+        stats=stats,
+        include_inactive=include_inactive,
+    )
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_xtracker_user(handle: str, platform: str | None = None) -> str:
+    """Fetch a single tracked xtracker user by handle.
+
+    Args:
+        handle: Platform handle (e.g. ``"elonmusk"``, ``"realDonaldTrump"``).
+        platform: Required only if the same handle exists on multiple platforms.
+    """
+    user = _client().get_xtracker_user(handle, platform=platform)
+    return json.dumps(user, default=str, indent=2)
+
+
+@mcp.tool()
+def get_xtracker_user_posts(
+    handle: str,
+    platform: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    timezone: str = "EST",
+    max_rows: int | None = None,
+) -> str:
+    """Fetch tracked posts for a user within a date range.
+
+    Args:
+        handle: Platform handle.
+        platform: Required if the handle exists on multiple platforms.
+        start_date: ISO date (``YYYY-MM-DD``). Interpreted in the timezone arg.
+        end_date: ISO date. Inclusive end of the window.
+        timezone: Time zone label for date interpretation. Defaults to ``"EST"``
+            because the Polymarket markets that consume xtracker resolve in ET.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_xtracker_user_posts(
+        handle,
+        platform=platform,
+        start_date=start_date,
+        end_date=end_date,
+        timezone=timezone,
+    )
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_xtracker_user_trackings(
+    handle: str,
+    platform: str | None = None,
+    active_only: bool | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """List tracking periods configured for a single user.
+
+    Args:
+        handle: Platform handle.
+        platform: Required if the handle exists on multiple platforms.
+        active_only: True to return only currently-active tracking windows.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_xtracker_user_trackings(handle, platform=platform, active_only=active_only)
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_xtracker_trackings(active_only: bool | None = None, max_rows: int | None = None) -> str:
+    """List all xtracker tracking periods across all users.
+
+    Each row represents one Polymarket counter market — ``title`` matches
+    the parent event title and ``marketLink`` points at the polymarket.com
+    page so you can join back to a specific market.
+
+    Args:
+        active_only: True to return only currently-active tracking windows.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_xtracker_trackings(active_only=active_only)
+    return _df_to_str(df, max_rows)
+
+
+@mcp.tool()
+def get_xtracker_tracking(id: str, include_stats: bool = True, max_rows: int | None = None) -> str:
+    """Fetch a single tracking period by id with the live counter.
+
+    With ``include_stats=True`` (default), returns the aggregate counters
+    (``total``, ``cumulative``, ``pace``, ``percentComplete``,
+    ``daysElapsed``, ``daysRemaining``, ``daysTotal``, ``isComplete``)
+    plus a per-bucket time-series of the counted activity.
+
+    This is the tool to call when you want to know "how many tweets has
+    Elon posted so far in the April 3-10 window, and what bucket would
+    that fall into for the bracketed market?".
+
+    Args:
+        id: Tracking UUID, as returned by ``get_xtracker_trackings``.
+        include_stats: Include the daily array and aggregate scalars.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    res = _client().get_xtracker_tracking(id, include_stats=include_stats)
+    if include_stats and isinstance(res.get("stats"), pd.DataFrame):
+        stats = res["stats"]
+        scalars = dict(stats.attrs)
+        meta = {k: v for k, v in res.items() if k != "stats"}
+        out = (
+            "### tracking\n"
+            + json.dumps(meta, default=str, indent=2)
+            + "\n\n### aggregate\n"
+            + json.dumps(scalars, default=str, indent=2)
+            + "\n\n### daily\n"
+            + _df_to_str(stats, max_rows)
+        )
+        return out
+    return json.dumps(res, default=str, indent=2)
+
+
+@mcp.tool()
+def get_xtracker_metrics(
+    user_id: str,
+    type: str = "daily",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    max_rows: int | None = None,
+) -> str:
+    """Fetch a user's per-bucket post metrics over a date range.
+
+    The nested ``data`` object is flattened to ``dataCount``,
+    ``dataCumulative``, ``dataTrackingId`` columns.
+
+    Args:
+        user_id: xtracker internal user UUID, from ``get_xtracker_users``.
+        type: Bucket granularity. ``"daily"`` is the default.
+        start_date: ISO date (``YYYY-MM-DD``).
+        end_date: ISO date.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    df = _client().get_xtracker_metrics(
+        user_id, type=type, start_date=start_date, end_date=end_date
+    )
+    return _df_to_str(df, max_rows)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SERVER ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 

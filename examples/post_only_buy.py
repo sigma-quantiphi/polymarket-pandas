@@ -49,7 +49,9 @@ def main() -> None:
     # expand_clob_token_ids explodes tokens but leaves `outcomes` as a list
     # aligned by position: row 0 = Yes token, row 1 = No token.
     yes_row = markets.iloc[0]
-    assert yes_row["outcomes"][0] == "Yes", f"Unexpected outcomes: {yes_row['outcomes']}"
+    assert (
+        yes_row["outcomes"][0] == "Yes"
+    ), f"Unexpected outcomes: {yes_row['outcomes']}"
 
     token_id = yes_row["clobTokenIds"]
     tick_size = yes_row["orderPriceMinTickSize"]

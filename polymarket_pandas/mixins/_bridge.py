@@ -5,7 +5,10 @@ from __future__ import annotations
 import pandas as pd
 from pandera.typing import DataFrame
 
-from polymarket_pandas.schemas import BridgeSupportedAssetSchema, BridgeTransactionSchema
+from polymarket_pandas.schemas import (
+    BridgeSupportedAssetSchema,
+    BridgeTransactionSchema,
+)
 from polymarket_pandas.types import BridgeAddress
 
 

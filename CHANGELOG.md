@@ -9,6 +9,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.20] — 2026-04-09
+
+### Added
+- **XTracker mixin** — new `polymarket_pandas.mixins._xtracker.XTrackerMixin` exposing all 7 endpoints of the `xtracker.polymarket.com` post-counter API (no auth, `{success, data, message}` envelope auto-unwrapped). Powers the "# tweets / # posts in window" markets (Elon, Trump, Zelenskyy, etc.).
+  - Methods: `get_xtracker_users`, `get_xtracker_user`, `get_xtracker_user_posts`, `get_xtracker_user_trackings`, `get_xtracker_trackings`, `get_xtracker_tracking`, `get_xtracker_metrics`.
+  - 5 new pandera schemas (`XTrackerUserSchema`, `XTrackerPostSchema`, `XTrackerTrackingSchema`, `XTrackerDailyStatSchema`, `XTrackerMetricSchema`) and 2 TypedDicts (`XTrackerUser`, `XTrackerTracking`).
+  - `_request_xtracker` request helper on `PolymarketPandas` using a new `xtracker_url` field, plus MCP tool wrappers.
+- New `polymarket_pandas.parsers` module with vectorized regex enrichers for `marketsGroupItemTitle`:
+  - `classify_event_structure(data)` — labels each event as Single-Outcome / negRisk Multi-Outcome / Non-negRisk Multi-Outcome / Directional / Bracketed.
+  - `parse_title_bounds(data)` — extracts `boundLow`, `boundHigh`, `direction`, `threshold` from bracket / arrow titles.
+  - `parse_title_sports(data)` — extracts `spreadLine`, `totalLine`, `side` from sports market titles ("Spread -1.5", "O/U 8.5", "Over 2.5"). `spreadLine` is named to avoid colliding with the unrelated `MarketSchema.spread` API field.
+  - `coalesce_end_date_from_title(data)` — fills NaT `marketsEndDate` by parsing the "Month Day" string in the title, inferring year from `marketsStartDate` with Dec→Jan rollover handling.
+- `PolymarketPandas.fetch_sports_event(sports_market_type, ...)` — convenience method on `GammaMixin` that finds an open event containing markets of the given type via `get_markets(sports_market_types=[...])` and re-fetches the parent event with markets sliced by `conditionId`. Pass-through filter kwargs mirror `get_markets` (`limit`, `order`, `ascending`, `closed`, date / liquidity / volume ranges, `tag_id`).
+- `examples/market_structures.py` — end-to-end demo printing one representative event for each of the 5 core structures plus 5 hand-picked extras (BTC up/down daily, Sports Moneyline / Spreads / Totals / Both Teams to Score).
+- 22 new unit tests in `tests/test_parsers.py` covering the four parsers, plus 2 mocked HTTP tests in `tests/test_unit.py` for `fetch_sports_event`.
+
+### Fixed
+- `EventSchema.negRisk` — switched dtype from `bool` to `pd.BooleanDtype` so the upstream API's null values survive validation. Live `test_get_events` was crashing with `Could not coerce data_container into type bool` after Polymarket started returning `<NA>` for `negRisk` on some events.
+
+---
+
 ## [0.6.19] — 2026-04-09
 
 ### Added
