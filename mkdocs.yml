@@ -6,6 +6,8 @@ repo_name: sigma-quantiphi/polymarket-pandas
 
 theme:
   name: material
+  favicon: favicon.png
+  logo: favicon.png
   palette:
     - scheme: default
       primary: deep purple
