@@ -55,6 +55,18 @@ print(book)
 
 See the [Getting Started](getting-started.md) guide for a complete walkthrough.
 
+## Interactive Notebooks
+
+Try polymarket-pandas in your browser with no installation — powered by [Binder](https://mybinder.org):
+
+| Notebook | Description | Launch |
+|----------|-------------|--------|
+| Getting Started | Client, markets, orderbook, price history | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F01_getting_started.ipynb) |
+| Market Analysis | Event structures, title parsers, tags, series | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F02_market_analysis.ipynb) |
+| Portfolio Tracking | Leaderboard, trades, positions, top holders | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F03_portfolio_tracking.ipynb) |
+| Rewards | Liquidity reward configs and markets | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F04_rewards_overview.ipynb) |
+| XTracker | Post-counter markets (Elon, Trump, etc.) | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F05_xtracker.ipynb) |
+
 ## Links
 
 - [GitHub Repository](https://github.com/sigma-quantiphi/polymarket-pandas)

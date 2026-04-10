@@ -7,10 +7,11 @@
 [![CI](https://github.com/sigma-quantiphi/polymarket-pandas/actions/workflows/ci.yml/badge.svg)](https://github.com/sigma-quantiphi/polymarket-pandas/actions/workflows/ci.yml)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Docs](https://img.shields.io/badge/docs-mkdocs-blue)](https://sigma-quantiphi.github.io/polymarket-pandas/)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F01_getting_started.ipynb)
 
 Pandas-native Python client for the full [Polymarket](https://polymarket.com) API surface — REST, WebSocket, Relayer, and Bridge — with automatic type coercion and DataFrame output.
 
-**[Documentation](https://sigma-quantiphi.github.io/polymarket-pandas/)** | **[Getting Started](https://sigma-quantiphi.github.io/polymarket-pandas/getting-started/)** | **[API Reference](https://sigma-quantiphi.github.io/polymarket-pandas/api/markets/)** | **[Changelog](https://sigma-quantiphi.github.io/polymarket-pandas/changelog/)**
+**[Documentation](https://sigma-quantiphi.github.io/polymarket-pandas/)** | **[Getting Started](https://sigma-quantiphi.github.io/polymarket-pandas/getting-started/)** | **[API Reference](https://sigma-quantiphi.github.io/polymarket-pandas/api/markets/)** | **[Notebooks](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F01_getting_started.ipynb)** | **[Changelog](https://sigma-quantiphi.github.io/polymarket-pandas/changelog/)**
 
 ---
 

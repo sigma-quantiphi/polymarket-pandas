@@ -2,6 +2,10 @@
 
 This guide walks through the most common workflows in under 5 minutes. No API keys needed for the first four steps — all public endpoints work out of the box.
 
+!!! tip "Try it in your browser"
+    Run this guide interactively on Binder — no installation required:
+    [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F01_getting_started.ipynb)
+
 ## Install
 
 === "pip"
