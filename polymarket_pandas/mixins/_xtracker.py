@@ -41,6 +41,8 @@ class XTrackerMixin:
         platform: str | None = None,
         stats: bool | None = None,
         include_inactive: bool | None = None,
+        expand_trackings: bool = False,
+        expand_count: bool = True,
     ) -> DataFrame[XTrackerUserSchema]:
         """List tracked users on the xtracker service.
 
@@ -49,6 +51,13 @@ class XTrackerMixin:
             stats: When True, include per-user aggregate stats.
             include_inactive: When True, include users who are no longer
                 actively tracked.
+            expand_trackings: When True, flatten the nested ``trackings``
+                list so each tracking period becomes its own row with
+                prefixed columns (``trackingsTitle``, ``trackingsStartDate``,
+                etc.).
+            expand_count: When True, flatten the nested ``_count`` dict
+                (present when ``stats=True``) into prefixed columns
+                (e.g. ``countPosts``).
 
         See: https://xtracker.polymarket.com/docs
         """
@@ -60,7 +69,19 @@ class XTrackerMixin:
                 "includeInactive": include_inactive,
             },
         )
-        return self.response_to_dataframe(data)
+        df = pd.DataFrame(data)
+        if not df.empty and expand_count and "_count" in df.columns:
+            count_df = pd.json_normalize(
+                df["_count"].apply(lambda x: x if isinstance(x, dict) else {})
+            )
+            count_df.columns = ["count" + c[:1].upper() + c[1:] for c in count_df.columns]
+            count_df.index = df.index
+            df = pd.concat([df.drop(columns=["_count"]), count_df], axis=1)
+        if not df.empty and expand_trackings and "trackings" in df.columns:
+            from polymarket_pandas.utils import expand_dataframe
+
+            df = expand_dataframe(df, field="trackings", column="trackings")
+        return self.preprocess_dataframe(df)
 
     def get_xtracker_user(self, handle: str, platform: str | None = None) -> XTrackerUser:
         """Fetch a single tracked user by handle.
@@ -72,7 +93,10 @@ class XTrackerMixin:
 
         See: https://xtracker.polymarket.com/docs
         """
-        return self._request_xtracker(f"users/{handle}", params={"platform": platform})
+        data = self._request_xtracker(f"users/{handle}", params={"platform": platform})
+        if isinstance(data, dict) and isinstance(data.get("trackings"), list):
+            data["trackings"] = self.response_to_dataframe(data["trackings"])
+        return self.preprocess_dict(data)
 
     def get_xtracker_user_posts(
         self,
@@ -112,8 +136,16 @@ class XTrackerMixin:
         handle: str,
         platform: str | None = None,
         active_only: bool | None = None,
+        expand_user: bool = False,
     ) -> DataFrame[XTrackerTrackingSchema]:
         """List tracking periods configured for a single user.
+
+        Args:
+            handle: Platform handle.
+            platform: Required if the handle exists on multiple platforms.
+            active_only: When True, only return active trackings.
+            expand_user: When True, flatten the nested ``user`` dict into
+                prefixed columns (``userHandle``, ``userPlatform``, etc.).
 
         See: https://xtracker.polymarket.com/docs
         """
@@ -121,12 +153,17 @@ class XTrackerMixin:
             f"users/{handle}/trackings",
             params={"platform": platform, "activeOnly": active_only},
         )
+        if expand_user:
+            data = pd.json_normalize(data, sep="_") if data else pd.DataFrame()
+            return self.preprocess_dataframe(data)
         return self.response_to_dataframe(data)
 
     # ── Tracking endpoints ───────────────────────────────────────────────
 
     def get_xtracker_trackings(
-        self, active_only: bool | None = None
+        self,
+        active_only: bool | None = None,
+        expand_user: bool = False,
     ) -> DataFrame[XTrackerTrackingSchema]:
         """List all tracking periods across all users.
 
@@ -134,9 +171,17 @@ class XTrackerMixin:
         field matches the parent event title and ``marketLink`` points at
         the polymarket.com page.
 
+        Args:
+            active_only: When True, only return currently active trackings.
+            expand_user: When True, flatten the nested ``user`` dict into
+                prefixed columns (``userHandle``, ``userPlatform``, etc.).
+
         See: https://xtracker.polymarket.com/docs
         """
         data = self._request_xtracker("trackings", params={"activeOnly": active_only})
+        if expand_user:
+            data = pd.json_normalize(data, sep="_") if data else pd.DataFrame()
+            return self.preprocess_dataframe(data)
         return self.response_to_dataframe(data)
 
     def get_xtracker_tracking(self, id: str, include_stats: bool = False) -> XTrackerTracking:
@@ -159,7 +204,9 @@ class XTrackerMixin:
             df = self.response_to_dataframe(daily)
             df.attrs.update(stats)
             raw["stats"] = df
-        return raw
+        if isinstance(raw, dict) and isinstance(raw.get("user"), dict):
+            raw["user"] = self.preprocess_dict(raw["user"])
+        return self.preprocess_dict(raw)
 
     # ── Metrics endpoint ─────────────────────────────────────────────────
 

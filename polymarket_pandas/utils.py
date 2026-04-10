@@ -138,7 +138,9 @@ DEFAULT_STR_DATETIME_COLUMNS = (
     "closedTime",
     "createdAt",
     "creationDate",
+    "date",
     "deployingTimestamp",
+    "importedAt",
     "endDate",
     "endDateIso",
     "eventStartTime",
@@ -148,6 +150,7 @@ DEFAULT_STR_DATETIME_COLUMNS = (
     "matchTime",
     "matchtime",
     "last_update",
+    "lastSync",
     "startDate",
     "startDateIso",
     "startTime",
@@ -430,6 +433,9 @@ _EXPAND_PREFIXES = (
     "rewardsConfig",
     "tokens",
     "earnings",
+    "user",
+    "trackings",
+    "count",
 )
 
 

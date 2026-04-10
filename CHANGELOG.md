@@ -9,6 +9,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.21] — 2026-04-10
+
+### Added
+- `expand_user` parameter on `get_xtracker_trackings` and `get_xtracker_user_trackings` — flattens nested `user` dict into prefixed columns (`userHandle`, `userPlatform`, etc.).
+- `expand_trackings` parameter on `get_xtracker_users` — flattens nested `trackings` list into rows with prefixed columns.
+- `expand_count` parameter on `get_xtracker_users` (default `True`) — flattens `_count` dict into columns like `countPosts`.
+- `examples/xtracker_overview.py` — end-to-end demo of all 7 XTracker endpoints.
+
+### Fixed
+- `get_xtracker_user` and `get_xtracker_tracking` now run through `preprocess_dict` so datetime fields (`startDate`, `endDate`, `createdAt`, etc.) are parsed as `pd.Timestamp`.
+- `get_xtracker_user` materialises the nested `trackings` list as a `DataFrame[XTrackerTrackingSchema]`.
+- `get_xtracker_tracking` preprocesses the nested `user` dict.
+- Added `date`, `importedAt`, `lastSync` to `DEFAULT_STR_DATETIME_COLUMNS`.
+- Added `user`, `trackings`, `count` to `_EXPAND_PREFIXES` so prefixed columns are datetime-parsed after expansion.
+
+---
+
 ## [0.6.20] — 2026-04-09
 
 ### Added
