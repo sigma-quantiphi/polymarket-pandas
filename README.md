@@ -1,5 +1,12 @@
 # polymarket-pandas
 
+[![PyPI](https://img.shields.io/pypi/v/polymarket-pandas)](https://pypi.org/project/polymarket-pandas/)
+[![Python](https://img.shields.io/pypi/pyversions/polymarket-pandas)](https://pypi.org/project/polymarket-pandas/)
+[![Downloads](https://img.shields.io/pypi/dm/polymarket-pandas)](https://pypistats.org/packages/polymarket-pandas)
+[![License](https://img.shields.io/pypi/l/polymarket-pandas)](https://github.com/sigma-quantiphi/polymarket-pandas/blob/main/LICENSE)
+[![CI](https://github.com/sigma-quantiphi/polymarket-pandas/actions/workflows/ci.yml/badge.svg)](https://github.com/sigma-quantiphi/polymarket-pandas/actions/workflows/ci.yml)
+[![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Pandas-native Python client for the full [Polymarket](https://polymarket.com) API surface — REST, WebSocket, Relayer, and Bridge — with automatic type coercion and DataFrame output.
 
 ---
