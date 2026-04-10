@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from polymarket_pandas import PolymarketPandas
 
+_FAVICON = Path(__file__).with_name("favicon.png")
+
 st.set_page_config(
     page_title="Polymarket Explorer",
-    page_icon=":chart_with_upwards_trend:",
+    page_icon=str(_FAVICON) if _FAVICON.exists() else ":chart_with_upwards_trend:",
     layout="wide",
 )
 
