@@ -1,0 +1,3420 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Pandas-native Python SDK for the full Polymarket API surface">
+      
+      
+      
+        <link rel="canonical" href="https://sigma-quantiphi.github.io/polymarket-pandas/changelog/">
+      
+      
+        <link rel="prev" href="../guides/mcp-server/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Changelog - polymarket-pandas</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="polymarket-pandas" class="md-header__button md-logo" aria-label="polymarket-pandas" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            polymarket-pandas
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sigma-quantiphi/polymarket-pandas" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sigma-quantiphi/polymarket-pandas
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="polymarket-pandas" class="md-nav__button md-logo" aria-label="polymarket-pandas" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    polymarket-pandas
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sigma-quantiphi/polymarket-pandas" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sigma-quantiphi/polymarket-pandas
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/markets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markets & Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data & Positions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/rewards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rewards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/relayer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Relayer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/ctf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CTF (On-Chain)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/xtracker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    XTracker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/websocket/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WebSocket
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/async/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async Client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/parsers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Title Parsers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas & Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/dataframes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DataFrames & Type Coercion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/pagination/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pagination
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/order-building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Order Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/mcp-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [Unreleased]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0621-2026-04-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.21] — 2026-04-10
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.21] — 2026-04-10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0620-2026-04-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.20] — 2026-04-09
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.20] — 2026-04-09">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0619-2026-04-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.19] — 2026-04-09
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.19] — 2026-04-09">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0617-2026-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.17] — 2026-04-03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.17] — 2026-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0616-2026-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.16] — 2026-04-03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.16] — 2026-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0615-2026-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.15] — 2026-04-03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.15] — 2026-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0614-2026-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.14] — 2026-04-02
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.14] — 2026-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0613-2026-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.13] — 2026-04-02
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.13] — 2026-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0612-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.12] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.12] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0611-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.11] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.11] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#069-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.9] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.9] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#068-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.8] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.8] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#067-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.7] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.7] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#066-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.6] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.6] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#065-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.5] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.5] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#064-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.4] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.4] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#063-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.3] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.3] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#062-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.2] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.2] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#061-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.1] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.1] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#060-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.0] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.0] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#050-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.5.0] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.5.0] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#041-2026-03-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.4.1] — 2026-03-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.4.1] — 2026-03-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040-2026-03-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.4.0] — 2026-03-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.4.0] — 2026-03-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#breaking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.3.1] — 2026-03-26
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.3.1] — 2026-03-26">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.3.0] — 2026-03-26
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.3.0] — 2026-03-26">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.2.0] — 2026-03-26
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.2.0] — 2026-03-26">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-initial-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.1.0] — Initial release
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.1.0] — Initial release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#unreleased" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [Unreleased]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0621-2026-04-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.21] — 2026-04-10
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.21] — 2026-04-10">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0620-2026-04-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.20] — 2026-04-09
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.20] — 2026-04-09">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0619-2026-04-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.19] — 2026-04-09
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.19] — 2026-04-09">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0617-2026-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.17] — 2026-04-03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.17] — 2026-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0616-2026-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.16] — 2026-04-03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.16] — 2026-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0615-2026-04-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.15] — 2026-04-03
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.15] — 2026-04-03">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0614-2026-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.14] — 2026-04-02
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.14] — 2026-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0613-2026-04-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.13] — 2026-04-02
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.13] — 2026-04-02">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0612-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.12] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.12] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0611-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.11] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.11] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#069-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.9] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.9] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#068-2026-03-31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.8] — 2026-03-31
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.8] — 2026-03-31">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#067-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.7] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.7] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#066-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.6] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.6] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#065-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.5] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.5] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#064-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.4] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.4] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#063-2026-03-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.3] — 2026-03-30
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.3] — 2026-03-30">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#062-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.2] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.2] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#061-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.1] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.1] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#060-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.6.0] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.6.0] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#050-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.5.0] — 2026-03-28
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.5.0] — 2026-03-28">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#041-2026-03-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.4.1] — 2026-03-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.4.1] — 2026-03-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#040-2026-03-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.4.0] — 2026-03-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.4.0] — 2026-03-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#breaking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.3.1] — 2026-03-26
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.3.1] — 2026-03-26">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.3.0] — 2026-03-26
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.3.0] — 2026-03-26">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.2.0] — 2026-03-26
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.2.0] — 2026-03-26">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-initial-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.1.0] — Initial release
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.1.0] — Initial release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<p>All notable changes to this project will be documented in this file.
+Format follows <a href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>.</p>
+<hr />
+<h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
+<hr />
+<h2 id="0621-2026-04-10">[0.6.21] — 2026-04-10<a class="headerlink" href="#0621-2026-04-10" title="Permanent link">&para;</a></h2>
+<h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>expand_user</code> parameter on <code>get_xtracker_trackings</code> and <code>get_xtracker_user_trackings</code> — flattens nested <code>user</code> dict into prefixed columns (<code>userHandle</code>, <code>userPlatform</code>, etc.).</li>
+<li><code>expand_trackings</code> parameter on <code>get_xtracker_users</code> — flattens nested <code>trackings</code> list into rows with prefixed columns.</li>
+<li><code>expand_count</code> parameter on <code>get_xtracker_users</code> (default <code>True</code>) — flattens <code>_count</code> dict into columns like <code>countPosts</code>.</li>
+<li><code>examples/xtracker_overview.py</code> — end-to-end demo of all 7 XTracker endpoints.</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>get_xtracker_user</code> and <code>get_xtracker_tracking</code> now run through <code>preprocess_dict</code> so datetime fields (<code>startDate</code>, <code>endDate</code>, <code>createdAt</code>, etc.) are parsed as <code>pd.Timestamp</code>.</li>
+<li><code>get_xtracker_user</code> materialises the nested <code>trackings</code> list as a <code>DataFrame[XTrackerTrackingSchema]</code>.</li>
+<li><code>get_xtracker_tracking</code> preprocesses the nested <code>user</code> dict.</li>
+<li>Added <code>date</code>, <code>importedAt</code>, <code>lastSync</code> to <code>DEFAULT_STR_DATETIME_COLUMNS</code>.</li>
+<li>Added <code>user</code>, <code>trackings</code>, <code>count</code> to <code>_EXPAND_PREFIXES</code> so prefixed columns are datetime-parsed after expansion.</li>
+</ul>
+<hr />
+<h2 id="0620-2026-04-09">[0.6.20] — 2026-04-09<a class="headerlink" href="#0620-2026-04-09" title="Permanent link">&para;</a></h2>
+<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>XTracker mixin</strong> — new <code>polymarket_pandas.mixins._xtracker.XTrackerMixin</code> exposing all 7 endpoints of the <code>xtracker.polymarket.com</code> post-counter API (no auth, <code>{success, data, message}</code> envelope auto-unwrapped). Powers the "# tweets / # posts in window" markets (Elon, Trump, Zelenskyy, etc.).</li>
+<li>Methods: <code>get_xtracker_users</code>, <code>get_xtracker_user</code>, <code>get_xtracker_user_posts</code>, <code>get_xtracker_user_trackings</code>, <code>get_xtracker_trackings</code>, <code>get_xtracker_tracking</code>, <code>get_xtracker_metrics</code>.</li>
+<li>5 new pandera schemas (<code>XTrackerUserSchema</code>, <code>XTrackerPostSchema</code>, <code>XTrackerTrackingSchema</code>, <code>XTrackerDailyStatSchema</code>, <code>XTrackerMetricSchema</code>) and 2 TypedDicts (<code>XTrackerUser</code>, <code>XTrackerTracking</code>).</li>
+<li><code>_request_xtracker</code> request helper on <code>PolymarketPandas</code> using a new <code>xtracker_url</code> field, plus MCP tool wrappers.</li>
+<li>New <code>polymarket_pandas.parsers</code> module with vectorized regex enrichers for <code>marketsGroupItemTitle</code>:</li>
+<li><code>classify_event_structure(data)</code> — labels each event as Single-Outcome / negRisk Multi-Outcome / Non-negRisk Multi-Outcome / Directional / Bracketed.</li>
+<li><code>parse_title_bounds(data)</code> — extracts <code>boundLow</code>, <code>boundHigh</code>, <code>direction</code>, <code>threshold</code> from bracket / arrow titles.</li>
+<li><code>parse_title_sports(data)</code> — extracts <code>spreadLine</code>, <code>totalLine</code>, <code>side</code> from sports market titles ("Spread -1.5", "O/U 8.5", "Over 2.5"). <code>spreadLine</code> is named to avoid colliding with the unrelated <code>MarketSchema.spread</code> API field.</li>
+<li><code>coalesce_end_date_from_title(data)</code> — fills NaT <code>marketsEndDate</code> by parsing the "Month Day" string in the title, inferring year from <code>marketsStartDate</code> with Dec→Jan rollover handling.</li>
+<li><code>PolymarketPandas.fetch_sports_event(sports_market_type, ...)</code> — convenience method on <code>GammaMixin</code> that finds an open event containing markets of the given type via <code>get_markets(sports_market_types=[...])</code> and re-fetches the parent event with markets sliced by <code>conditionId</code>. Pass-through filter kwargs mirror <code>get_markets</code> (<code>limit</code>, <code>order</code>, <code>ascending</code>, <code>closed</code>, date / liquidity / volume ranges, <code>tag_id</code>).</li>
+<li><code>examples/market_structures.py</code> — end-to-end demo printing one representative event for each of the 5 core structures plus 5 hand-picked extras (BTC up/down daily, Sports Moneyline / Spreads / Totals / Both Teams to Score).</li>
+<li>22 new unit tests in <code>tests/test_parsers.py</code> covering the four parsers, plus 2 mocked HTTP tests in <code>tests/test_unit.py</code> for <code>fetch_sports_event</code>.</li>
+</ul>
+<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>EventSchema.negRisk</code> — switched dtype from <code>bool</code> to <code>pd.BooleanDtype</code> so the upstream API's null values survive validation. Live <code>test_get_events</code> was crashing with <code>Could not coerce data_container into type bool</code> after Polymarket started returning <code>&lt;NA&gt;</code> for <code>negRisk</code> on some events.</li>
+</ul>
+<hr />
+<h2 id="0619-2026-04-09">[0.6.19] — 2026-04-09<a class="headerlink" href="#0619-2026-04-09" title="Permanent link">&para;</a></h2>
+<h3 id="added_2">Added<a class="headerlink" href="#added_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Builder attribution on order placement: when <code>POLYMARKET_BUILDER_API_KEY</code> / <code>_SECRET</code> / <code>_PASSPHRASE</code> are configured, <code>place_order</code>, <code>place_orders</code>, <code>submit_order</code>, and <code>submit_orders</code> automatically attach <code>POLY_BUILDER_*</code> headers alongside L2 auth so matched fills are credited to the builder for rewards. Header-only — no changes to the signed EIP-712 order struct.</li>
+<li><code>_request_clob_private(..., attribute=True)</code> keyword flag and <code>_has_builder_creds()</code> helper.</li>
+<li><code>builder_client</code> test fixture and 4 unit tests covering header attach/skip behavior.</li>
+</ul>
+<hr />
+<h2 id="0617-2026-04-03">[0.6.17] — 2026-04-03<a class="headerlink" href="#0617-2026-04-03" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_2">Fixed<a class="headerlink" href="#fixed_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ActiveOrderSchema.expiration</code> — changed from <code>str</code> to <code>pa.Timestamp</code> (matches preprocessing)</li>
+</ul>
+<hr />
+<h2 id="0616-2026-04-03">[0.6.16] — 2026-04-03<a class="headerlink" href="#0616-2026-04-03" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_3">Fixed<a class="headerlink" href="#fixed_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ActiveOrderSchema</code> — added missing <code>expiration</code> and <code>createdAt</code> fields</li>
+<li><code>PositionSchema</code> — added missing <code>endDate</code> and <code>eventId</code> fields</li>
+</ul>
+<hr />
+<h2 id="0615-2026-04-03">[0.6.15] — 2026-04-03<a class="headerlink" href="#0615-2026-04-03" title="Permanent link">&para;</a></h2>
+<h3 id="added_3">Added<a class="headerlink" href="#added_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>PlaceOrderSchema</code> and <code>SubmitOrderSchema</code> pandera input validation for <code>place_orders</code> / <code>submit_orders</code></li>
+<li><code>post_only</code> parameter on <code>place_order</code>, <code>submit_order</code>, <code>place_orders</code>, <code>submit_orders</code></li>
+<li>15-order batch limit validation on <code>place_orders</code></li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>SubmitOrderSchema</code> uses camelCase column names (<code>tokenId</code>, <code>orderType</code>, <code>postOnly</code>, <code>negRisk</code>, <code>tickSize</code>, <code>feeRateBps</code>) to match API convention</li>
+<li><code>OrderSchema</code> is now an alias for <code>PlaceOrderSchema</code></li>
+</ul>
+<hr />
+<h2 id="0614-2026-04-02">[0.6.14] — 2026-04-02<a class="headerlink" href="#0614-2026-04-02" title="Permanent link">&para;</a></h2>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Renamed <code>FIXIE_URL</code> env var to <code>HTTP_PROXY</code> for proxy configuration</li>
+</ul>
+<hr />
+<h2 id="0613-2026-04-02">[0.6.13] — 2026-04-02<a class="headerlink" href="#0613-2026-04-02" title="Permanent link">&para;</a></h2>
+<h3 id="added_4">Added<a class="headerlink" href="#added_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>13 new pandera schemas</strong> — every <code>pd.DataFrame</code>-returning method now has a
+  schema: <code>TagSchema</code>, <code>SeriesSchema</code>, <code>CommentSchema</code>, <code>SportsMetadataSchema</code>,
+  <code>TeamSchema</code>, <code>MidpointSchema</code>, <code>MarketPriceSchema</code>, <code>LastTradePricesSchema</code>,
+  <code>BuilderVolumeSchema</code>, <code>PositionValueSchema</code>, <code>BridgeSupportedAssetSchema</code>,
+  <code>BridgeTransactionSchema</code>. Return types updated to <code>DataFrame[Schema]</code>.</li>
+<li><strong><code>ms_int_datetime_columns</code></strong> — new preprocessing field for Unix-millisecond
+  timestamps (<code>createdTimeMs</code>, <code>estCheckoutTimeMs</code>), parallel to the existing
+  <code>int_datetime_columns</code> (seconds). Wired through client, sync WS, async WS.</li>
+<li><strong>58 live integration tests</strong> covering all non-authenticated endpoints with
+  pandera schema validation against real API responses.</li>
+</ul>
+<h3 id="fixed_4">Fixed<a class="headerlink" href="#fixed_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>get_price_history</code></strong> — now extracts the <code>history</code> list from the response
+  dict and converts <code>t</code> to UTC <code>datetime64</code>. Previously returned a single
+  <code>history</code> column of raw dicts.</li>
+<li><strong><code>get_bridge_supported_assets</code></strong> — now returns a <code>DataFrame</code> with <code>token</code>
+  object flattened via <code>json_normalize</code> into <code>tokenName</code>, <code>tokenSymbol</code>,
+  <code>tokenAddress</code>, <code>tokenDecimals</code> columns. Previously returned <code>list[dict]</code>.</li>
+<li><strong><code>PriceHistorySchema.t</code></strong> — changed from <code>int</code> to <code>Timestamp</code>.</li>
+<li><strong><code>CurrentRewardSchema.sponsorsCount</code></strong> — changed from <code>int</code> to <code>float</code>
+  (API returns NaN when absent).</li>
+</ul>
+<hr />
+<h2 id="0612-2026-03-31">[0.6.12] — 2026-03-31<a class="headerlink" href="#0612-2026-03-31" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_5">Fixed<a class="headerlink" href="#fixed_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>get_accounting_snapshot</code></strong> now runs <code>preprocess_dataframe</code> on CSV data —
+  <code>valuationTime</code> parsed as datetime, numeric coercion applied.</li>
+<li>Added <code>valuationTime</code> to <code>DEFAULT_STR_DATETIME_COLUMNS</code>.</li>
+</ul>
+<h3 id="added_5">Added<a class="headerlink" href="#added_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>examples/accounting_snapshot.py</code> — download and display user portfolio.</li>
+</ul>
+<hr />
+<h2 id="0611-2026-03-31">[0.6.11] — 2026-03-31<a class="headerlink" href="#0611-2026-03-31" title="Permanent link">&para;</a></h2>
+<h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>pd.Timestamp</code> accepted in datetime filter params</strong> — <code>get_price_history</code>
+  (<code>startTs</code>, <code>endTs</code>), <code>get_user_trades</code> / <code>get_builder_trades</code> (<code>before</code>,
+  <code>after</code>), <code>get_user_activity</code> (<code>start</code>, <code>end</code>), and their <code>_all</code> variants
+  now accept <code>pd.Timestamp</code> in addition to <code>int</code>/<code>str</code>. Timestamps are
+  auto-converted to Unix seconds (CLOB) or ISO-8601 (Gamma) as needed.</li>
+<li><code>filter_params</code> now also converts <code>datetime.datetime</code> to ISO-8601.</li>
+</ul>
+<hr />
+<h2 id="069-2026-03-31">[0.6.9] — 2026-03-31<a class="headerlink" href="#069-2026-03-31" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_6">Fixed<a class="headerlink" href="#fixed_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Bool columns now use nullable <code>BooleanDtype</code></strong> — previously <code>astype(bool)</code>
+  silently converted NaN to <code>True</code>. Now NaN is preserved as <code>pd.NA</code>.</li>
+<li><strong>Added 12 missing bool columns</strong> to <code>DEFAULT_BOOL_COLUMNS</code>:
+  <code>acceptingOrders</code>, <code>automaticallyActive</code>, <code>enableOrderBook</code>, <code>ended</code>,
+  <code>featured</code>, <code>live</code>, <code>negRisk</code>, <code>negRiskAugmented</code>, <code>new</code>,
+  <code>requiresTranslation</code>, <code>showAllOutcomes</code>, <code>showMarketImages</code>. These (and
+  their <code>events*</code>/<code>markets*</code> prefixed variants) were staying as <code>object</code> dtype.</li>
+<li><strong>Added <code>finishedTimestamp</code></strong> to <code>DEFAULT_STR_DATETIME_COLUMNS</code> — sports
+  events <code>eventsFinishedTimestamp</code> was not being parsed as datetime.</li>
+</ul>
+<hr />
+<h2 id="068-2026-03-31">[0.6.8] — 2026-03-31<a class="headerlink" href="#068-2026-03-31" title="Permanent link">&para;</a></h2>
+<h3 id="added_6">Added<a class="headerlink" href="#added_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>expand_rewards_config</code></strong> flag on <code>get_rewards_markets_current</code>,
+  <code>get_rewards_markets_multi</code>, <code>get_rewards_market</code>, <code>get_rewards_user_markets</code>
+  (and their <code>_all</code> variants) — flattens nested <code>rewards_config</code> list into one
+  row per config entry with <code>rewardsConfig*</code> prefixed columns.</li>
+<li><strong><code>expand_tokens</code></strong> flag on <code>get_rewards_markets_multi</code>, <code>get_rewards_market</code>,
+  <code>get_rewards_user_markets</code> — flattens nested <code>tokens</code> list into rows with
+  <code>tokensTokenId</code>, <code>tokensOutcome</code>, <code>tokensPrice</code> columns.</li>
+<li><strong><code>expand_earnings</code></strong> flag on <code>get_rewards_user_markets</code> — flattens nested
+  <code>earnings</code> list into rows with <code>earningsAssetAddress</code>, <code>earningsEarnings</code>,
+  <code>earningsAssetRate</code> columns.</li>
+<li>Pandera schemas updated with all expanded field annotations.</li>
+<li><code>examples/async_trades_orders.py</code> — async client example fetching trades and
+  active orders.</li>
+</ul>
+<h3 id="fixed_7">Fixed<a class="headerlink" href="#fixed_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Unix-timestamp datetime columns</strong> (<code>createdAt</code>, <code>matchTime</code>, etc.) from CLOB
+  API were parsed as 1970 dates. <code>preprocess_dataframe</code> now auto-detects numeric
+  strings/ints (&gt;1e9) in <code>str_datetime_columns</code> and converts with <code>unit="s"</code>.</li>
+</ul>
+<hr />
+<h2 id="067-2026-03-30">[0.6.7] — 2026-03-30<a class="headerlink" href="#067-2026-03-30" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_8">Fixed<a class="headerlink" href="#fixed_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>expand_dataframe</code> TypeError on NaN fields (e.g. <code>eventsSeries</code>).</li>
+</ul>
+<hr />
+<h2 id="066-2026-03-30">[0.6.6] — 2026-03-30<a class="headerlink" href="#066-2026-03-30" title="Permanent link">&para;</a></h2>
+<h3 id="changed_3">Changed<a class="headerlink" href="#changed_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Replaced <code>pd.json_normalize</code> with manual list-of-dicts construction</strong> in
+  <code>expand_dataframe</code> — 2.8x faster, eliminates <code>PerformanceWarning: DataFrame
+  is highly fragmented</code>, and correctly preserves nested dicts for cascading
+  expansion (fixes <code>expand_series</code> silently not working).</li>
+</ul>
+<hr />
+<h2 id="065-2026-03-30">[0.6.5] — 2026-03-30<a class="headerlink" href="#065-2026-03-30" title="Permanent link">&para;</a></h2>
+<h3 id="added_7">Added<a class="headerlink" href="#added_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>expand_outcomes=False</code></strong> flag on <code>get_markets</code>, <code>get_events</code>, and their <code>_all</code>
+  variants — explodes <code>outcomes</code>, <code>outcomePrices</code>, and <code>clobTokenIds</code> as parallel
+  lists into one row per outcome. Takes precedence over <code>expand_clob_token_ids</code>.</li>
+<li><strong><code>feeSchedule</code> dict flattening</strong> — nested dict columns are automatically expanded
+  into prefixed scalar columns (e.g. <code>feeScheduleMaker</code>, <code>feeScheduleTaker</code>).
+  Configurable via <code>dict_columns</code> on the client.</li>
+<li><strong><code>outcomePrices</code> always coerced to <code>list[float]</code></strong> — even without
+  <code>expand_outcomes</code>, list values are floats instead of strings.</li>
+<li><strong><code>umaBond</code> / <code>umaReward</code></strong> added to numeric columns — auto-coerced from strings.</li>
+</ul>
+<hr />
+<h2 id="064-2026-03-30">[0.6.4] — 2026-03-30<a class="headerlink" href="#064-2026-03-30" title="Permanent link">&para;</a></h2>
+<h3 id="added_8">Added<a class="headerlink" href="#added_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>11 new <code>_all</code> auto-pagination methods</strong> — <code>get_series_all</code>, <code>get_teams_all</code>,
+  <code>get_comments_all</code>, <code>get_comments_by_user_address_all</code>, <code>get_positions_all</code>,
+  <code>get_closed_positions_all</code>, <code>get_market_positions_all</code>, <code>get_trades_all</code>,
+  <code>get_user_activity_all</code>, <code>get_leaderboard_all</code>, <code>get_builder_leaderboard_all</code>.
+  All available on both <code>PolymarketPandas</code> and <code>AsyncPolymarketPandas</code>.</li>
+<li><strong>Explicit parameter signatures on all 22 <code>_all</code> methods</strong> — mirrors base
+  method parameters (minus <code>offset</code>/<code>next_cursor</code>) for full IDE autocomplete and
+  type checking. No more <code>**kwargs</code>.</li>
+</ul>
+<h3 id="fixed_9">Fixed<a class="headerlink" href="#fixed_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>_autopage</code> now works correctly with <code>expand_*</code> flags</strong> — pagination uses
+  pre-expansion API record count (<code>df.attrs["_raw_count"]</code>) so offset tracking
+  isn't inflated by <code>expand_dataframe</code> or <code>explode</code>.</li>
+<li><strong>Fixed <code>_autopage</code> infinite loop</strong> when <code>use_tqdm=False</code> — the stop condition
+  (<code>len_pages</code>) was only updated inside the progress bar branch.</li>
+<li><strong>Fixed <code>eventsSeries</code> KeyError</strong> in <code>get_markets</code> — not all records have a
+  series after event expansion; now guarded with column existence check.</li>
+</ul>
+<h3 id="changed_4">Changed<a class="headerlink" href="#changed_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Default <code>limit</code> set to <code>300</code> across all Gamma endpoints (<code>get_markets</code>,
+  <code>get_events</code>, <code>get_series</code>, <code>get_teams</code>, <code>get_comments</code>,
+  <code>get_comments_by_user_address</code>). Was <code>500</code> or <code>None</code>.</li>
+</ul>
+<hr />
+<h2 id="063-2026-03-30">[0.6.3] — 2026-03-30<a class="headerlink" href="#063-2026-03-30" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_10">Fixed<a class="headerlink" href="#fixed_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>PyPI release for v0.6.4 changes (intermediate version).</li>
+</ul>
+<hr />
+<h2 id="062-2026-03-28">[0.6.2] — 2026-03-28<a class="headerlink" href="#062-2026-03-28" title="Permanent link">&para;</a></h2>
+<h3 id="added_9">Added<a class="headerlink" href="#added_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>MCP server expanded to 74 tools</strong> — near-complete coverage of the Polymarket
+  API. Only CTF on-chain ops, relayer ops, and batch DataFrame-input methods excluded.</li>
+<li>New MCP tools: <code>cancel_orders_from_market</code>, <code>send_heartbeat</code>, <code>get_order_scoring</code>,
+  <code>create_api_key</code>, <code>delete_api_key</code>, <code>get_event_by_id</code>, <code>get_tag_by_slug/id</code>,
+  <code>get_related_tags</code>, <code>get_market_tags</code>, <code>get_event_tags</code>, <code>get_series_by_id</code>,
+  <code>get_sports_market_types</code>, <code>get_comment_by_id</code>, <code>get_comments_by_user</code>,
+  <code>get_server_time</code>, <code>get_fee_rate</code>, <code>get_market_price</code>, <code>get_positions_value</code>,
+  <code>get_live_volume</code>, <code>get_traded_markets_count</code>, <code>get_builder_volume</code>,
+  <code>get_rewards_market</code>, <code>get_rewards_earnings</code>, <code>get_rewards_earnings_total</code>,
+  <code>get_rewards_percentages</code>, <code>get_rewards_user_markets</code>.</li>
+</ul>
+<hr />
+<h2 id="061-2026-03-28">[0.6.1] — 2026-03-28<a class="headerlink" href="#061-2026-03-28" title="Permanent link">&para;</a></h2>
+<h3 id="added_10">Added<a class="headerlink" href="#added_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>MCP server expanded to 47 tools</strong> — all SDK endpoints now exposed with every
+  API parameter. LLM controls output size via <code>max_rows</code>.</li>
+<li><strong>6 write tools</strong>: <code>build_order</code>, <code>place_order</code>, <code>cancel_order</code>, <code>cancel_orders</code>,
+  <code>cancel_all_orders</code>, <code>derive_api_key</code>.</li>
+<li><code>POLYMARKET_MCP_MAX_ROWS</code> env var for default table output size (default 200).</li>
+<li>Each tool's <code>max_rows</code> param overrides per-call (0=unlimited).</li>
+</ul>
+<hr />
+<h2 id="060-2026-03-28">[0.6.0] — 2026-03-28<a class="headerlink" href="#060-2026-03-28" title="Permanent link">&para;</a></h2>
+<h3 id="added_11">Added<a class="headerlink" href="#added_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>MCP server (FastMCP)</strong> — query Polymarket data from any MCP client (Claude Code,
+  Claude Desktop, etc.) with 22 read-only tools.
+  <code>pip install polymarket-pandas[mcp]</code> then <code>polymarket-mcp</code>.</li>
+<li><strong>Tags explorer page</strong> with all <code>get_tags</code> parameters.</li>
+<li>All endpoint parameters exposed as interactive sidebar controls in explorer.</li>
+</ul>
+<h3 id="fixed_11">Fixed<a class="headerlink" href="#fixed_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Added <code>umaResolutionStatuses</code> to JSON columns for proper parsing.</li>
+<li>Fixed <code>json_normalize</code> PerformanceWarning with <code>.copy()</code> defragmentation.</li>
+</ul>
+<hr />
+<h2 id="050-2026-03-28">[0.5.0] — 2026-03-28<a class="headerlink" href="#050-2026-03-28" title="Permanent link">&para;</a></h2>
+<h3 id="added_12">Added<a class="headerlink" href="#added_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Streamlit Explorer Dashboard</strong> — interactive dashboard for exploring all public
+  Polymarket endpoints with Plotly visualizations. 10 pages: Markets, Events, Series,
+  Orderbook, Prices, Positions, Trades, Leaderboard, Rewards, Bridge.
+  <code>pip install polymarket-pandas[explorer]</code> then <code>polymarket-explore</code>.</li>
+</ul>
+<hr />
+<h2 id="041-2026-03-27">[0.4.1] — 2026-03-27<a class="headerlink" href="#041-2026-03-27" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_12">Fixed<a class="headerlink" href="#fixed_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Fix pandera FutureWarning: use <code>pandera.pandas</code> submodule instead of deprecated
+  top-level import.</li>
+</ul>
+<hr />
+<h2 id="040-2026-03-27">[0.4.0] — 2026-03-27<a class="headerlink" href="#040-2026-03-27" title="Permanent link">&para;</a></h2>
+<h3 id="added_13">Added<a class="headerlink" href="#added_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>12 TypedDicts</strong> for dict-returning endpoints — IDE autocomplete for all keys.</li>
+<li><strong>11 specific CursorPage types</strong> (e.g. <code>OrdersCursorPage</code>, <code>UserTradesCursorPage</code>)
+  with <code>data: DataFrame[Schema]</code>.</li>
+<li><strong>22 pandera DataFrameModel schemas</strong> — field names verified against official
+  Polymarket OpenAPI specs, <code>strict=False</code>, <code>coerce=True</code>.</li>
+<li><code>build_order(expiration=...)</code> now accepts <code>pd.Timestamp</code>, ISO-8601 strings, or
+  <code>datetime</code> in addition to <code>int</code>.</li>
+<li><code>get_user_trades_all()</code> and <code>get_active_orders_all()</code> — auto-paginate cursor methods.</li>
+<li><code>to_unix_timestamp()</code> helper in <code>utils.py</code>.</li>
+</ul>
+<h3 id="fixed_13">Fixed<a class="headerlink" href="#fixed_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>get_active_orders</code> / <code>get_user_trades</code> — was wrapping pagination envelope into
+  DataFrame columns. Now returns proper <code>OrdersCursorPage</code> / <code>UserTradesCursorPage</code>.</li>
+</ul>
+<h3 id="breaking">Breaking<a class="headerlink" href="#breaking" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>get_active_orders()</code> and <code>get_user_trades()</code> now return cursor-paginated dicts
+  instead of DataFrames. Access the DataFrame via <code>result["data"]</code>.</li>
+</ul>
+<hr />
+<h2 id="031-2026-03-26">[0.3.1] — 2026-03-26<a class="headerlink" href="#031-2026-03-26" title="Permanent link">&para;</a></h2>
+<h3 id="fixed_14">Fixed<a class="headerlink" href="#fixed_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Fix <code>AsyncPolymarketPandas</code> missing <code>get_tick_size</code>, <code>get_neg_risk</code>, <code>get_fee_rate</code>
+  and <code>preprocess_dict</code> methods. Async wrapper generator now uses <code>callable()</code> to
+  detect all public methods including <code>cachetools.cachedmethod</code> descriptors
+  (102 methods, up from 98).</li>
+</ul>
+<hr />
+<h2 id="030-2026-03-26">[0.3.0] — 2026-03-26<a class="headerlink" href="#030-2026-03-26" title="Permanent link">&para;</a></h2>
+<h3 id="added_14">Added<a class="headerlink" href="#added_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>AsyncPolymarketPandas</code></strong> — async version of the HTTP client using
+  composition + <code>ThreadPoolExecutor</code>. All 98 public methods auto-generated
+  as <code>async def</code> wrappers. Supports <code>async with</code> context manager.</li>
+<li><strong><code>AsyncPolymarketWebSocket</code></strong> — native async WebSocket client using
+  <code>websockets</code> library. Supports <code>async for event_type, payload in session:</code>
+  iteration, auto-reconnection with exponential backoff, and async
+  <code>subscribe()</code>/<code>unsubscribe()</code>.</li>
+<li><strong><code>amount_usdc</code> parameter</strong> on <code>split_position()</code> and <code>merge_positions()</code> —
+  convenience alternative to raw base-unit <code>amount</code> (e.g. <code>amount_usdc=1.0</code>
+  instead of <code>amount=1_000_000</code>).</li>
+<li><strong>Auto-set credentials</strong> — <code>derive_api_key()</code> and <code>create_api_key()</code> now
+  automatically set <code>_api_key</code>, <code>_api_secret</code>, <code>_api_passphrase</code> on the client.</li>
+<li><strong><code>preprocess_dict()</code></strong> — full type coercion (numeric, datetime, bool, JSON)
+  for single-dict responses. Applied to <code>get_market_by_id()</code> and
+  <code>get_market_by_slug()</code> so JSON-string fields like <code>clobTokenIds</code> are
+  automatically parsed to Python lists.</li>
+<li><code>websockets&gt;=13.0</code> added to core dependencies.</li>
+<li><code>pytest-asyncio</code> added to dev dependencies.</li>
+<li>16 new async unit tests (<code>tests/test_async_unit.py</code>).</li>
+</ul>
+<hr />
+<h2 id="020-2026-03-26">[0.2.0] — 2026-03-26<a class="headerlink" href="#020-2026-03-26" title="Permanent link">&para;</a></h2>
+<h3 id="added_15">Added<a class="headerlink" href="#added_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>CTFMixin</strong> — on-chain merge, split, redeem positions via Polymarket's
+  Conditional Token Framework contracts on Polygon. Requires optional <code>web3</code>
+  dependency: <code>pip install polymarket-pandas[ctf]</code>.</li>
+<li><strong>Order signing</strong> — <code>build_order()</code> with full EIP-712 signing, tick-size-aware
+  amount calculation, and automatic market parameter resolution.</li>
+<li><strong><code>submit_order</code> / <code>submit_orders</code></strong> — high-level convenience methods that
+  auto-fetch <code>neg_risk</code>, <code>tick_size</code>, <code>fee_rate_bps</code> from the CLOB API (cached).</li>
+<li><code>submit_orders</code> accepts a <strong>pandas DataFrame</strong> and batch-submits via the
+  <code>/orders</code> endpoint (groups of 15).</li>
+<li><strong><code>instance_cache</code></strong> decorator (<code>utils.py</code>) backed by <code>cachetools</code> — per-instance
+  method caching with optional TTL. Used for <code>get_tick_size</code> (300s TTL),
+  <code>get_neg_risk</code>, and <code>get_fee_rate</code> (permanent).</li>
+<li><code>_ENV_DEFAULTS</code> dict — env var resolution deferred to <code>__post_init__</code>, so
+  <code>load_dotenv()</code> can run before client construction.</li>
+<li>Auto-derive <code>address</code> from <code>private_key</code> when not explicitly set.</li>
+<li><code>proxy_url</code>, <code>rpc_url</code>, <code>timeout</code> fields on the client dataclass.</li>
+<li>Column default tuples extracted to <code>utils.py</code> constants
+  (<code>DEFAULT_NUMERIC_COLUMNS</code>, etc.).</li>
+<li><code>LICENSE</code> file (Apache-2.0).</li>
+<li><code>CONTRIBUTING.md</code> with development setup and PR guidelines.</li>
+<li>PyPI publish workflow (<code>.github/workflows/release.yml</code>) — triggered on
+  GitHub release, uses trusted publisher (OIDC).</li>
+<li>Custom exception hierarchy: <code>PolymarketError</code>, <code>PolymarketAPIError</code>,
+  <code>PolymarketAuthError</code>, <code>PolymarketRateLimitError</code> — all exported from the
+  top-level package.</li>
+<li>HTTP error mapping in <code>_handle_response</code>: 401/403 → <code>PolymarketAuthError</code>,
+  429 → <code>PolymarketRateLimitError</code>, other non-2xx → <code>PolymarketAPIError</code>.</li>
+<li>Auth guards <code>_require_l2_auth</code> / <code>_require_builder_auth</code> raise
+  <code>PolymarketAuthError</code> with a descriptive message before any network call is
+  attempted.</li>
+<li><code>close()</code>, <code>__enter__</code>, <code>__exit__</code> on <code>PolymarketPandas</code> for proper
+  connection-pool cleanup and context-manager support.</li>
+<li><code>py.typed</code> marker (PEP 561) — downstream type checkers now see the package's
+  annotations.</li>
+<li><code>expand_column_lists</code> utility in <code>utils.py</code>; <code>"series"</code> removed from prefix
+  list (was generating unused column variants).</li>
+<li>Relayer API endpoints: <code>check_safe_deployed</code>, <code>get_relayer_transaction</code>,
+  <code>get_relayer_nonce</code>, <code>get_relayer_transactions</code>, <code>get_relay_payload</code>,
+  <code>submit_transaction</code>, <code>get_relayer_api_keys</code>.</li>
+<li>Bridge API endpoints: <code>create_deposit_address</code>, <code>create_withdrawal_address</code>,
+  <code>get_bridge_quote</code>, <code>get_bridge_supported_assets</code>,
+  <code>get_bridge_transaction_status</code>.</li>
+<li>CLOB endpoints: <code>get_sampling_markets</code>, <code>get_simplified_markets</code>,
+  <code>get_sampling_simplified_markets</code> (cursor-paginated), plus <code>_all</code> variants.</li>
+<li><code>get_builder_trades</code> (CLOB, builder auth).</li>
+<li><code>get_rebates</code> (CLOB, public).</li>
+<li>Cursor-based auto-pager <code>_autopage_cursor</code> and <code>*_all</code> helpers for the three
+  new cursor-paginated endpoints.</li>
+<li><code>PolymarketWebSocket</code> with channels: <code>market_channel</code>, <code>user_channel</code>,
+  <code>sports_channel</code>, <code>rtds_channel</code>.</li>
+<li><code>PolymarketWebSocket.from_client</code> class method to share column config with an
+  existing HTTP client.</li>
+<li>Unit test suite (<code>tests/test_unit.py</code>) with 75+ tests, using <code>pytest-httpx</code>
+  for HTTP mocking — no live API calls required.</li>
+<li>CI workflow (<code>.github/workflows/ci.yml</code>): lint, typecheck, unit tests.</li>
+<li><code>[tool.ruff]</code>, <code>[tool.mypy]</code>, <code>[tool.pytest.ini_options]</code> in <code>pyproject.toml</code>.</li>
+<li>Dev optional dependencies: <code>pytest</code>, <code>pytest-httpx</code>, <code>ruff</code>, <code>mypy</code>,
+  <code>pandas-stubs</code>.</li>
+<li>PyPI classifiers and keywords.</li>
+</ul>
+<h3 id="fixed_15">Fixed<a class="headerlink" href="#fixed_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>_round_normal</code> now uses <code>Decimal</code> with <code>ROUND_HALF_UP</code> to avoid float
+  representation bugs (e.g. <code>round(0.85 * 10) = 8</code> instead of 9).</li>
+<li><code>cancel_orders_from_market</code> now sends params as JSON body (was query string,
+  causing "Invalid order payload" errors).</li>
+<li>CTF <code>build_transaction</code> calls now pass <code>from</code> address (was zero-address,
+  causing "approve from the zero address" reverts).</li>
+<li>POA middleware injected for Polygon compatibility in CTF operations.</li>
+<li>EIP-1559 / legacy gas field conflict resolved in <code>_send_ctf_tx</code>.</li>
+<li><code>filter_params(None)</code> now returns <code>{}</code> instead of <code>None</code>, preventing a silent
+  <code>TypeError</code> in callers.</li>
+<li><code>filter_params</code> no longer calls <code>pd.notnull</code> on list values (previously raised
+  <code>ValueError: The truth value of an empty array is ambiguous</code> for empty lists).</li>
+<li><code>OrderSchema</code> side validation aligned to uppercase <code>"BUY"</code> / <code>"SELL"</code> to match
+  <code>build_order</code> output.</li>
+</ul>
+<h3 id="removed">Removed<a class="headerlink" href="#removed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>load_dotenv()</code> at module import time — this was silently mutating <code>os.environ</code>
+  for any application that imported the library. Callers who relied on <code>.env</code>
+  loading should call <code>load_dotenv()</code> themselves before constructing a client.</li>
+<li>Overly tight upper-bound version pins on <code>eth-account</code> and <code>httpx</code>.</li>
+</ul>
+<hr />
+<h2 id="010-initial-release">[0.1.0] — Initial release<a class="headerlink" href="#010-initial-release" title="Permanent link">&para;</a></h2>
+<h3 id="added_16">Added<a class="headerlink" href="#added_16" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>PolymarketPandas</code> HTTP client wrapping the full Gamma, Data, and CLOB REST
+  APIs with automatic DataFrame output and type coercion.</li>
+<li>Gamma API: markets, events, tags, series, sports, comments, search, profiles.</li>
+<li>Data API: positions, closed positions, market positions, top holders, positions
+  value, leaderboard, trades, user activity, accounting snapshot, live volume,
+  open interest, traded markets count, builder leaderboard, builder volume.</li>
+<li>CLOB public API: order book, prices, midpoints, spreads, last trade prices,
+  fee rate, tick size, price history, server time.</li>
+<li>CLOB private API (L2 HMAC auth): user trades, orders (get/place/cancel),
+  order scoring, heartbeat.</li>
+<li>CLOB auth management (L1 EIP-712): create/derive/get/delete API keys.</li>
+<li>Auto-pagination helpers <code>get_markets_all</code>, <code>get_events_all</code>, <code>get_tags_all</code>.</li>
+<li><code>preprocess_dataframe</code> pipeline: snake → camelCase column rename, numeric /
+  datetime / bool / JSON-string coercion, drop of <code>icon</code> / <code>image</code> columns.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.highlight", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
