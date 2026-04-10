@@ -1,0 +1,67 @@
+site_name: polymarket-pandas
+site_url: https://sigma-quantiphi.github.io/polymarket-pandas/
+site_description: Pandas-native Python SDK for the full Polymarket API surface
+repo_url: https://github.com/sigma-quantiphi/polymarket-pandas
+repo_name: sigma-quantiphi/polymarket-pandas
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference:
+      - Markets & Events: api/markets.md
+      - Data & Positions: api/data.md
+      - Trading: api/trading.md
+      - Rewards: api/rewards.md
+      - Bridge: api/bridge.md
+      - Relayer: api/relayer.md
+      - CTF (On-Chain): api/ctf.md
+      - XTracker: api/xtracker.md
+      - WebSocket: api/websocket.md
+      - Async Client: api/async.md
+      - Title Parsers: api/parsers.md
+      - Schemas & Types: api/schemas.md
+      - Exceptions: api/exceptions.md
+  - Guides:
+      - Configuration: guides/configuration.md
+      - DataFrames & Type Coercion: guides/dataframes.md
+      - Pagination: guides/pagination.md
+      - Order Building: guides/order-building.md
+      - Interactive Explorer: guides/explorer.md
+      - MCP Server: guides/mcp-server.md
+  - Changelog: changelog.md

@@ -65,7 +65,7 @@ polymarket-mcp = "polymarket_pandas.mcp_server:main"
 [project.urls]
 homepage = "https://github.com/sigma-quantiphi/polymarket-pandas"
 repository = "https://github.com/sigma-quantiphi/polymarket-pandas"
-documentation = "https://github.com/sigma-quantiphi/polymarket-pandas"
+documentation = "https://sigma-quantiphi.github.io/polymarket-pandas/"
 
 [tool.uv]
 package = true
