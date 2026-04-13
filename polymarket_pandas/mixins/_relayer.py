@@ -130,9 +130,17 @@ class RelayerMixin:
             "type": type,
             "signatureParams": signature_params,
         }
+        # Prefer builder HMAC auth (required for PROXY type relay
+        # coordination); fall back to relayer API key auth.
+        if self._has_builder_creds():
+            headers = self._build_builder_headers(
+                method="POST", request_path="/submit", body=body
+            )
+        else:
+            headers = self._relayer_auth_headers()
         return self._request_relayer(
             "submit",
             method="POST",
             data=body,
-            auth_headers=self._relayer_auth_headers(),
+            auth_headers=headers,
         )

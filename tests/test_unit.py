@@ -853,7 +853,14 @@ def test_merge_positions_relayed(monkeypatch):
     """When address differs from EOA, merge routes through the relayer."""
     pk = "0x" + "ab" * 32
     proxy = "0xDEADBEEFdeadbeefDEADBEEFdeadbeef00000000"
-    client = PolymarketPandas(use_tqdm=False, address=proxy, private_key=pk)
+    client = PolymarketPandas(
+        use_tqdm=False,
+        address=proxy,
+        private_key=pk,
+        _builder_api_key="test-key",
+        _builder_api_secret="dGVzdC1zZWNyZXQ=",  # base64("test-secret")
+        _builder_api_passphrase="test-pass",
+    )
     ct, nr, _ = _mock_web3(client, monkeypatch)
 
     # build_transaction must return real hex data for proxy encoding

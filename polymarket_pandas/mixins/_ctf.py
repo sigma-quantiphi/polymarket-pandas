@@ -299,7 +299,11 @@ class CTFMixin:
         return "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
 
     def _send_ctf_tx_relayed(self, to: str, tx_data: dict) -> SubmitTransactionResponse:
-        """Submit a CTF transaction through the relayer (proxy wallet)."""
+        """Submit a CTF transaction through the relayer (proxy wallet).
+
+        Requires builder API credentials for HMAC authentication.
+        """
+        self._require_builder_auth()
         eoa = self._eoa_address()
         payload = self.get_relay_payload(address=eoa, type="PROXY")
         nonce = payload["nonce"]
@@ -311,7 +315,14 @@ class CTFMixin:
             [(1, to, 0, inner_data)]  # typeCode=1 (Call)
         )
 
-        gas_limit = "10000000"
+        # Estimate gas for the proxy call
+        try:
+            est = self._w3.eth.estimate_gas(
+                {"from": eoa, "to": PROXY_FACTORY, "data": proxy_data}
+            )
+            gas_limit = str(est)
+        except Exception:
+            gas_limit = "10000000"
         signature = self._sign_proxy_tx(
             from_=eoa,
             to=PROXY_FACTORY,
