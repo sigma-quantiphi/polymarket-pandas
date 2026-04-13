@@ -9,7 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.6.23] — 2026-04-13
+## [0.6.24] — 2026-04-13
 
 ### Added
 - `GasEstimate` TypedDict and `estimate_ctf_tx()` public method for gas cost estimation.
