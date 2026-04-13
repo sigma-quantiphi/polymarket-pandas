@@ -296,16 +296,9 @@ class CTFMixin:
 
         struct_hash = Web3.keccak(parts)
         signable = encode_defunct(struct_hash)
-        return (
-            "0x"
-            + Account.sign_message(
-                signable, private_key=self.private_key
-            ).signature.hex()
-        )
+        return "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
 
-    def _send_ctf_tx_relayed(
-        self, to: str, tx_data: dict
-    ) -> SubmitTransactionResponse:
+    def _send_ctf_tx_relayed(self, to: str, tx_data: dict) -> SubmitTransactionResponse:
         """Submit a CTF transaction through the relayer (proxy wallet)."""
         eoa = self._eoa_address()
         payload = self.get_relay_payload(address=eoa, type="PROXY")
