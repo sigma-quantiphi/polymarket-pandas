@@ -317,8 +317,10 @@ class CTFMixin:
 
         # Estimate gas for the proxy call
         try:
+            from web3.types import HexStr
+
             est = self._w3.eth.estimate_gas(
-                {"from": eoa, "to": PROXY_FACTORY, "data": proxy_data}
+                {"from": eoa, "to": PROXY_FACTORY, "data": HexStr(proxy_data)}
             )
             gas_limit = str(est)
         except Exception:

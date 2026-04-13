@@ -36,7 +36,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from polymarket_pandas import PolymarketPandas
-from polymarket_pandas.mixins._ctf import CONDITIONAL_TOKENS, NEG_RISK_ADAPTER
 
 pd.set_option("display.max_columns", 20)
 pd.set_option("display.width", 160)
@@ -163,18 +162,12 @@ def main() -> None:
     # ── 7. Merge Yes + No tokens back into USDC.e ─────────────────────
     #   Can only merge the minimum of the two positions (need equal amounts).
 
-    merge_shares = min_size
-    merge_amount = int(merge_shares * 1e6)
-
-    spender = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
-    print(f"\nApproving USDC.e for {spender[:10]}... (if needed)")
-    client.approve_collateral(spender=spender)
-
-    print(f"Merging {merge_shares} shares ({merge_amount} base units) ...")
+    print(f"\nMerging {min_size} shares ...")
     merge_result = client.merge_positions(
         condition_id=condition_id,
-        amount=merge_amount,
+        amount_usdc=min_size,
         neg_risk=neg_risk,
+        auto_approve=True,
     )
     print(f"Merge tx: {merge_result}")
 

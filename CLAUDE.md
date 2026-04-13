@@ -154,15 +154,18 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 | ConditionalTokens | `0x4D97DCd97eC945f40cF65F87097ACe5EA0476045` |
 | NegRiskAdapter | `0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296` |
 | USDC.e (collateral) | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
+| ProxyFactory (GSN) | `0xaB45c5A4B0c941a2F231C04C3f49182e1A254052` |
+| RelayHub (GSN) | `0xD216153c06E857cD7f72665E0aF1d7D82172F494` |
 
 **Methods:**
 
 | Method | Description |
 |---|---|
-| `split_position(condition_id, amount=None, amount_usdc=None, neg_risk=False)` | Split USDC.e into Yes + No outcome tokens |
-| `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False)` | Merge Yes + No tokens back into USDC.e |
-| `redeem_positions(condition_id, index_sets=None)` | Redeem winning tokens after market resolution |
-| `approve_collateral(spender=None, amount=None)` | Approve USDC.e spending for a CTF contract |
+| `split_position(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Split USDC.e into Yes + No outcome tokens |
+| `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Merge Yes + No tokens back into USDC.e |
+| `redeem_positions(condition_id, index_sets=None, estimate=False)` | Redeem winning tokens after market resolution |
+| `approve_collateral(spender=None, amount=None, estimate=False)` | Approve USDC.e spending for a CTF contract |
+| `estimate_ctf_tx(tx_data)` | Estimate gas cost without sending; returns `GasEstimate` dict |
 
 **Key design:**
 - `web3` is lazily imported — `_require_web3()` initializes `_w3`, `_ct_contract`, `_nr_contract`, `_usdc_contract` on first call. Users who never call CTF methods never need web3 installed.
@@ -170,6 +173,17 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 - `neg_risk=True` routes split/merge through NegRiskAdapter (2-param ABI); `False` uses ConditionalTokens (5-param ABI with collateral, parentCollectionId=bytes32(0), partition=[1,2]).
 - Amounts are in USDC.e base units (6 decimals): `1_000_000` = 1.00 USDC.
 - Returns dict with `txHash`, `status`, `blockNumber`, `gasUsed` (when `wait=True`).
+- `estimate=True` on any method returns a `GasEstimate` dict (`gas`, `gasPrice`, `costWei`, `costMatic`, `eoaBalance`) without sending.
+- `auto_approve=True` on `split_position`/`merge_positions` checks the on-chain USDC.e allowance and sends an approval tx if insufficient.
+
+**Proxy wallet support:**
+- `_has_proxy_wallet()` returns `True` when `address` (proxy) differs from the EOA derived from `private_key`.
+- When a proxy wallet is detected, CTF operations auto-route through Polymarket's GSN relayer via `_send_ctf_tx_relayed()` instead of sending direct on-chain transactions.
+- Proxy signing uses the GSN `"rlx:"` struct hash scheme (`_sign_proxy_tx`) — NOT EIP-712 SafeTx.
+- The inner call is wrapped in a `ProxyFactory.proxy(calls)` envelope via `_encode_proxy_calls()`.
+- Builder HMAC auth (`_require_builder_auth()`) is required for relayed transactions — the relayer needs `POLY_BUILDER_*` headers to coordinate relay workers correctly.
+- Gas estimation for proxy wallets uses `state_override` to simulate from the proxy address (which may have 0 MATIC).
+- `_ensure_allowance()` checks the proxy wallet's allowance (not the EOA's) when a proxy is active.
 
 ### DataFrame preprocessing
 

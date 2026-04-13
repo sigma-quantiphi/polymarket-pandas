@@ -1328,7 +1328,10 @@ class PolymarketPandas(
 
         Args:
             token_id: CLOB token ID (ERC-1155 conditional token).
-            price: Limit price per share (0–1).
+            price: Limit price per share (0–1). Automatically snapped to
+                the market's tick size to avoid "Invalid tick size"
+                rejections (valid ticks: ``0.1``, ``0.01``, ``0.001``,
+                ``0.0001``).
             size: Number of shares (conditional tokens).
             side: ``"BUY"`` or ``"SELL"``.
             fee_rate_bps: Fee rate in basis points. Auto-fetched from the CLOB
@@ -1354,6 +1357,13 @@ class PolymarketPandas(
             tick_size = str(self.get_tick_size(token_id))
         if fee_rate_bps is None:
             fee_rate_bps = self.get_fee_rate(token_id)
+
+        # Snap price to the market's tick size to prevent "Invalid tick
+        # size" rejections from floating-point drift.
+        if tick_size in _TICK_SIZES:
+            price_dec = _TICK_SIZES[tick_size][0]
+            ts_float = float(tick_size)
+            price = _round_normal(round(price / ts_float) * ts_float, price_dec)
 
         expiration = to_unix_timestamp(expiration)
 
@@ -1443,7 +1453,9 @@ class PolymarketPandas(
 
         Args:
             token_id: CLOB token ID (ERC-1155 conditional token).
-            price: Limit price per share (0–1).
+            price: Limit price per share (0–1). Automatically snapped to
+                the market's tick size (valid ticks: ``0.1``, ``0.01``,
+                ``0.001``, ``0.0001``).
             size: Number of shares (conditional tokens).
             side: ``"BUY"`` or ``"SELL"``.
             order_type: ``"GTC"`` (default), ``"FOK"``, ``"GTD"``, or ``"FAK"``.
@@ -1482,6 +1494,10 @@ class PolymarketPandas(
         Optional columns: ``orderType`` (default ``"GTC"``), ``postOnly``
         (default ``False``), ``expiration``, ``nonce``, ``negRisk``,
         ``tickSize``, ``feeRateBps``.
+
+        Prices are automatically snapped to each market's tick size
+        (valid ticks: ``0.1``, ``0.01``, ``0.001``, ``0.0001``) to
+        prevent floating-point rejections.
 
         Market parameters (``neg_risk``, ``tick_size``, ``fee_rate_bps``) are
         auto-fetched from the CLOB API (and cached) when not provided.

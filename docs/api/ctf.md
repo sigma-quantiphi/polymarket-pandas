@@ -6,8 +6,8 @@ On-chain merge, split, and redeem via Polymarket's Conditional Token Framework c
 
 - Install with the `[ctf]` extra: `pip install "polymarket-pandas[ctf]"`
 - `private_key` must be set (for signing transactions)
-- A funded EOA wallet with MATIC for gas
 - Amounts are in USDC.e base units (6 decimals): `1_000_000` = 1.00 USDC
+- For **proxy wallet** users (most Polymarket accounts): builder API credentials are required (`POLYMARKET_BUILDER_API_KEY`, `POLYMARKET_BUILDER_API_SECRET`, `POLYMARKET_BUILDER_API_PASSPHRASE`)
 
 **Contract addresses (Polygon mainnet):**
 
@@ -19,37 +19,76 @@ On-chain merge, split, and redeem via Polymarket's Conditional Token Framework c
 
 ---
 
+## Proxy Wallet vs EOA
+
+Most Polymarket users have a **proxy wallet** (a Gnosis Safe or custom proxy) that holds their tokens. The client auto-detects this: when `address` differs from the EOA derived from `private_key`, CTF operations route through Polymarket's GSN relayer instead of sending direct on-chain transactions.
+
+- **Direct (EOA)**: The EOA holds tokens and pays gas in MATIC.
+- **Relayed (proxy)**: Tokens live in the proxy wallet. The relayer submits the transaction through the proxy's GSN relay hub (gasless for the user). Requires builder API credentials for HMAC authentication.
+
+---
+
 ## Endpoints
 
-### `split_position(condition_id, amount, neg_risk=False, wait=True, timeout=120) -> TransactionReceipt`
+### `estimate_ctf_tx(tx_data) -> GasEstimate`
+
+Estimate gas cost for a CTF transaction without sending it. Also available via `estimate=True` on all CTF methods.
+
+```python
+est = client.merge_positions(
+    condition_id="0x4aee6d11...",
+    amount_usdc=10.0,
+    estimate=True,
+)
+print(f"Gas: {est['gas']:,} units @ {est['gasPrice'] / 1e9:.1f} gwei")
+print(f"Cost: {est['costMatic']:.6f} MATIC")
+print(f"EOA balance: {est['eoaBalance'] / 1e18:.6f} MATIC")
+```
+
+Returns a `GasEstimate` TypedDict:
+
+| Field | Type | Description |
+|---|---|---|
+| `gas` | int | Estimated gas units |
+| `gasPrice` | int | Current gas price (wei) |
+| `costWei` | int | `gas × gasPrice` |
+| `costMatic` | float | Cost in MATIC |
+| `eoaBalance` | int | EOA's MATIC balance (wei) |
+
+### `split_position(condition_id, amount, ...) -> TransactionReceipt`
 
 Split USDC.e collateral into Yes + No outcome tokens.
 
 ```python
 result = client.split_position(
     condition_id="0x4aee6d11...",
-    amount=1_000_000,       # 1.00 USDC
-    neg_risk=False,         # True for neg-risk (multi-outcome) markets
+    amount_usdc=1.0,          # or amount=1_000_000 (base units)
+    neg_risk=False,
+    auto_approve=True,        # approve USDC.e spending if needed
 )
-# result: {"txHash": "0x...", "status": 1, "blockNumber": 12345, "gasUsed": 150000}
 ```
 
-The `amount_usdc` convenience parameter accepts a float (e.g. `amount_usdc=1.0`) as an alternative to `amount` in base units. Mutually exclusive with `amount`.
-
-### `merge_positions(condition_id, amount, neg_risk=False, wait=True, timeout=120) -> TransactionReceipt`
+### `merge_positions(condition_id, amount, ...) -> TransactionReceipt`
 
 Merge equal amounts of Yes + No tokens back into USDC.e.
 
 ```python
+# Estimate first
+est = client.merge_positions(
+    condition_id="0x4aee6d11...",
+    amount_usdc=10.0,
+    estimate=True,
+)
+
+# Then merge
 result = client.merge_positions(
     condition_id="0x4aee6d11...",
-    amount=1_000_000,
+    amount_usdc=10.0,
+    auto_approve=True,
 )
 ```
 
-Also accepts `amount_usdc` as an alternative to `amount`.
-
-### `redeem_positions(condition_id, index_sets=None, wait=True, timeout=120) -> TransactionReceipt`
+### `redeem_positions(condition_id, index_sets=None, ...) -> TransactionReceipt`
 
 Redeem winning outcome tokens for USDC.e after market resolution.
 
@@ -57,24 +96,42 @@ Redeem winning outcome tokens for USDC.e after market resolution.
 result = client.redeem_positions(condition_id="0x4aee6d11...")
 ```
 
-### `approve_collateral(spender=None, amount=None, wait=True, timeout=120) -> TransactionReceipt`
+### `approve_collateral(spender=None, amount=None, ...) -> TransactionReceipt`
 
-Approve a CTF contract to spend USDC.e. Required before `split_position` or `merge_positions`. Defaults to unlimited approval for the ConditionalTokens contract.
+Approve a CTF contract to spend USDC.e. Called automatically when `auto_approve=True` is passed to `split_position` or `merge_positions`.
 
 ```python
-from polymarket_pandas.mixins._ctf import CONDITIONAL_TOKENS, NEG_RISK_ADAPTER
-
-# For standard binary markets
-client.approve_collateral(spender=CONDITIONAL_TOKENS)
-
-# For neg-risk markets
-client.approve_collateral(spender=NEG_RISK_ADAPTER)
+# Manual approval (if not using auto_approve)
+client.approve_collateral()  # defaults to ConditionalTokens, unlimited
 ```
+
+---
+
+## Common Parameters
+
+All four CTF methods (`split_position`, `merge_positions`, `redeem_positions`, `approve_collateral`) accept:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `estimate` | `False` | Return `GasEstimate` instead of sending |
+| `wait` | `True` | Block until mined (returns `status`, `blockNumber`, `gasUsed`) |
+| `timeout` | `120` | Seconds to wait for receipt |
+
+`split_position` and `merge_positions` additionally accept:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `amount` | — | Token amount in base units (6 decimals) |
+| `amount_usdc` | — | Convenience float (e.g. `1.0` = 1 USDC). Mutually exclusive with `amount` |
+| `neg_risk` | `False` | `True` for neg-risk markets (uses NegRiskAdapter) |
+| `auto_approve` | `False` | Check on-chain allowance and approve if needed before the operation |
 
 ---
 
 ## Notes
 
-- `neg_risk=True` routes split/merge through the NegRiskAdapter (2-param ABI); `False` uses ConditionalTokens (5-param ABI with collateral, parentCollectionId=bytes32(0), partition=[1,2]).
-- `wait=True` (default) blocks until the transaction is mined and returns `txHash`, `status`, `blockNumber`, `gasUsed`. With `wait=False`, only `txHash` is returned immediately.
-- `web3` is lazily imported -- users who never call CTF methods do not need `web3` installed.
+- **Proxy wallet detection** is automatic. When `address` (proxy) differs from the EOA, all CTF operations route through the GSN relayer.
+- **Gas estimation** for proxy wallets uses `state_override` to simulate from the proxy (which may have 0 MATIC).
+- `web3` is lazily imported — users who never call CTF methods do not need `web3` installed.
+- `neg_risk=True` routes split/merge through NegRiskAdapter (2-param ABI); `False` uses ConditionalTokens (5-param ABI).
+- See `examples/merge_positions.py` for a complete working example with dry-run and gas estimation.
