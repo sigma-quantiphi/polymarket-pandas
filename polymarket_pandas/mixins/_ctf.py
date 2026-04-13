@@ -292,9 +292,9 @@ class CTFMixin:
             + bytes.fromhex(RELAY_HUB[2:])
             + bytes.fromhex(relay[2:])
         )
-        from web3 import Web3
+        from eth_utils import keccak
 
-        struct_hash = Web3.keccak(parts)
+        struct_hash = keccak(parts)
         signable = encode_defunct(struct_hash)
         return "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
 
