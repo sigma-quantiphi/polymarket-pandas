@@ -96,6 +96,7 @@ ignore = ["B008"]
 [tool.ruff.lint.per-file-ignores]
 "examples/*.py" = ["E402"]  # imports after load_dotenv() is intentional
 "explorer/pages/*.py" = ["E402"]  # lazy imports after st.stop() guards
+"notebooks/*.ipynb" = ["F401", "F821"]  # cross-cell references are normal in notebooks
 
 [tool.mypy]
 python_version = "3.11"
