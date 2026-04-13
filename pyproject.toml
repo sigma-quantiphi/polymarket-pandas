@@ -1,6 +1,6 @@
 [project]
 name = "polymarket-pandas"
-version = "0.6.22"
+version = "0.6.23"
 description = "Pandas API client to Polymarket"
 authors = [
     {name = "Sigma Quantiphi", email = "contact@sqphi.com"}
@@ -20,7 +20,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
-    "Framework :: Pandas",
     "Operating System :: OS Independent",
 ]
 
