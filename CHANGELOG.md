@@ -9,6 +9,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.22] — 2026-04-13
+
+### Added
+- `GasEstimate` TypedDict and `estimate_ctf_tx()` public method for gas cost estimation.
+- `estimate=True` parameter on `merge_positions`, `split_position`, `redeem_positions`, `approve_collateral` — returns gas estimate without sending.
+- `auto_approve=True` parameter on `merge_positions` and `split_position` — checks on-chain USDC.e allowance and approves if needed.
+- Proxy wallet support for CTF operations — auto-detects when tokens live in a proxy wallet and routes through Polymarket's GSN relayer.
+- `examples/merge_positions.py` — focused example for merging Yes+No tokens back into USDC.e with dry-run and gas estimation.
+
+### Fixed
+- Gas estimation now uses `state_override` for proxy wallets (which have 0 MATIC) to simulate correctly.
+- `.env.example` corrected to use `POLYMARKET_RELAYER_API_KEY_ADDRESS` (matching actual env var name).
+- Vectorized `coalesce_end_date_from_title` in `parsers.py`.
+
+---
+
 ## [0.6.21] — 2026-04-10
 
 ### Added
