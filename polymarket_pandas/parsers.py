@@ -205,16 +205,17 @@ def coalesce_end_date_from_title(
     """
     title = data[title_col].fillna("").str.strip()
     start = pd.to_datetime(data[start_col], utc=True, errors="coerce")
-    start_year = start.dt.year
-    year_str = start_year.fillna(pd.Timestamp.now(tz="UTC").year).astype(int).astype(str)
-    combined = (title + " " + year_str).where(title != "", "")
-    parsed = pd.to_datetime(combined, errors="coerce", utc=True)
-    rollover = parsed.notna() & start.notna() & (parsed < start)
-    if rollover.any():
-        bumped = pd.to_datetime(
-            title[rollover] + " " + (start_year[rollover] + 1).astype(int).astype(str),
-            errors="coerce",
-            utc=True,
-        )
-        parsed.loc[rollover] = bumped
+    # Parse "<title> <start year>" — masked to NaT where title is empty
+    # (otherwise " 2026" would parse to Jan 1 2026).
+    parsed = pd.to_datetime(
+        title + " " + start.dt.year.astype("Int64").astype(str),
+        errors="coerce",
+        utc=True,
+    ).where(title != "")
+    # Vectorized Dec→Jan rollover: if the parsed date lands before start,
+    # bump the year by one. NaT rows pass through untouched.
+    parsed = parsed.where(
+        parsed.isna() | start.isna() | (parsed >= start),
+        parsed + pd.DateOffset(years=1),
+    )
     return data[end_col].fillna(parsed)

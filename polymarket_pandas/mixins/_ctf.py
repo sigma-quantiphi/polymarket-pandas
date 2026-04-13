@@ -8,9 +8,12 @@ dependency: ``pip install polymarket-pandas[ctf]``.
 from __future__ import annotations
 
 from polymarket_pandas.exceptions import PolymarketAuthError
-from polymarket_pandas.types import TransactionReceipt
+from polymarket_pandas.types import GasEstimate, SubmitTransactionResponse, TransactionReceipt
 
 # ── Contract addresses (Polygon mainnet) ─────────────────────────────
+
+PROXY_FACTORY = "0xaB45c5A4B0c941a2F231C04C3f49182e1A254052"
+RELAY_HUB = "0xD216153c06E857cD7f72665E0aF1d7D82172F494"
 
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
@@ -109,6 +112,27 @@ _NEG_RISK_ADAPTER_ABI = [
     },
 ]
 
+_PROXY_FACTORY_ABI = [
+    {
+        "inputs": [
+            {
+                "components": [
+                    {"name": "typeCode", "type": "uint8"},
+                    {"name": "to", "type": "address"},
+                    {"name": "value", "type": "uint256"},
+                    {"name": "data", "type": "bytes"},
+                ],
+                "name": "calls",
+                "type": "tuple[]",
+            }
+        ],
+        "name": "proxy",
+        "outputs": [{"name": "returnValues", "type": "bytes[]"}],
+        "stateMutability": "payable",
+        "type": "function",
+    },
+]
+
 
 class CTFMixin:
     """On-chain merge / split / redeem via the Polymarket CTF contracts."""
@@ -180,7 +204,13 @@ class CTFMixin:
 
     def _tx_params(self) -> dict:
         """Base transaction params with ``from`` set to the EOA address."""
-        return {"from": self._eoa_address()}
+        params: dict = {"from": self._eoa_address()}
+        # Suppress auto gas-estimation in build_transaction when using
+        # a proxy wallet — the EOA has no tokens so estimation would fail.
+        # estimate_ctf_tx / _send_ctf_tx handle gas separately.
+        if self._has_proxy_wallet():
+            params["gas"] = 0
+        return params
 
     def _send_ctf_tx(
         self,
@@ -215,16 +245,157 @@ class CTFMixin:
             result["gasUsed"] = receipt["gasUsed"]
         return result
 
+    def _has_proxy_wallet(self) -> bool:
+        """True when address is a proxy wallet distinct from the EOA."""
+        addr: str | None = getattr(self, "address", None)
+        if not addr:
+            return False
+        return addr.lower() != self._eoa_address().lower()
+
+    def _encode_proxy_calls(self, calls: list[tuple[int, str, int, bytes]]) -> str:
+        """ABI-encode a ``proxy(calls)`` function call on the ProxyFactory."""
+        from web3 import Web3
+
+        factory = self._w3.eth.contract(
+            address=Web3.to_checksum_address(PROXY_FACTORY),
+            abi=_PROXY_FACTORY_ABI,
+        )
+        return factory.functions.proxy(calls).build_transaction(
+            {"from": self._eoa_address(), "gas": 0}
+        )["data"]
+
+    def _sign_proxy_tx(
+        self,
+        from_: str,
+        to: str,
+        data: str,
+        nonce: str,
+        relay: str,
+        gas_limit: str = "10000000",
+    ) -> str:
+        """Sign a Polymarket proxy transaction (GSN ``rlx:`` scheme)."""
+        from eth_account import Account
+        from eth_account.messages import encode_defunct
+
+        # Build struct hash: keccak256("rlx:" + from + to + data +
+        #   txFee(32) + gasPrice(32) + gasLimit(32) + nonce(32) +
+        #   relayHub + relay)
+        parts = (
+            b"rlx:"
+            + bytes.fromhex(from_[2:])
+            + bytes.fromhex(to[2:])
+            + bytes.fromhex(data[2:])
+            + (0).to_bytes(32, "big")  # txFee = 0
+            + (0).to_bytes(32, "big")  # gasPrice = 0
+            + int(gas_limit).to_bytes(32, "big")
+            + int(nonce).to_bytes(32, "big")
+            + bytes.fromhex(RELAY_HUB[2:])
+            + bytes.fromhex(relay[2:])
+        )
+        from web3 import Web3
+
+        struct_hash = Web3.keccak(parts)
+        signable = encode_defunct(struct_hash)
+        return (
+            "0x"
+            + Account.sign_message(
+                signable, private_key=self.private_key
+            ).signature.hex()
+        )
+
+    def _send_ctf_tx_relayed(
+        self, to: str, tx_data: dict
+    ) -> SubmitTransactionResponse:
+        """Submit a CTF transaction through the relayer (proxy wallet)."""
+        eoa = self._eoa_address()
+        payload = self.get_relay_payload(address=eoa, type="PROXY")
+        nonce = payload["nonce"]
+        relay = payload["address"]
+
+        # Wrap the raw call in a proxy(calls) envelope
+        inner_data = bytes.fromhex(tx_data["data"][2:])
+        proxy_data = self._encode_proxy_calls(
+            [(1, to, 0, inner_data)]  # typeCode=1 (Call)
+        )
+
+        gas_limit = "10000000"
+        signature = self._sign_proxy_tx(
+            from_=eoa,
+            to=PROXY_FACTORY,
+            data=proxy_data,
+            nonce=nonce,
+            relay=relay,
+            gas_limit=gas_limit,
+        )
+        return self.submit_transaction(
+            from_=eoa,
+            to=PROXY_FACTORY,
+            proxy_wallet=self.address,
+            data=proxy_data,
+            nonce=nonce,
+            signature=signature,
+            type="PROXY",
+            signature_params={
+                "gasPrice": "0",
+                "gasLimit": gas_limit,
+                "relayerFee": "0",
+                "relayHub": RELAY_HUB,
+                "relay": relay,
+            },
+        )
+
+    def _ensure_allowance(self, spender: str, amount: int) -> None:
+        """Approve *spender* if current USDC.e allowance is below *amount*."""
+        owner = self.address if self._has_proxy_wallet() else self._eoa_address()
+        allowance = self._usdc_contract.functions.allowance(
+            owner, self._w3.to_checksum_address(spender)
+        ).call()
+        if allowance < amount:
+            self.approve_collateral(spender=spender)
+
     # ── Public methods ───────────────────────────────────────────────
+
+    def estimate_ctf_tx(self, tx_data: dict) -> GasEstimate:
+        """Estimate gas cost for a CTF transaction without sending it.
+
+        Args:
+            tx_data: Transaction dict as returned by
+                ``contract.functions.method(...).build_transaction(...)``.
+
+        Returns:
+            dict with ``gas``, ``gasPrice``, ``costWei``, ``costMatic``,
+            and ``eoaBalance``.
+        """
+        self._require_ctf_auth()
+        self._require_web3()
+        eoa = self._eoa_address()
+        # Simulate from proxy wallet when tokens live there
+        if self._has_proxy_wallet():
+            tx_data = {**tx_data, "from": self.address}
+            # Proxy may have 0 MATIC; override balance so simulation runs
+            state_override = {self.address: {"balance": hex(10**18)}}
+            gas = self._w3.eth.estimate_gas(tx_data, state_override=state_override)
+        else:
+            gas = self._w3.eth.estimate_gas(tx_data)
+        gas_price = self._w3.eth.gas_price
+        cost_wei = gas * gas_price
+        return {
+            "gas": gas,
+            "gasPrice": gas_price,
+            "costWei": cost_wei,
+            "costMatic": cost_wei / 1e18,
+            "eoaBalance": self._w3.eth.get_balance(eoa),
+        }
 
     def approve_collateral(
         self,
         spender: str | None = None,
         amount: int | None = None,
         *,
+        estimate: bool = False,
         wait: bool = True,
         timeout: int = 120,
-    ) -> TransactionReceipt:
+    ) -> TransactionReceipt | GasEstimate:
         """Approve a CTF contract to spend USDC.e on your behalf.
 
         Args:
@@ -233,12 +404,14 @@ class CTFMixin:
                 address for neg-risk markets.
             amount: Amount in USDC.e base units (6 decimals).
                 ``None`` for max (unlimited) approval.
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
             wait: Wait for the transaction receipt.
             timeout: Seconds to wait for the receipt.
 
         Returns:
             dict with ``txHash`` and, if *wait*, ``status``, ``blockNumber``,
-            ``gasUsed``.
+            ``gasUsed``.  If *estimate*, returns :class:`GasEstimate` instead.
         """
         self._require_ctf_auth()
         self._require_web3()
@@ -250,6 +423,10 @@ class CTFMixin:
         tx = self._usdc_contract.functions.approve(
             self._w3.to_checksum_address(spender), amount
         ).build_transaction(self._tx_params())
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if self._has_proxy_wallet():
+            return self._send_ctf_tx_relayed(to=USDC_E, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def split_position(
@@ -259,9 +436,11 @@ class CTFMixin:
         *,
         amount_usdc: float | None = None,
         neg_risk: bool = False,
+        auto_approve: bool = False,
+        estimate: bool = False,
         wait: bool = True,
         timeout: int = 120,
-    ) -> TransactionReceipt:
+    ) -> TransactionReceipt | GasEstimate:
         """Split USDC.e collateral into Yes + No outcome tokens.
 
         Args:
@@ -273,12 +452,16 @@ class CTFMixin:
             neg_risk: ``True`` for neg-risk (multi-outcome) markets
                 (uses NegRiskAdapter); ``False`` for standard binary
                 markets (uses ConditionalTokens).
+            auto_approve: If ``True``, check USDC.e allowance and send
+                an approval transaction if needed before splitting.
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
             wait: Wait for the transaction receipt.
             timeout: Seconds to wait for the receipt.
 
         Returns:
             dict with ``txHash`` and, if *wait*, ``status``, ``blockNumber``,
-            ``gasUsed``.
+            ``gasUsed``.  If *estimate*, returns :class:`GasEstimate` instead.
         """
         self._require_ctf_auth()
         self._require_web3()
@@ -297,6 +480,14 @@ class CTFMixin:
                 DEFAULT_PARTITION,
                 amount,
             ).build_transaction(self._tx_params())
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if auto_approve:
+            spender = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
+            self._ensure_allowance(spender, amount)
+        if self._has_proxy_wallet():
+            target = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
+            return self._send_ctf_tx_relayed(to=target, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def merge_positions(
@@ -306,9 +497,11 @@ class CTFMixin:
         *,
         amount_usdc: float | None = None,
         neg_risk: bool = False,
+        auto_approve: bool = False,
+        estimate: bool = False,
         wait: bool = True,
         timeout: int = 120,
-    ) -> TransactionReceipt:
+    ) -> TransactionReceipt | GasEstimate:
         """Merge equal amounts of Yes + No outcome tokens back into USDC.e.
 
         Args:
@@ -318,12 +511,16 @@ class CTFMixin:
                 (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
             neg_risk: ``True`` for neg-risk markets (NegRiskAdapter);
                 ``False`` for standard binary markets (ConditionalTokens).
+            auto_approve: If ``True``, check USDC.e allowance and send
+                an approval transaction if needed before merging.
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
             wait: Wait for the transaction receipt.
             timeout: Seconds to wait for the receipt.
 
         Returns:
             dict with ``txHash`` and, if *wait*, ``status``, ``blockNumber``,
-            ``gasUsed``.
+            ``gasUsed``.  If *estimate*, returns :class:`GasEstimate` instead.
         """
         self._require_ctf_auth()
         self._require_web3()
@@ -342,6 +539,14 @@ class CTFMixin:
                 DEFAULT_PARTITION,
                 amount,
             ).build_transaction(self._tx_params())
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if auto_approve:
+            spender = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
+            self._ensure_allowance(spender, amount)
+        if self._has_proxy_wallet():
+            target = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
+            return self._send_ctf_tx_relayed(to=target, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def redeem_positions(
@@ -349,21 +554,24 @@ class CTFMixin:
         condition_id: str | bytes,
         index_sets: list[int] | None = None,
         *,
+        estimate: bool = False,
         wait: bool = True,
         timeout: int = 120,
-    ) -> TransactionReceipt:
+    ) -> TransactionReceipt | GasEstimate:
         """Redeem winning outcome tokens for USDC.e after market resolution.
 
         Args:
             condition_id: Market condition ID (hex string or bytes32).
             index_sets: Outcome index sets to redeem.  Defaults to
                 ``[1, 2]`` (standard binary market).
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
             wait: Wait for the transaction receipt.
             timeout: Seconds to wait for the receipt.
 
         Returns:
             dict with ``txHash`` and, if *wait*, ``status``, ``blockNumber``,
-            ``gasUsed``.
+            ``gasUsed``.  If *estimate*, returns :class:`GasEstimate` instead.
         """
         self._require_ctf_auth()
         self._require_web3()
@@ -377,4 +585,8 @@ class CTFMixin:
             cid,
             index_sets,
         ).build_transaction(self._tx_params())
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if self._has_proxy_wallet():
+            return self._send_ctf_tx_relayed(to=CONDITIONAL_TOKENS, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)

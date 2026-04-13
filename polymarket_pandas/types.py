@@ -116,6 +116,21 @@ class TransactionReceipt(TypedDict, total=False):
     gasUsed: int
 
 
+class GasEstimate(TypedDict):
+    """Gas cost estimate for a CTF transaction.
+
+    Returned by CTF methods (``merge_positions``, ``split_position``,
+    ``approve_collateral``, ``redeem_positions``) when called with
+    ``estimate=True``.
+    """
+
+    gas: int
+    gasPrice: int
+    costWei: int
+    costMatic: float
+    eoaBalance: int
+
+
 # ── CLOB API credentials ─────────────────────────────────────────────
 # Used by: create_api_key, derive_api_key
 

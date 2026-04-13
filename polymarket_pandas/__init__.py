@@ -71,6 +71,7 @@ from polymarket_pandas.types import (
     CancelOrdersResponse,
     CurrentRewardsCursorPage,
     CursorPage,
+    GasEstimate,
     LastTradePrice,
     OrdersCursorPage,
     RelayPayload,
@@ -117,6 +118,7 @@ __all__ = [
     "UserTradesCursorPage",
     # TypedDicts — other dict responses
     "ApiCredentials",
+    "GasEstimate",
     "BalanceAllowance",
     "BridgeAddress",
     "BridgeAddressInfo",

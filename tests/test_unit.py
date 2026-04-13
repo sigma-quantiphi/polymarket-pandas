@@ -686,11 +686,14 @@ STUB_CONDITION_ID = "0x" + "ab" * 32
 
 @pytest.fixture
 def ctf_client() -> PolymarketPandas:
-    """Client with a private key for CTF operation tests."""
+    """Client with a private key for CTF operation tests (no proxy wallet)."""
+    from eth_account import Account
+
+    pk = "0x" + "ab" * 32
     return PolymarketPandas(
         use_tqdm=False,
-        address="0xDEADBEEFdeadbeefDEADBEEFdeadbeef00000000",
-        private_key="0x" + "ab" * 32,
+        address=Account.from_key(pk).address,  # match EOA so no proxy
+        private_key=pk,
     )
 
 
@@ -821,6 +824,64 @@ def test_merge_positions_neg_risk(ctf_client: PolymarketPandas, monkeypatch):
     nr.functions.mergePositions.assert_called_once()
     ct.functions.mergePositions.assert_not_called()
     assert result["status"] == 1
+
+
+def test_merge_positions_estimate(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    ctf_client._w3.eth.get_balance.return_value = 10**18  # 1 MATIC
+    result = ctf_client.merge_positions(STUB_CONDITION_ID, 1_000_000, estimate=True)
+    # Should NOT send a transaction
+    ctf_client._w3.eth.send_raw_transaction.assert_not_called()
+    # Should return GasEstimate fields
+    assert result["gas"] == 200_000
+    assert result["gasPrice"] == 30_000_000_000
+    assert result["costWei"] == 200_000 * 30_000_000_000
+    assert result["eoaBalance"] == 10**18
+    assert isinstance(result["costMatic"], float)
+
+
+def test_split_position_estimate(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    ctf_client._w3.eth.get_balance.return_value = 10**18
+    result = ctf_client.split_position(STUB_CONDITION_ID, 1_000_000, estimate=True)
+    ctf_client._w3.eth.send_raw_transaction.assert_not_called()
+    assert result["gas"] == 200_000
+    assert isinstance(result["costMatic"], float)
+
+
+def test_merge_positions_relayed(monkeypatch):
+    """When address differs from EOA, merge routes through the relayer."""
+    pk = "0x" + "ab" * 32
+    proxy = "0xDEADBEEFdeadbeefDEADBEEFdeadbeef00000000"
+    client = PolymarketPandas(use_tqdm=False, address=proxy, private_key=pk)
+    ct, nr, _ = _mock_web3(client, monkeypatch)
+
+    # build_transaction must return real hex data for proxy encoding
+    ct.functions.mergePositions.return_value.build_transaction.return_value = {
+        "data": "0x" + "ab" * 32,
+    }
+
+    # Mock _encode_proxy_calls to return valid hex
+    monkeypatch.setattr(client, "_encode_proxy_calls", lambda calls: "0x" + "cd" * 64)
+    # Mock relayer methods
+    monkeypatch.setattr(
+        client, "get_relay_payload",
+        lambda **kw: {"address": "0x" + "ee" * 20, "nonce": "42"},
+    )
+    mock_submit = MagicMock(return_value={"transactionID": "abc", "transactionHash": "0x123"})
+    monkeypatch.setattr(client, "submit_transaction", mock_submit)
+
+    result = client.merge_positions(STUB_CONDITION_ID, 1_000_000)
+
+    # Should NOT send direct tx
+    client._w3.eth.send_raw_transaction.assert_not_called()
+    # Should call submit_transaction with correct args
+    mock_submit.assert_called_once()
+    call_kwargs = mock_submit.call_args[1]
+    assert call_kwargs["proxy_wallet"] == proxy
+    assert call_kwargs["type"] == "PROXY"
+    assert call_kwargs["to"] == "0xaB45c5A4B0c941a2F231C04C3f49182e1A254052"
+    assert result["transactionHash"] == "0x123"
 
 
 def test_redeem_positions(ctf_client: PolymarketPandas, monkeypatch):
