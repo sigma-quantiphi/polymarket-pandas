@@ -40,6 +40,7 @@ from polymarket_pandas.mixins import (
     GammaMixin,
     RelayerMixin,
     RewardsMixin,
+    UmaMixin,
     XTrackerMixin,
 )
 from polymarket_pandas.types import SendOrderResponse, SignedOrder
@@ -165,6 +166,7 @@ class PolymarketPandas(
     RelayerMixin,
     BridgeMixin,
     CTFMixin,
+    UmaMixin,
     RewardsMixin,
     XTrackerMixin,
 ):

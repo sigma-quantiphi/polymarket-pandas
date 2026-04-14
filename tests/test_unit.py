@@ -2116,3 +2116,156 @@ def test_get_balance_allowance_omits_signature_type_when_unset(
         json={"balance": "0", "allowances": {}},
     )
     authed_client.get_balance_allowance(asset_type=0)
+
+
+# ════════════════════════════════════════════════════════════════════
+#  UMA resolution / dispute (_uma.py)
+# ════════════════════════════════════════════════════════════════════
+
+
+STUB_QUESTION_ID = "0x" + "cd" * 32
+
+
+def _mock_uma(ctf_client, monkeypatch, *, state_idx: int = 1):
+    """Inject a mock web3 + UMA adapter/OOv2 into ``ctf_client``.
+
+    ``state_idx`` maps to the ``_OO_STATES`` tuple (0=Invalid, 1=Requested,
+    2=Proposed, ...).
+    """
+    ct, nr, usdc = _mock_web3(ctf_client, monkeypatch)
+
+    adapter = MagicMock()
+    nr_adapter = MagicMock()
+    oo = MagicMock()
+
+    ctf_client._w3.eth.contract = MagicMock(side_effect=[adapter, nr_adapter, oo])
+
+    usdc.functions.allowance.return_value.call.return_value = 0
+
+    question_tuple = (
+        1_700_000_000,
+        2_000_000,
+        500_000_000,
+        7200,
+        0,
+        False,
+        False,
+        False,
+        False,
+        "0x" + "11" * 20,
+        "0x" + "22" * 20,
+        b"q?",
+    )
+    adapter.functions.getQuestion.return_value.call.return_value = question_tuple
+    nr_adapter.functions.getQuestion.return_value.call.return_value = question_tuple
+    adapter.functions.ready.return_value.call.return_value = True
+    nr_adapter.functions.ready.return_value.call.return_value = True
+
+    oo.functions.getState.return_value.call.return_value = state_idx
+    oo.functions.getRequest.return_value.call.return_value = (
+        "0x" + "33" * 20,
+        "0x" + "00" * 20,
+        "0x" + "44" * 20,
+        False,
+        (False, False, False, False, False, 500_000_000, 0),
+        0,
+        0,
+        1_700_007_200,
+        2_000_000,
+        1_500_000_000,
+    )
+
+    for contract in (adapter, nr_adapter, oo):
+        for fn_name in ("proposePrice", "disputePrice", "settle", "resolve"):
+            fn = getattr(contract.functions, fn_name, MagicMock())
+            fn.return_value.build_transaction.return_value = {"data": "0x"}
+
+    return adapter, nr_adapter, oo, usdc
+
+
+def test_uma_requires_private_key(client: PolymarketPandas):
+    with pytest.raises(PolymarketAuthError, match="private_key"):
+        client.propose_price(STUB_QUESTION_ID, 10**18)
+
+
+def test_uma_invalid_proposed_price(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_uma(ctf_client, monkeypatch)
+    with pytest.raises(ValueError, match="Invalid proposed price"):
+        ctf_client.propose_price(STUB_QUESTION_ID, 42)
+
+
+def test_uma_get_uma_state_decodes_enum(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_uma(ctf_client, monkeypatch, state_idx=2)
+    assert ctf_client.get_uma_state(STUB_QUESTION_ID) == "Proposed"
+
+
+def test_uma_propose_price_happy(ctf_client: PolymarketPandas, monkeypatch):
+    from polymarket_pandas.mixins._uma import (
+        OPTIMISTIC_ORACLE_V2,
+        UMA_CTF_ADAPTER,
+        YES_OR_NO_IDENTIFIER,
+    )
+
+    adapter, nr_adapter, oo, usdc = _mock_uma(ctf_client, monkeypatch, state_idx=1)
+    ctf_client.propose_price(STUB_QUESTION_ID, 10**18)
+
+    oo.functions.proposePrice.assert_called_once()
+    args = oo.functions.proposePrice.call_args[0]
+    assert args[0] == UMA_CTF_ADAPTER
+    assert args[1] == YES_OR_NO_IDENTIFIER
+    assert args[2] == 1_700_000_000
+    assert args[4] == 10**18
+
+    usdc.functions.approve.assert_called_once()
+    approve_args = usdc.functions.approve.call_args[0]
+    assert approve_args[0] == OPTIMISTIC_ORACLE_V2
+    nr_adapter.functions.proposePrice.assert_not_called()
+
+
+def test_uma_propose_price_rejects_bad_state(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_uma(ctf_client, monkeypatch, state_idx=2)
+    with pytest.raises(ValueError, match="state is 'Proposed'"):
+        ctf_client.propose_price(STUB_QUESTION_ID, 10**18)
+
+
+def test_uma_dispute_approves_bond_only(ctf_client: PolymarketPandas, monkeypatch):
+    from polymarket_pandas.mixins._uma import OPTIMISTIC_ORACLE_V2
+
+    _adapter, _nr, oo, usdc = _mock_uma(ctf_client, monkeypatch, state_idx=2)
+    ctf_client.dispute_price(STUB_QUESTION_ID)
+
+    oo.functions.disputePrice.assert_called_once()
+    usdc.functions.approve.assert_called_once()
+    allowance_args = usdc.functions.allowance.call_args[0]
+    assert allowance_args[1] == OPTIMISTIC_ORACLE_V2
+
+
+def test_uma_dispute_rejects_bad_state(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_uma(ctf_client, monkeypatch, state_idx=1)
+    with pytest.raises(ValueError, match="state is 'Requested'"):
+        ctf_client.dispute_price(STUB_QUESTION_ID)
+
+
+def test_uma_neg_risk_routes_through_nr_adapter(ctf_client: PolymarketPandas, monkeypatch):
+    from polymarket_pandas.mixins._uma import NEG_RISK_UMA_CTF_ADAPTER
+
+    _adapter, nr_adapter, oo, _usdc = _mock_uma(ctf_client, monkeypatch, state_idx=1)
+    ctf_client.propose_price(STUB_QUESTION_ID, 0, neg_risk=True)
+
+    nr_adapter.functions.getQuestion.assert_called()
+    args = oo.functions.proposePrice.call_args[0]
+    assert args[0] == NEG_RISK_UMA_CTF_ADAPTER
+
+
+def test_uma_resolve_market_calls_adapter(ctf_client: PolymarketPandas, monkeypatch):
+    adapter, _nr, _oo, _usdc = _mock_uma(ctf_client, monkeypatch)
+    ctf_client.resolve_market(STUB_QUESTION_ID)
+    adapter.functions.resolve.assert_called_once()
+
+
+def test_uma_propose_price_estimate(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_uma(ctf_client, monkeypatch, state_idx=1)
+    ctf_client._w3.eth.get_balance.return_value = 10**18
+    out = ctf_client.propose_price(STUB_QUESTION_ID, 10**18, estimate=True)
+    ctf_client._w3.eth.send_raw_transaction.assert_not_called()
+    assert out["gas"] == 200_000

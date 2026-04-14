@@ -64,6 +64,10 @@ polymarket_pandas/
     _relayer.py        # RelayerMixin — Safe deployment, nonces, transactions, relay payload, submit
     _bridge.py         # BridgeMixin  — deposit/withdrawal addresses, quotes, supported assets, status
     _ctf.py            # CTFMixin     — on-chain merge, split, redeem positions (requires web3)
+    _uma.py            # UmaMixin      — UMA CTF Adapter + OptimisticOracleV2 —
+    #                                    get_uma_question, get_oo_request,
+    #                                    get_uma_state, propose_price,
+    #                                    dispute_price, settle_oo, resolve_market
     _xtracker.py       # XTrackerMixin — xtracker.polymarket.com post-counter API
     #                                    (X / Truth Social tracking, feeds counter markets)
 ```
@@ -184,6 +188,32 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 - Builder HMAC auth (`_require_builder_auth()`) is required for relayed transactions — the relayer needs `POLY_BUILDER_*` headers to coordinate relay workers correctly.
 - Gas estimation for proxy wallets uses `state_override` to simulate from the proxy address (which may have 0 MATIC).
 - `_ensure_allowance()` checks the proxy wallet's allowance (not the EOA's) when a proxy is active.
+
+### UmaMixin — Resolution / dispute (`_uma.py`)
+
+Automates the UMA optimistic-oracle flow that resolves Polymarket markets. Shares the `ctf` extra (no new dependency) and reuses `_require_web3`, `_eoa_address`, `_has_proxy_wallet`, `_tx_params`, `_send_ctf_tx`, `_send_ctf_tx_relayed`, `_ensure_allowance`, `estimate_ctf_tx` from `CTFMixin`.
+
+**Contract layer (Polygon):**
+
+| Role | Address |
+|---|---|
+| UmaCtfAdapter | `0x157Ce2d672854c848c9b79C49a8Cc6cc89176a49` |
+| NegRiskUmaCtfAdapter | `0x2F5e3684cb1F318ec51b00Edba38d79Ac2c7c324` |
+| OptimisticOracleV2 | `0xeE3Afe347D5C74317041E2618C49534dAf887c24` |
+
+**Adapter vs OO split.** Adapters only store per-question metadata and, on `resolve(questionID)`, pull the settled price from OOv2 and call `ctf.reportPayouts`. All proposer / disputer / settler traffic goes to **OOv2 directly** with the adapter passed as the `requester`. USDC.e approvals therefore target **OOv2, not the adapter** — `propose_price` / `dispute_price` call `_ensure_allowance(OPTIMISTIC_ORACLE_V2, ...)`.
+
+**Public methods.** `get_uma_question`, `get_oo_request`, `get_uma_state` (enum decoded to `"Requested"/"Proposed"/..."Settled"`), `ready_to_resolve`, `propose_price`, `dispute_price`, `settle_oo`, `resolve_market`. Write methods support `estimate=True` → `GasEstimate` and `wait=True/False`.
+
+**EOA-by-default for bots.** Unlike CTF merge/split/redeem, UMA write methods send from the **EOA** (derived from `private_key`) even when a proxy wallet is configured. Dispute bots typically run from a hot EOA with MATIC + USDC.e; GSN-relayed proxy submission is opt-in via `as_proxy=True`. See `_send_uma_tx` in `_uma.py`.
+
+**Gotchas encoded in the mixin:**
+- `requestTimestamp` rotates after each dispute-reset → every write re-reads `getQuestion` rather than caching.
+- Proposer pulls `reward + proposalBond`; disputer pulls only `proposalBond`.
+- `ancillaryData` is read from the adapter (includes appended `,initializer:<creator>`); never reconstructed.
+- Valid proposed prices only: `0`, `5e17`, `1e18`, `-(2**255)` → `ValueError` otherwise before any network call.
+- State-machine preconditions: `propose_price` requires `"Requested"`; `dispute_price` requires `"Proposed"` → raises `ValueError` with current state instead of letting the EVM revert.
+- After a **second** dispute, OOv2 escalates to UMA's DVM and `hasPrice` stays false for 48–72h — caller should back off, not retry.
 
 ### DataFrame preprocessing
 

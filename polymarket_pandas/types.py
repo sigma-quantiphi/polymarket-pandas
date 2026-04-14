@@ -304,6 +304,43 @@ class XTrackerTracking(TypedDict, total=False):
     stats: DataFrame[XTrackerDailyStatSchema]
 
 
+# ── UMA resolution ───────────────────────────────────────────────────
+# Used by: get_uma_question, get_oo_request
+
+
+class UmaQuestion(TypedDict):
+    """UMA CTF Adapter stored metadata for a single question."""
+
+    requestTimestamp: int
+    reward: int
+    proposalBond: int
+    liveness: int
+    emergencyResolutionTimestamp: int
+    resolved: bool
+    paused: bool
+    reset: bool
+    refund: bool
+    rewardToken: str
+    creator: str
+    ancillaryData: bytes
+
+
+class OptimisticOracleRequest(TypedDict):
+    """UMA OptimisticOracleV2 ``Request`` state for a question."""
+
+    proposer: str
+    disputer: str
+    currency: str
+    settled: bool
+    bond: int
+    customLiveness: int
+    proposedPrice: int
+    resolvedPrice: int
+    expirationTime: int
+    reward: int
+    finalFee: int
+
+
 __all__ = [
     "ApiCredentials",
     "BalanceAllowance",
@@ -323,7 +360,9 @@ __all__ = [
     "SignedOrder",
     "SimplifiedMarketsCursorPage",
     "SubmitTransactionResponse",
+    "OptimisticOracleRequest",
     "TransactionReceipt",
+    "UmaQuestion",
     "UserEarningsCursorPage",
     "UserRewardsMarketsCursorPage",
     "UserTradesCursorPage",

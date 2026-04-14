@@ -9,6 +9,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.0] — 2026-04-14
+
+### Added
+- `UmaMixin` (`polymarket_pandas/mixins/_uma.py`) — automates the UMA optimistic-oracle resolution flow that decides Polymarket market payouts. New methods on `PolymarketPandas`:
+  - `get_uma_question`, `get_oo_request`, `get_uma_state`, `ready_to_resolve` — read on-chain resolution state from the UMA CTF Adapter and OptimisticOracleV2.
+  - `propose_price`, `dispute_price`, `settle_oo`, `resolve_market` — signed writes with `auto_approve`, `estimate`, `wait`, `neg_risk`, and `as_proxy` flags. All honour OOv2 state-machine preconditions and revalidate `requestTimestamp` on every call (it rotates after dispute-reset).
+  - `UmaQuestion` and `OptimisticOracleRequest` TypedDicts re-exported from the top-level package.
+  - Supports both the standard `UmaCtfAdapter` (`0x157Ce2…6a49`) and `NegRiskUmaCtfAdapter` (`0x2F5e…c324`) on Polygon. USDC.e approvals target OOv2 (the actual bond custodian), not the adapter.
+  - No new dependency — piggy-backs on the existing `[ctf]` extra (`web3>=7.0`).
+- `examples/uma_dispute_bot.py` — skeleton dispute bot that polls Gamma for `uma_resolution_status="proposed"` markets and disputes bad proposals (dry-run by default).
+
+### Includes
+- All fixes from the unreleased `0.6.27` entry below (notably the `get_balance_allowance` `asset_type`/`signatureType` fix) are rolled into this release — the prior version numbering skipped past the `v0.7.0` tag without being cut.
+
+---
+
 ## [0.6.27] — 2026-04-14
 
 ### Fixed

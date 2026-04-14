@@ -6,6 +6,7 @@ from polymarket_pandas.mixins._data import DataMixin
 from polymarket_pandas.mixins._gamma import GammaMixin
 from polymarket_pandas.mixins._relayer import RelayerMixin
 from polymarket_pandas.mixins._rewards import RewardsMixin
+from polymarket_pandas.mixins._uma import UmaMixin
 from polymarket_pandas.mixins._xtracker import XTrackerMixin
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "BridgeMixin",
     "CTFMixin",
     "RewardsMixin",
+    "UmaMixin",
     "XTrackerMixin",
 ]
