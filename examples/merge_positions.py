@@ -126,10 +126,7 @@ def main() -> None:
             neg_risk=neg_risk,
             estimate=True,
         )
-        print(
-            f"\nGas estimate: {est['gas']:,} units"
-            f" @ {est['gasPrice'] / 1e9:.1f} gwei"
-        )
+        print(f"\nGas estimate: {est['gas']:,} units @ {est['gasPrice'] / 1e9:.1f} gwei")
         print(f"Merge cost:   {est['costMatic']:.6f} MATIC")
         print(f"EOA balance:  {est['eoaBalance'] / 1e18:.6f} MATIC")
 

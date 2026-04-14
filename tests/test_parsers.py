@@ -333,13 +333,13 @@ def test_parse_title_threshold_mode_touch_vs_close():
     df = pd.DataFrame(
         {
             "marketsQuestion": [
-                "Will NFLX hit (HIGH) $120 this week?",       # (HIGH) → touch
-                "Will Solana dip to $65 on April 14?",         # dip → touch
-                "Will BTC reach $200,000 by year end?",        # reach → touch
-                "Will ETH close above $5000 on Friday?",       # close → close
-                "Will SPX settle above 6000 at resolution?",   # settle → close
-                "Will something qualitative happen?",          # neither → NaN
-                "Will SOL be above $100?",                     # bare "above" → NaN
+                "Will NFLX hit (HIGH) $120 this week?",  # (HIGH) → touch
+                "Will Solana dip to $65 on April 14?",  # dip → touch
+                "Will BTC reach $200,000 by year end?",  # reach → touch
+                "Will ETH close above $5000 on Friday?",  # close → close
+                "Will SPX settle above 6000 at resolution?",  # settle → close
+                "Will something qualitative happen?",  # neither → NaN
+                "Will SOL be above $100?",  # bare "above" → NaN
             ],
             "marketsGroupItemTitle": ["", "", "", "", "", "", ""],
         }

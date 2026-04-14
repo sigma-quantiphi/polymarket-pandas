@@ -149,11 +149,7 @@ def main() -> None:
         sys.exit(0)
 
     # Sort markets by total redeemable value (desc)
-    totals = (
-        positions.groupby("conditionId")["currentValue"]
-        .sum()
-        .sort_values(ascending=False)
-    )
+    totals = positions.groupby("conditionId")["currentValue"].sum().sort_values(ascending=False)
     print(f"Found {len(totals)} redeemable market(s):\n")
     for cid, total in totals.items():
         first_title = positions.loc[positions["conditionId"] == cid, "title"].iloc[0]

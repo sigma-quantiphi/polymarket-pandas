@@ -88,8 +88,7 @@ _SENSITIVE_HEADERS = frozenset(
 def _redact_headers(headers) -> dict:
     """Return a copy of headers with sensitive values replaced by ``***REDACTED***``."""
     return {
-        k: (_REDACTED if k.lower() in _SENSITIVE_HEADERS else v)
-        for k, v in dict(headers).items()
+        k: (_REDACTED if k.lower() in _SENSITIVE_HEADERS else v) for k, v in dict(headers).items()
     }
 
 
