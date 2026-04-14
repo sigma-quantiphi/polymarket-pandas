@@ -20,6 +20,7 @@ from polymarket_pandas.parsers import (
     coalesce_end_date_from_title,
     parse_title_bounds,
     parse_title_sports,
+    parse_title_threshold,
 )
 from polymarket_pandas.schemas import (
     ActiveOrderSchema,
@@ -180,4 +181,5 @@ __all__ = [
     "coalesce_end_date_from_title",
     "parse_title_bounds",
     "parse_title_sports",
+    "parse_title_threshold",
 ]

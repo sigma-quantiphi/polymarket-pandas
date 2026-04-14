@@ -7,6 +7,7 @@ from polymarket_pandas.parsers import (
     coalesce_end_date_from_title,
     parse_title_bounds,
     parse_title_sports,
+    parse_title_threshold,
 )
 
 # ── classify_event_structure ─────────────────────────────────────────────────
@@ -106,6 +107,16 @@ def test_parse_title_bounds_directional():
     assert out.loc[1, "threshold"] == 100000
 
 
+def test_parse_title_bounds_directional_currency_prefix():
+    # Regression: NFLX weekly titles carry a "$" prefix after the arrow.
+    df = pd.DataFrame({"marketsGroupItemTitle": ["↑ $120", "↓ $97.50"]})
+    out = parse_title_bounds(df)
+    assert out.loc[0, "direction"] == "up"
+    assert out.loc[0, "threshold"] == 120
+    assert out.loc[1, "direction"] == "down"
+    assert out.loc[1, "threshold"] == 97.5
+
+
 def test_parse_title_bounds_empty():
     df = pd.DataFrame({"marketsGroupItemTitle": ["", None]})
     out = parse_title_bounds(df)
@@ -200,3 +211,132 @@ def test_coalesce_end_date_empty_title():
     )
     result = coalesce_end_date_from_title(df)
     assert pd.isna(result.iloc[0])
+
+
+# ── parse_title_threshold ────────────────────────────────────────────────────
+
+
+def test_parse_title_threshold_sol_arrow_form():
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": [
+                "Will Solana dip to $65 on April 14?",
+                "Will Solana reach $110 on April 14?",
+            ],
+            "marketsGroupItemTitle": ["↓ 65", "↑ 110"],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdPrice"] == 65
+    assert out.loc[0, "thresholdDirection"] == "below"
+    assert out.loc[1, "thresholdPrice"] == 110
+    assert out.loc[1, "thresholdDirection"] == "above"
+
+
+def test_parse_title_threshold_nflx_currency_arrow():
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": [
+                "Will Netflix, Inc. (NFLX) hit (LOW) $97.50 Week of April 13 2026?",
+                "Will Netflix, Inc. (NFLX) hit (HIGH) $120 Week of April 13 2026?",
+            ],
+            "marketsGroupItemTitle": ["↓ $97.50", "↑ $120"],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdPrice"] == 97.5
+    assert out.loc[0, "thresholdDirection"] == "below"
+    assert out.loc[1, "thresholdPrice"] == 120
+    assert out.loc[1, "thresholdDirection"] == "above"
+
+
+def test_parse_title_threshold_question_only_fallback():
+    # group_title_col empty → fall back to question parsing.
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": [
+                "Will Solana dip to $65 on April 14?",
+                "Will Netflix, Inc. (NFLX) hit (LOW) $97.50 Week of April 13 2026?",
+                "Will NFLX reach $1100 by Friday?",
+            ],
+            "marketsGroupItemTitle": ["", "", ""],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdPrice"] == 65
+    assert out.loc[0, "thresholdDirection"] == "below"  # "dip"
+    assert out.loc[1, "thresholdPrice"] == 97.5
+    assert out.loc[1, "thresholdDirection"] == "below"  # "(LOW)" wins over "hit"
+    assert out.loc[2, "thresholdPrice"] == 1100
+    assert out.loc[2, "thresholdDirection"] == "above"  # "reach"
+
+
+def test_parse_title_threshold_low_high_annotation_overrides_keyword():
+    # "hit (LOW)" must resolve to below even though "hit" alone would imply above.
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": ["Will NFLX hit (LOW) $95 this week?"],
+            "marketsGroupItemTitle": [""],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdDirection"] == "below"
+
+
+def test_parse_title_threshold_commas_in_threshold():
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": ["Will BTC hit $200,000 by year end?"],
+            "marketsGroupItemTitle": [""],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdPrice"] == 200000
+
+
+def test_parse_title_threshold_no_match_returns_nan():
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": ["Will something qualitative happen?"],
+            "marketsGroupItemTitle": [""],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert pd.isna(out.loc[0, "thresholdPrice"])
+    assert pd.isna(out.loc[0, "thresholdDirection"])
+
+
+def test_parse_title_threshold_group_title_wins_over_question():
+    # Arrow form is cheaper + already-structured; should beat question parsing.
+    df = pd.DataFrame(
+        {
+            # Question says "reach" (→above) but the arrow says ↓ (→below).
+            # Arrow wins because it's the structured display Polymarket sets
+            # on the grouped market row.
+            "marketsQuestion": ["Will SOL reach $65?"],
+            "marketsGroupItemTitle": ["↓ 65"],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdDirection"] == "below"
+    assert out.loc[0, "thresholdPrice"] == 65
+
+
+def test_parse_title_threshold_none_group_col_skips_fast_path():
+    df = pd.DataFrame({"marketsQuestion": ["Will X dip to $42 on Monday?"]})
+    out = parse_title_threshold(df, group_title_col=None)
+    assert out.loc[0, "thresholdPrice"] == 42
+    assert out.loc[0, "thresholdDirection"] == "below"
+
+
+def test_parse_title_threshold_custom_column_names():
+    # Raw client.get_markets output uses unprefixed column names.
+    df = pd.DataFrame(
+        {
+            "question": ["Will SOL dip to $50?"],
+            "groupItemTitle": ["↓ 50"],
+        }
+    )
+    out = parse_title_threshold(df, title_col="question", group_title_col="groupItemTitle")
+    assert out.loc[0, "thresholdPrice"] == 50
+    assert out.loc[0, "thresholdDirection"] == "below"

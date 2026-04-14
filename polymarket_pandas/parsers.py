@@ -2,7 +2,9 @@
 
 These helpers extract structured fields out of ``marketsGroupItemTitle``,
 which Polymarket exposes as a free-text display string ("280-299",
-"↑ 200,000", "Spread -1.5", "O/U 8.5") rather than as typed columns.
+"↑ 200,000", "↑ $120", "Spread -1.5", "O/U 8.5") rather than as typed
+columns, and out of ``marketsQuestion`` when the group-title cue is
+absent.
 
 The default column names match the shape produced by
 ``client.get_events(expand_markets=True)`` (event-level rows with
@@ -107,7 +109,8 @@ def parse_title_bounds(
         ),
         errors="coerce",
     )
-    arrow = title.str.extract(r"^\s*([↑↓])\s*([\d,.]+)")
+    # Allow an optional currency prefix so "↑ $120" parses the same as "↑ 200,000".
+    arrow = title.str.extract(r"^\s*([↑↓])\s*\$?([\d,.]+)")
     has_bounds = rng[0].notna() | rng[1].notna() | lt.notna() | gt.notna()
     bound_low = (
         rng[0].combine_first(gt).where(~has_bounds, other=rng[0].combine_first(gt).fillna(0))
@@ -219,3 +222,98 @@ def coalesce_end_date_from_title(
         parsed + pd.DateOffset(years=1),
     )
     return data[end_col].fillna(parsed)
+
+
+def parse_title_threshold(
+    data: pd.DataFrame,
+    title_col: str = "marketsQuestion",
+    group_title_col: str | None = "marketsGroupItemTitle",
+) -> pd.DataFrame:
+    """Vectorized extraction of a numeric threshold and cross direction
+    for threshold-crossing binary markets.
+
+    Targets weekly/daily price-target series such as
+    ``will-nflx-hit-week-of-*`` ("Will NFLX hit (HIGH) $120…", group
+    title ``↑ $120``) and ``what-price-will-solana-hit-on-*`` ("Will
+    Solana dip to $65…", group title ``↓ 65``) — markets where the
+    question is "does the underlying end up *above* or *below* a
+    numeric threshold by the resolution time?".
+
+    Extraction order per row:
+
+    1. ``group_title_col`` arrow form ``↑ $120`` / ``↓ 65`` — reuses
+       :func:`parse_title_bounds`. Cheapest when populated.
+    2. ``title_col`` currency form — ``$N`` in the free-text question.
+       Direction is inferred from explicit ``(LOW)`` / ``(HIGH)``
+       annotations first, then from keywords (``dip`` / ``drop`` /
+       ``fall`` / ``below`` / ``under`` → ``"below"``; ``hit`` /
+       ``reach`` / ``exceed`` / ``above`` / ``over`` / ``rise`` →
+       ``"above"``).
+
+    Args:
+        data: A DataFrame with one row per market. Must contain
+            ``title_col``; ``group_title_col`` is optional (pass
+            ``None`` to skip the arrow fast path).
+        title_col: Column holding the free-text question. Defaults to
+            the ``markets`` -prefixed name produced by
+            ``expand_dataframe``; pass ``"question"`` for raw
+            ``client.get_markets`` output.
+        group_title_col: Column holding the compact display string.
+            Defaults to the ``markets`` -prefixed name produced by
+            ``expand_dataframe``.
+
+    Returns:
+        New DataFrame indexed by ``data.index`` with two columns:
+
+        - ``thresholdPrice`` — ``float`` numeric level (e.g. ``65.0``,
+          ``97.5``, ``200000.0``). NaN when no threshold could be parsed.
+        - ``thresholdDirection`` — ``"above"`` or ``"below"`` for
+          markets that resolve YES when the underlying ends above /
+          below the threshold. NaN when direction could not be inferred.
+
+        Concatenate via
+        ``pd.concat([data, parse_title_threshold(data)], axis=1)``.
+    """
+    # 1. Fast path: the arrow form in group_title_col.
+    threshold = pd.Series(pd.NA, index=data.index, dtype="Float64")
+    direction = pd.Series(pd.NA, index=data.index, dtype="string")
+
+    if group_title_col is not None and group_title_col in data.columns:
+        bounds = parse_title_bounds(data, title_col=group_title_col)
+        threshold = pd.to_numeric(bounds["threshold"], errors="coerce")
+        direction = bounds["direction"].map({"up": "above", "down": "below"})
+
+    # 2. Fallback: parse the free-text question for unresolved rows.
+    question = (
+        data[title_col].fillna("") if title_col in data.columns else pd.Series("", index=data.index)
+    )
+
+    # Direction from explicit (LOW)/(HIGH) wins over loose keywords because
+    # "Will NFLX hit (LOW) $97.50" means the price drops to the low, not rises.
+    q_lower = question.str.lower()
+    low_hit = q_lower.str.contains(r"\(low\)", regex=True, na=False)
+    high_hit = q_lower.str.contains(r"\(high\)", regex=True, na=False)
+    dip_hit = q_lower.str.contains(r"\b(?:dip|drop|fall|below|under)\b", regex=True, na=False)
+    reach_hit = q_lower.str.contains(
+        r"\b(?:hit|reach|exceed|above|over|rise)\b", regex=True, na=False
+    )
+
+    inferred_direction = pd.Series(pd.NA, index=data.index, dtype="string")
+    inferred_direction = inferred_direction.mask(reach_hit, "above")
+    inferred_direction = inferred_direction.mask(dip_hit, "below")
+    inferred_direction = inferred_direction.mask(high_hit, "above")
+    inferred_direction = inferred_direction.mask(low_hit, "below")
+    direction = direction.fillna(inferred_direction)
+
+    # Threshold from first currency token in the question.
+    q_amount = question.str.extract(r"\$\s*([\d,]+(?:\.\d+)?)")[0]
+    q_amount_num = pd.to_numeric(q_amount.str.replace(",", "", regex=False), errors="coerce")
+    threshold = threshold.fillna(q_amount_num)
+
+    return pd.DataFrame(
+        {
+            "thresholdPrice": pd.to_numeric(threshold, errors="coerce"),
+            "thresholdDirection": direction,
+        },
+        index=data.index,
+    )

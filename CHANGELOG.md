@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.26] — 2026-04-14
+
+### Added
+- `parse_title_threshold()` — vectorized extraction of `thresholdPrice` and `thresholdDirection` (`"above"` / `"below"`) for threshold-crossing binary markets (e.g. `what-price-will-solana-hit-on-*` with group title `↓ 65`, `will-nflx-hit-week-of-*` with group title `↑ $120`). Uses the compact `marketsGroupItemTitle` arrow form when available, otherwise falls back to parsing the free-text `marketsQuestion` (`$N` + `dip`/`reach` keywords + explicit `(LOW)`/`(HIGH)` annotations).
+
+### Fixed
+- `parse_title_bounds` arrow regex now tolerates an optional `$` prefix so titles like `↑ $120` (NFLX weeklies) parse alongside bare-number titles like `↑ 200,000`.
+
+---
+
 ## [0.6.25] — 2026-04-14
 
 ### Added

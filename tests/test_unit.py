@@ -872,7 +872,8 @@ def test_merge_positions_relayed(monkeypatch):
     monkeypatch.setattr(client, "_encode_proxy_calls", lambda calls: "0x" + "cd" * 64)
     # Mock relayer methods
     monkeypatch.setattr(
-        client, "get_relay_payload",
+        client,
+        "get_relay_payload",
         lambda **kw: {"address": "0x" + "ee" * 20, "nonce": "42"},
     )
     mock_submit = MagicMock(return_value={"transactionID": "abc", "transactionHash": "0x123"})
@@ -900,17 +901,13 @@ def test_redeem_positions(ctf_client: PolymarketPandas, monkeypatch):
 
 def test_redeem_positions_neg_risk(ctf_client: PolymarketPandas, monkeypatch):
     ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
-    result = ctf_client.redeem_positions(
-        STUB_CONDITION_ID, neg_risk=True, amounts=[1_000_000, 0]
-    )
+    result = ctf_client.redeem_positions(STUB_CONDITION_ID, neg_risk=True, amounts=[1_000_000, 0])
     nr.functions.redeemPositions.assert_called_once()
     ct.functions.redeemPositions.assert_not_called()
     assert result["status"] == 1
 
 
-def test_redeem_positions_neg_risk_missing_amounts(
-    ctf_client: PolymarketPandas, monkeypatch
-):
+def test_redeem_positions_neg_risk_missing_amounts(ctf_client: PolymarketPandas, monkeypatch):
     _mock_web3(ctf_client, monkeypatch)
     with pytest.raises(ValueError, match="amounts="):
         ctf_client.redeem_positions(STUB_CONDITION_ID, neg_risk=True)
