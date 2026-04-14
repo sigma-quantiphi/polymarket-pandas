@@ -263,13 +263,28 @@ def parse_title_threshold(
             ``expand_dataframe``.
 
     Returns:
-        New DataFrame indexed by ``data.index`` with two columns:
+        New DataFrame indexed by ``data.index`` with three columns:
 
         - ``thresholdPrice`` — ``float`` numeric level (e.g. ``65.0``,
           ``97.5``, ``200000.0``). NaN when no threshold could be parsed.
         - ``thresholdDirection`` — ``"above"`` or ``"below"`` for
-          markets that resolve YES when the underlying ends above /
+          markets that resolve YES when the underlying is above /
           below the threshold. NaN when direction could not be inferred.
+        - ``thresholdMode`` — resolution semantics:
+
+          * ``"touch"`` — barrier markets that resolve YES if the
+            underlying *ever* crosses the threshold during the window
+            (``hit`` / ``reach`` / ``touch`` / ``dip`` / ``drop`` /
+            ``fall`` / ``cross`` / ``breach``, or an explicit
+            ``(HIGH)`` / ``(LOW)`` annotation, which are Polymarket's
+            weekly-high / weekly-low touch markers).
+          * ``"close"`` — terminal markets that resolve on the value
+            *at* the resolution time (``end`` / ``close`` / ``settle``
+            / ``finish`` / ``at resolution``).
+          * ``NaN`` — could not be inferred. The arrow form alone
+            (``↑ $120`` / ``↓ 65``) is left ``NaN`` because the
+            display string carries no resolution-style cue; rely on
+            the question for the mode.
 
         Concatenate via
         ``pd.concat([data, parse_title_threshold(data)], axis=1)``.
@@ -310,10 +325,29 @@ def parse_title_threshold(
     q_amount_num = pd.to_numeric(q_amount.str.replace(",", "", regex=False), errors="coerce")
     threshold = threshold.fillna(q_amount_num)
 
+    # Resolution mode: barrier "touch" vs terminal "close".
+    # (HIGH)/(LOW) are Polymarket's weekly-high/low touch markers, so they
+    # imply touch even though the verb "hit" is also a touch verb.
+    touch_kw = q_lower.str.contains(
+        r"\b(?:hit|reach|reaches|touch|touches|dip|dips|drop|drops|fall|falls|cross|crosses|breach|breaches)\b",
+        regex=True,
+        na=False,
+    )
+    close_kw = q_lower.str.contains(
+        r"\b(?:end|ends|close|closes|closing|settle|settles|finish|finishes)\b|at\s+resolution",
+        regex=True,
+        na=False,
+    )
+    mode = pd.Series(pd.NA, index=data.index, dtype="string")
+    mode = mode.mask(close_kw, "close")
+    mode = mode.mask(touch_kw, "touch")
+    mode = mode.mask(low_hit | high_hit, "touch")
+
     return pd.DataFrame(
         {
             "thresholdPrice": pd.to_numeric(threshold, errors="coerce"),
             "thresholdDirection": direction,
+            "thresholdMode": mode,
         },
         index=data.index,
     )

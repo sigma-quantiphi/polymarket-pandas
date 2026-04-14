@@ -329,6 +329,46 @@ def test_parse_title_threshold_none_group_col_skips_fast_path():
     assert out.loc[0, "thresholdDirection"] == "below"
 
 
+def test_parse_title_threshold_mode_touch_vs_close():
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": [
+                "Will NFLX hit (HIGH) $120 this week?",       # (HIGH) → touch
+                "Will Solana dip to $65 on April 14?",         # dip → touch
+                "Will BTC reach $200,000 by year end?",        # reach → touch
+                "Will ETH close above $5000 on Friday?",       # close → close
+                "Will SPX settle above 6000 at resolution?",   # settle → close
+                "Will something qualitative happen?",          # neither → NaN
+                "Will SOL be above $100?",                     # bare "above" → NaN
+            ],
+            "marketsGroupItemTitle": ["", "", "", "", "", "", ""],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdMode"] == "touch"
+    assert out.loc[1, "thresholdMode"] == "touch"
+    assert out.loc[2, "thresholdMode"] == "touch"
+    assert out.loc[3, "thresholdMode"] == "close"
+    assert out.loc[4, "thresholdMode"] == "close"
+    assert pd.isna(out.loc[5, "thresholdMode"])
+    assert pd.isna(out.loc[6, "thresholdMode"])
+
+
+def test_parse_title_threshold_arrow_only_leaves_mode_nan():
+    # Arrow form alone has no resolution-style cue.
+    df = pd.DataFrame(
+        {
+            "marketsQuestion": ["", ""],
+            "marketsGroupItemTitle": ["↑ $120", "↓ 65"],
+        }
+    )
+    out = parse_title_threshold(df)
+    assert out.loc[0, "thresholdDirection"] == "above"
+    assert out.loc[1, "thresholdDirection"] == "below"
+    assert pd.isna(out.loc[0, "thresholdMode"])
+    assert pd.isna(out.loc[1, "thresholdMode"])
+
+
 def test_parse_title_threshold_custom_column_names():
     # Raw client.get_markets output uses unprefixed column names.
     df = pd.DataFrame(
