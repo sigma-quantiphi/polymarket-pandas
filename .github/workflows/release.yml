@@ -13,9 +13,11 @@ jobs:
   build:
     name: Build & Publish
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/polymarket-pandas
+    # Note: no `environment:` set because the existing PyPI trusted
+    # publisher for this repo was configured without an environment
+    # constraint. To move to an environment-scoped publisher, update
+    # https://pypi.org/manage/project/polymarket-pandas/settings/publishing/
+    # first, then add `environment: { name: pypi, url: ... }` here.
     steps:
       - uses: actions/checkout@v4
         with:
