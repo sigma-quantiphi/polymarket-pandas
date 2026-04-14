@@ -1,3 +1,4 @@
+from polymarket_pandas._version import __version__
 from polymarket_pandas.async_client import AsyncPolymarketPandas
 from polymarket_pandas.async_ws import (
     AsyncPolymarketWebSocket,
@@ -93,6 +94,7 @@ from polymarket_pandas.types import (
 from polymarket_pandas.ws import PolymarketWebSocket, PolymarketWebSocketSession
 
 __all__ = [
+    "__version__",
     # Clients
     "AsyncPolymarketPandas",
     "AsyncPolymarketWebSocket",

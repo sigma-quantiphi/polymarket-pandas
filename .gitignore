@@ -46,6 +46,8 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+# hatch-vcs writes this at build time
+polymarket_pandas/_version.py
 *.cover
 *.py,cover
 .hypothesis/

@@ -148,7 +148,7 @@ class SportsMetadataSchema(_Lenient):
     Source: ``GET gamma-api.polymarket.com/sports``
     """
 
-    id: int | None = pa.Field(nullable=True)
+    id: pd.Int64Dtype = pa.Field(nullable=True)
     sport: str | None = pa.Field(nullable=True)
 
 
@@ -158,7 +158,7 @@ class TeamSchema(_Lenient):
     Source: ``GET gamma-api.polymarket.com/teams``
     """
 
-    id: int | None = pa.Field(nullable=True)
+    id: pd.Int64Dtype = pa.Field(nullable=True)
     name: str | None = pa.Field(nullable=True)
     league: str | None = pa.Field(nullable=True)
     abbreviation: str | None = pa.Field(nullable=True)
@@ -195,7 +195,7 @@ class ClobTradeSchema(_Lenient):
     feeRateBps: float | None = pa.Field(nullable=True)
     status: str | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
-    bucketIndex: int | None = pa.Field(nullable=True)
+    bucketIndex: pd.Int64Dtype = pa.Field(nullable=True)
     owner: str | None = pa.Field(nullable=True)
     makerAddress: str | None = pa.Field(nullable=True)
     transactionHash: str | None = pa.Field(nullable=True)
@@ -312,7 +312,7 @@ class PositionSchema(_Lenient):
     slug: str | None = pa.Field(nullable=True)
     eventSlug: str | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
-    outcomeIndex: int | None = pa.Field(nullable=True)
+    outcomeIndex: pd.Int64Dtype = pa.Field(nullable=True)
     oppositeOutcome: str | None = pa.Field(nullable=True)
     oppositeAsset: str | None = pa.Field(nullable=True)
     endDate: pa.Timestamp | None = pa.Field(nullable=True)
@@ -336,7 +336,7 @@ class ClosedPositionSchema(_Lenient):
     slug: str | None = pa.Field(nullable=True)
     eventSlug: str | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
-    outcomeIndex: int | None = pa.Field(nullable=True)
+    outcomeIndex: pd.Int64Dtype = pa.Field(nullable=True)
     oppositeOutcome: str | None = pa.Field(nullable=True)
     oppositeAsset: str | None = pa.Field(nullable=True)
 
@@ -357,7 +357,7 @@ class DataTradeSchema(_Lenient):
     slug: str | None = pa.Field(nullable=True)
     eventSlug: str | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
-    outcomeIndex: int | None = pa.Field(nullable=True)
+    outcomeIndex: pd.Int64Dtype = pa.Field(nullable=True)
     name: str | None = pa.Field(nullable=True)
     pseudonym: str | None = pa.Field(nullable=True)
     transactionHash: str | None = pa.Field(nullable=True)
@@ -378,7 +378,7 @@ class ActivitySchema(_Lenient):
     transactionHash: str | None = pa.Field(nullable=True)
     asset: str | None = pa.Field(nullable=True)
     side: str | None = pa.Field(nullable=True)
-    outcomeIndex: int | None = pa.Field(nullable=True)
+    outcomeIndex: pd.Int64Dtype = pa.Field(nullable=True)
     title: str | None = pa.Field(nullable=True)
     slug: str | None = pa.Field(nullable=True)
     eventSlug: str | None = pa.Field(nullable=True)
@@ -409,7 +409,7 @@ class BuilderLeaderboardSchema(_Lenient):
     rank: str | None = pa.Field(nullable=True)
     builder: str | None = pa.Field(nullable=True)
     volume: float | None = pa.Field(nullable=True)
-    activeUsers: int | None = pa.Field(nullable=True)
+    activeUsers: pd.Int64Dtype = pa.Field(nullable=True)
     verified: bool | None = pa.Field(nullable=True)
 
 
@@ -447,11 +447,11 @@ class BridgeSupportedAssetSchema(_Lenient):
 
     chainId: str | None = pa.Field(nullable=True)
     chainName: str | None = pa.Field(nullable=True)
-    minCheckoutUsd: int | None = pa.Field(nullable=True)
+    minCheckoutUsd: pd.Int64Dtype = pa.Field(nullable=True)
     tokenName: str | None = pa.Field(nullable=True)
     tokenSymbol: str | None = pa.Field(nullable=True)
     tokenAddress: str | None = pa.Field(nullable=True)
-    tokenDecimals: int | None = pa.Field(nullable=True)
+    tokenDecimals: pd.Int64Dtype = pa.Field(nullable=True)
 
 
 class BridgeTransactionSchema(_Lenient):
@@ -556,11 +556,11 @@ class BuilderTradeSchema(_Lenient):
     price: float | None = pa.Field(nullable=True)
     status: str | None = pa.Field(nullable=True)
     outcome: str | None = pa.Field(nullable=True)
-    outcomeIndex: int | None = pa.Field(nullable=True)
+    outcomeIndex: pd.Int64Dtype = pa.Field(nullable=True)
     owner: str | None = pa.Field(nullable=True)
     maker: str | None = pa.Field(nullable=True)
     transactionHash: str | None = pa.Field(nullable=True)
-    bucketIndex: int | None = pa.Field(nullable=True)
+    bucketIndex: pd.Int64Dtype = pa.Field(nullable=True)
     fee: float | None = pa.Field(nullable=True)
     feeUsdc: float | None = pa.Field(nullable=True)
 
@@ -588,7 +588,7 @@ class CurrentRewardSchema(_Lenient):
     nativeDailyRate: float | None = pa.Field(nullable=True)
     totalDailyRate: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)
@@ -624,7 +624,7 @@ class RewardsMarketMultiSchema(_Lenient):
     tokensOutcome: str | None = pa.Field(nullable=True)
     tokensPrice: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)
@@ -655,7 +655,7 @@ class RewardsMarketSchema(_Lenient):
     tokensOutcome: str | None = pa.Field(nullable=True)
     tokensPrice: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)
@@ -706,7 +706,7 @@ class UserRewardsMarketSchema(_Lenient):
     tokensOutcome: str | None = pa.Field(nullable=True)
     tokensPrice: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: int | None = pa.Field(nullable=True)
+    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)

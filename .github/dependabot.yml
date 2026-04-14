@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dev-dependencies:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "pandas-stubs"
+          - "types-*"
+          - "pre-commit"
+          - "hypothesis"
+      runtime-dependencies:
+        patterns:
+          - "httpx"
+          - "pandas"
+          - "pandera"
+          - "orjson"
+          - "cachetools"
+          - "tqdm"
+          - "websocket-client"
+          - "websockets"
+          - "eth-account"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"

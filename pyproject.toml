@@ -1,6 +1,6 @@
 [project]
 name = "polymarket-pandas"
-version = "0.6.26"
+dynamic = ["version"]
 description = "Pandas API client to Polymarket"
 authors = [
     {name = "Sigma Quantiphi", email = "contact@sqphi.com"}
@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.14"
 keywords = ["polymarket", "prediction-markets", "trading", "pandas", "api-client"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Financial and Insurance Industry",
     "Topic :: Office/Business :: Financial",
@@ -30,6 +30,8 @@ dependencies = [
     "orjson>=3.11.0",
     "pandas[computation,output-formatting,performance]>=2.2.3",
     "pandera>=0.22.1",
+    "tenacity>=9.0",
+    "typing_extensions>=4.12",
     "websocket-client>=1.8.0",
     "websockets>=13.0",
     "tqdm>=4.66.0",
@@ -50,11 +52,14 @@ mcp = [
 dev = [
     "pytest>=8.0",
     "pytest-httpx>=0.35",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
     "ruff>=0.9",
     "mypy>=1.11",
     "pandas-stubs>=2.2",
-    "pytest-asyncio>=0.24",
     "types-cachetools>=5.3",
+    "pre-commit>=3.7",
 ]
 
 [project.scripts]
@@ -70,19 +75,39 @@ documentation = "https://sigma-quantiphi.github.io/polymarket-pandas/"
 package = true
 
 [build-system]
-requires = ["setuptools>=70"]
-build-backend = "setuptools.build_meta"
+# hatch-vcs derives the package version from the latest git tag, so the
+# version lives in exactly one place (the tag). To cut a release, run
+# `git tag vX.Y.Z && git push --tags` — do not add a static `version =` back.
+requires = ["hatchling>=1.25", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-include = ["polymarket_pandas*", "explorer*"]
+[tool.hatch.version]
+source = "vcs"
 
-[tool.setuptools.package-data]
-polymarket_pandas = ["py.typed"]
+[tool.hatch.build.hooks.vcs]
+version-file = "polymarket_pandas/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["polymarket_pandas", "explorer"]
+# py.typed inside the package dir is packaged automatically by hatchling.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+addopts = "-v --cov=polymarket_pandas --cov-report=term-missing --cov-report=xml"
 filterwarnings = ["ignore:Auto-derive of CLOB API key failed:UserWarning"]
+
+[tool.coverage.run]
+source = ["polymarket_pandas"]
+branch = true
+omit = ["polymarket_pandas/_version.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
 
 [tool.ruff]
 target-version = "py311"

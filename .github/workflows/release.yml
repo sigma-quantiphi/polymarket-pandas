@@ -5,18 +5,29 @@ on:
     types: [published]
 
 permissions:
-  id-token: write
+  contents: read
+  id-token: write      # OIDC trusted publishing
+  attestations: write  # PEP 740 / sigstore attestations attached to the release
 
 jobs:
   build:
     name: Build & Publish
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/polymarket-pandas
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # hatch-vcs needs full history to resolve the version tag
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --extra dev
       - run: uv run ruff check .
-      - run: uv run pytest tests/test_unit.py -v
+      - run: uv run pytest tests/test_unit.py tests/test_schemas_hypothesis.py -v
       - run: uv build
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # PEP 740 attestations — PyPI displays a "verified publisher" badge
+          # and distros can verify artifacts via sigstore.
+          attestations: true

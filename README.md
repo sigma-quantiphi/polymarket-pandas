@@ -5,6 +5,7 @@
 [![Downloads](https://img.shields.io/pypi/dm/polymarket-pandas)](https://pypistats.org/packages/polymarket-pandas)
 [![License](https://img.shields.io/pypi/l/polymarket-pandas)](https://github.com/sigma-quantiphi/polymarket-pandas/blob/main/LICENSE)
 [![CI](https://github.com/sigma-quantiphi/polymarket-pandas/actions/workflows/ci.yml/badge.svg)](https://github.com/sigma-quantiphi/polymarket-pandas/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sigma-quantiphi/polymarket-pandas/branch/main/graph/badge.svg)](https://codecov.io/gh/sigma-quantiphi/polymarket-pandas)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Docs](https://img.shields.io/badge/docs-mkdocs-blue)](https://sigma-quantiphi.github.io/polymarket-pandas/)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sigma-quantiphi/polymarket-pandas/main?labpath=notebooks%2F01_getting_started.ipynb)
@@ -143,6 +144,18 @@ See the [Configuration guide](https://sigma-quantiphi.github.io/polymarket-panda
 | [`user_ws.py`](examples/user_ws.py) | Private user channel — live order and trade events |
 
 ---
+
+## Stability
+
+See [STABILITY.md](STABILITY.md) for the semver commitment and deprecation policy. In short: symbols are deprecated for at least one minor release before removal, via `@typing_extensions.deprecated` (which IDEs and `DeprecationWarning` both surface).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). TL;DR: `uv sync --all-extras && uv run pre-commit install`, then the same `pytest` / `ruff` / `mypy` commands CI runs.
+
+## Security
+
+See [SECURITY.md](SECURITY.md). Report vulnerabilities privately via [GitHub security advisories](https://github.com/sigma-quantiphi/polymarket-pandas/security/advisories/new).
 
 ## License
 

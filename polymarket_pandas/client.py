@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import inspect
 import json
+import logging
 import math
 import os
 import random
@@ -16,8 +17,15 @@ import httpx
 import pandas as pd
 from eth_account import Account
 from eth_account.messages import encode_typed_data
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential_jitter,
+)
 from tqdm import tqdm
 
+from polymarket_pandas._version import __version__
 from polymarket_pandas.exceptions import (
     PolymarketAPIError,
     PolymarketAuthError,
@@ -55,6 +63,53 @@ from polymarket_pandas.utils import (
 from polymarket_pandas.utils import (
     preprocess_dict as _preprocess_dict,
 )
+
+logger = logging.getLogger("polymarket_pandas")
+# Library convention: consumers choose where log records go. NullHandler
+# prevents "no handlers found" warnings in contexts that don't configure logging.
+logger.addHandler(logging.NullHandler())
+
+_REDACTED = "***REDACTED***"
+_SENSITIVE_HEADERS = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "poly_api_key",
+        "poly_passphrase",
+        "poly_signature",
+        "poly_builder_api_key",
+        "poly_builder_passphrase",
+        "poly_builder_signature",
+    }
+)
+
+
+def _redact_headers(headers) -> dict:
+    """Return a copy of headers with sensitive values replaced by ``***REDACTED***``."""
+    return {
+        k: (_REDACTED if k.lower() in _SENSITIVE_HEADERS else v)
+        for k, v in dict(headers).items()
+    }
+
+
+def _is_retryable_error(exc: BaseException) -> bool:
+    """Retry on network errors and 429/5xx HTTP responses."""
+    if isinstance(
+        exc,
+        (
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.WriteTimeout,
+            httpx.PoolTimeout,
+        ),
+    ):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        return status == 429 or 500 <= status < 600
+    return False
+
 
 # ── CTF Exchange contract addresses (Polygon mainnet) ────────────────
 CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
@@ -136,8 +191,10 @@ class PolymarketPandas(
     private_key: str | None = field(default=None, repr=False)
     signature_type: int | None = field(default=1, repr=False)
     chain_id: int = field(default=137, repr=False)
-    timeout: int = field(default=30, repr=False)
+    timeout: int | float | httpx.Timeout = field(default=30, repr=False)
     max_pages: int = field(default=100, repr=False)
+    max_retries: int = field(default=3, repr=False)
+    user_agent: str | None = field(default=None, repr=False)
     tqdm_description: str = field(default="", repr=True)
     use_tqdm: bool = field(default=True, repr=True)
     _api_key: str | None = field(default=None, repr=False)
@@ -183,7 +240,22 @@ class PolymarketPandas(
             if getattr(self, attr) is None:
                 setattr(self, attr, os.getenv(env_var, fallback))
 
-        self._client = httpx.Client(proxy=self.proxy_url, timeout=self.timeout)
+        # Normalize timeout to httpx.Timeout so connect/read/write/pool are
+        # independently bounded. A scalar applies to all four phases.
+        if isinstance(self.timeout, (int, float)):
+            self._timeout = httpx.Timeout(float(self.timeout))
+        else:
+            self._timeout = self.timeout
+
+        ua = self.user_agent or (
+            f"polymarket-pandas/{__version__} "
+            "(+https://github.com/sigma-quantiphi/polymarket-pandas)"
+        )
+        self._client = httpx.Client(
+            proxy=self.proxy_url,
+            timeout=self._timeout,
+            headers={"User-Agent": ua, "Accept": "application/json"},
+        )
         self._numeric_columns = expand_column_lists(self.numeric_columns)
         self._str_datetime_columns = expand_column_lists(self.str_datetime_columns)
         self._int_datetime_columns = expand_column_lists(self.int_datetime_columns)
@@ -208,6 +280,65 @@ class PolymarketPandas(
     def __exit__(self, *_: object) -> None:
         """Exit the context manager and close the HTTP connection pool."""
         self.close()
+
+    def _send_request(
+        self,
+        *,
+        method: str,
+        url: str,
+        params: dict | None = None,
+        json: dict | list | None = None,
+        headers: dict | None = None,
+    ) -> httpx.Response:
+        """Send a request via ``self._client`` with retries on network + 429/5xx.
+
+        Successful 2xx responses return immediately. Retryable failures
+        (connect/read/write/pool errors, 429, 5xx) are retried with
+        exponential backoff + jitter up to ``self.max_retries`` attempts.
+        Non-retryable 4xx responses are returned unchanged so
+        ``_handle_response`` can map them to the ``Polymarket*Error`` hierarchy.
+        """
+        attempts = max(1, self.max_retries + 1)
+
+        @retry(
+            reraise=True,
+            stop=stop_after_attempt(attempts),
+            wait=wait_exponential_jitter(initial=0.5, max=8.0),
+            retry=retry_if_exception(_is_retryable_error),
+        )
+        def _do() -> httpx.Response:
+            request = self._client.build_request(
+                method=method,
+                url=url,
+                params=params,
+                json=json,
+                headers=headers,
+            )
+            logger.debug(
+                "request %s %s headers=%s",
+                request.method,
+                request.url,
+                _redact_headers(request.headers),
+            )
+            resp = self._client.send(request)
+            if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                retry_after = resp.headers.get("Retry-After")
+                logger.warning(
+                    "retryable response %s for %s %s (retry-after=%s)",
+                    resp.status_code,
+                    request.method,
+                    request.url,
+                    retry_after,
+                )
+                resp.raise_for_status()  # triggers HTTPStatusError → tenacity retry
+            return resp
+
+        try:
+            return _do()
+        except httpx.HTTPStatusError as exc:
+            # Retries exhausted on a 429/5xx. Return the response so
+            # _handle_response can map it to the right Polymarket*Error.
+            return exc.response
 
     def _autopage(
         self,
@@ -407,7 +538,7 @@ class PolymarketPandas(
         params: dict | None = None,
         data: dict | list | None = None,
     ) -> dict:
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.data_url}{path}",
             params=filter_params(params),
@@ -422,7 +553,7 @@ class PolymarketPandas(
         params: dict | None = None,
         data: dict | list | None = None,
     ) -> dict:
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.gamma_url}{path}",
             params=filter_params(params),
@@ -437,7 +568,7 @@ class PolymarketPandas(
         params: dict | None = None,
         data: dict | list | None = None,
     ) -> dict:
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.clob_url}{path}",
             params=filter_params(params),
@@ -468,7 +599,7 @@ class PolymarketPandas(
                     body=data,
                 )
             )
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.clob_url}{path}",
             params=filter_params(params),
@@ -509,7 +640,7 @@ class PolymarketPandas(
     ) -> dict:
         self._require_builder_auth()
         headers = self._build_builder_headers(method=method, request_path=f"/{path}", body=data)
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.clob_url}{path}",
             params=filter_params(params),
@@ -526,7 +657,7 @@ class PolymarketPandas(
         data: dict | list | None = None,
         auth_headers: dict | None = None,
     ) -> dict:
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.relayer_url}{path}",
             params=filter_params(params),
@@ -542,7 +673,7 @@ class PolymarketPandas(
         params: dict | None = None,
         data: dict | list | None = None,
     ) -> dict:
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.bridge_url}{path}",
             params=filter_params(params),
@@ -557,7 +688,7 @@ class PolymarketPandas(
         params: dict | None = None,
         data: dict | list | None = None,
     ) -> dict | list:
-        response = self._client.request(
+        response = self._send_request(
             method=method,
             url=f"{self.xtracker_url}{path}",
             params=filter_params(params),

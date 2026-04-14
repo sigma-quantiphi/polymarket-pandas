@@ -185,6 +185,9 @@ def test_403_raises_auth_error(client: PolymarketPandas, httpx_mock: HTTPXMock):
 
 
 def test_429_raises_rate_limit_error(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    # Client retries 429 with exponential backoff; disable here so the test
+    # verifies exception mapping without burning attempts.
+    client.max_retries = 0
     httpx_mock.add_response(
         url="https://clob.polymarket.com/time",
         status_code=429,
@@ -196,6 +199,9 @@ def test_429_raises_rate_limit_error(client: PolymarketPandas, httpx_mock: HTTPX
 
 
 def test_500_raises_api_error(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    # Disable retries — 5xx is retried by default, but here we verify the
+    # exception mapping, not retry behavior.
+    client.max_retries = 0
     httpx_mock.add_response(
         url="https://clob.polymarket.com/time",
         status_code=500,
