@@ -9,6 +9,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.27] — 2026-04-14
+
+### Fixed
+- `get_balance_allowance` now sends `asset_type` as the string enum (`"COLLATERAL"` / `"CONDITIONAL"`) the CLOB server actually expects. Previously the integer values `0` / `1` were sent verbatim, triggering a server-side fallthrough that returned the misleading `"GetBalanceAndAllowance invalid params: assetAddress invalid hex address"` error. Integer shortcuts remain accepted — they're mapped client-side.
+- For proxy wallets (`signature_type=1` or `2`), the `signatureType` query parameter is now auto-attached so the server resolves the balance against the proxy address rather than the authenticated EOA (which is empty for most proxy users).
+
+---
+
 ## [0.6.26] — 2026-04-14
 
 ### Added

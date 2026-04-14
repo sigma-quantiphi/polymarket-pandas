@@ -2060,3 +2060,59 @@ def test_xtracker_envelope_unwrap_raises_on_failure(
     )
     with pytest.raises(PolymarketAPIError, match="kaboom"):
         client.get_xtracker_trackings(active_only=True)
+
+
+# ── get_balance_allowance parameter shape ────────────────────────────────────
+
+
+def _balance_allowance_mock(httpx_mock: HTTPXMock, expected_query: str):
+    """Helper: mock the CLOB balance-allowance endpoint with an exact
+    query-string match so failing tests point at param-shape regressions."""
+    httpx_mock.add_response(
+        method="GET",
+        url=f"https://clob.polymarket.com/balance-allowance?{expected_query}",
+        json={"balance": "100", "allowances": {}},
+    )
+
+
+def test_get_balance_allowance_int_asset_type_maps_to_enum(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """asset_type=0 (int) must be sent to the server as 'COLLATERAL'."""
+    _balance_allowance_mock(httpx_mock, "asset_type=COLLATERAL&signatureType=1")
+    out = authed_client.get_balance_allowance(asset_type=0)
+    assert out["balance"] == "100"
+
+
+def test_get_balance_allowance_int_conditional_maps_to_enum(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    _balance_allowance_mock(
+        httpx_mock,
+        "asset_type=CONDITIONAL&token_id=tok123&signatureType=1",
+    )
+    out = authed_client.get_balance_allowance(asset_type=1, token_id="tok123")
+    assert out["balance"] == "100"
+
+
+def test_get_balance_allowance_string_asset_type_passthrough(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """Callers who already pass the string enum should see it untouched."""
+    _balance_allowance_mock(httpx_mock, "asset_type=COLLATERAL&signatureType=1")
+    out = authed_client.get_balance_allowance(asset_type="COLLATERAL")
+    assert out["balance"] == "100"
+
+
+def test_get_balance_allowance_omits_signature_type_when_unset(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """A client with signature_type=None should not tack signatureType onto
+    the query (server would reject a null value)."""
+    authed_client.signature_type = None
+    httpx_mock.add_response(
+        method="GET",
+        url="https://clob.polymarket.com/balance-allowance?asset_type=COLLATERAL",
+        json={"balance": "0", "allowances": {}},
+    )
+    authed_client.get_balance_allowance(asset_type=0)

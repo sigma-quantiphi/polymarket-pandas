@@ -15,29 +15,42 @@ from polymarket_pandas.types import (
     UserTradesCursorPage,
 )
 
+# Polymarket CLOB server expects string enums, not integers.
+_ASSET_TYPE_ENUMS = {0: "COLLATERAL", 1: "CONDITIONAL"}
+
 
 class ClobPrivateMixin:
     # ── CLOB API: Private ────────────────────────────────────────────────
 
     def get_balance_allowance(
         self,
-        asset_type: int,
+        asset_type: int | str,
         token_id: str | None = None,
     ) -> BalanceAllowance:
-        """
-        Get balance and allowance for the authenticated user (L2 auth).
+        """Get balance and allowance for the authenticated user (L2 auth).
 
         Args:
-            asset_type (int): Asset type — 0 for COLLATERAL (USDC), 1 for CONDITIONAL token.
-            token_id (str | None): Required when asset_type=1.
+            asset_type: ``"COLLATERAL"`` (USDC.e) or ``"CONDITIONAL"`` (outcome
+                token). The integer shortcuts ``0`` and ``1`` are accepted and
+                mapped to the enum values the CLOB server expects.
+            token_id: Required when ``asset_type`` is ``"CONDITIONAL"``.
 
         Returns:
-            dict: Balance and allowance details.
+            dict with ``balance`` and ``allowances``.
+
+        For proxy wallets (``signature_type=1`` or ``2``), the server looks
+        up the proxy's USDC balance rather than the EOA's when
+        ``signatureType`` is in the query. This method auto-attaches that
+        param when a non-default ``signature_type`` is configured on the
+        client, so proxy users see their real trading balance without
+        having to touch internals.
         """
-        return self._request_clob_private(
-            path="balance-allowance",
-            params={"asset_type": asset_type, "token_id": token_id},
-        )
+        if isinstance(asset_type, int):
+            asset_type = _ASSET_TYPE_ENUMS[asset_type]
+        params: dict = {"asset_type": asset_type, "token_id": token_id}
+        if self.signature_type is not None:
+            params["signatureType"] = self.signature_type
+        return self._request_clob_private(path="balance-allowance", params=params)
 
     def get_user_trades(
         self,
