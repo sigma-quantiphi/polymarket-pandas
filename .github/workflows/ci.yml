@@ -48,7 +48,7 @@ jobs:
       - run: uv sync --extra dev
       - run: uv run pytest tests/test_unit.py tests/test_schemas_hypothesis.py -v
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
