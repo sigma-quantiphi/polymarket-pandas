@@ -19,7 +19,7 @@ jobs:
     # https://pypi.org/manage/project/polymarket-pandas/settings/publishing/
     # first, then add `environment: { name: pypi, url: ... }` here.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0  # hatch-vcs needs full history to resolve the version tag
       - uses: astral-sh/setup-uv@v7
