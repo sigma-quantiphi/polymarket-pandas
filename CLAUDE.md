@@ -163,7 +163,7 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 |---|---|
 | `split_position(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Split USDC.e into Yes + No outcome tokens |
 | `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Merge Yes + No tokens back into USDC.e |
-| `redeem_positions(condition_id, index_sets=None, estimate=False)` | Redeem winning tokens after market resolution |
+| `redeem_positions(condition_id, index_sets=None, neg_risk=False, amounts=None, estimate=False)` | Redeem winning tokens after market resolution (neg-risk requires `amounts=[yes, no]`) |
 | `approve_collateral(spender=None, amount=None, estimate=False)` | Approve USDC.e spending for a CTF contract |
 | `estimate_ctf_tx(tx_data)` | Estimate gas cost without sending; returns `GasEstimate` dict |
 

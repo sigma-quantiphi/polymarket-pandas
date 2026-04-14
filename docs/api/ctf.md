@@ -88,13 +88,25 @@ result = client.merge_positions(
 )
 ```
 
-### `redeem_positions(condition_id, index_sets=None, ...) -> TransactionReceipt`
+### `redeem_positions(condition_id, index_sets=None, neg_risk=False, amounts=None, ...) -> TransactionReceipt`
 
 Redeem winning outcome tokens for USDC.e after market resolution.
 
 ```python
+# Standard binary market
 result = client.redeem_positions(condition_id="0x4aee6d11...")
+
+# Neg-risk market — must provide amounts as [yes_amount, no_amount]
+# in base units (6 decimals). The losing side should be 0.
+result = client.redeem_positions(
+    condition_id="0x4aee6d11...",
+    neg_risk=True,
+    amounts=[10_000_000, 0],  # 10 winning Yes tokens
+)
 ```
+
+See `examples/redeem_positions.py` for a streamlined workflow that
+auto-detects market type and fills in amounts from the positions API.
 
 ### `approve_collateral(spender=None, amount=None, ...) -> TransactionReceipt`
 
