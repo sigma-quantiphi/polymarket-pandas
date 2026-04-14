@@ -1874,7 +1874,7 @@ wheels = [
 
 [[package]]
 name = "polymarket-pandas"
-version = "0.6.24"
+version = "0.6.25"
 source = { editable = "." }
 dependencies = [
     { name = "cachetools" },

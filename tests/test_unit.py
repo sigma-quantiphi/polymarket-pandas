@@ -898,6 +898,24 @@ def test_redeem_positions(ctf_client: PolymarketPandas, monkeypatch):
     assert result["status"] == 1
 
 
+def test_redeem_positions_neg_risk(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.redeem_positions(
+        STUB_CONDITION_ID, neg_risk=True, amounts=[1_000_000, 0]
+    )
+    nr.functions.redeemPositions.assert_called_once()
+    ct.functions.redeemPositions.assert_not_called()
+    assert result["status"] == 1
+
+
+def test_redeem_positions_neg_risk_missing_amounts(
+    ctf_client: PolymarketPandas, monkeypatch
+):
+    _mock_web3(ctf_client, monkeypatch)
+    with pytest.raises(ValueError, match="amounts="):
+        ctf_client.redeem_positions(STUB_CONDITION_ID, neg_risk=True)
+
+
 def test_approve_collateral_max(ctf_client: PolymarketPandas, monkeypatch):
     _, _, usdc = _mock_web3(ctf_client, monkeypatch)
     result = ctf_client.approve_collateral()

@@ -9,6 +9,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.25] — 2026-04-14
+
+### Added
+- Neg-risk support for `redeem_positions` — pass `neg_risk=True` with `amounts=[yes_amount, no_amount]` to route through the NegRiskAdapter contract.
+- `examples/redeem_positions.py` — streamlined redeem example with auto-detection of market type, gas estimation, `--dry-run`, `--all`, and `--condition-id` flags.
+
+---
+
 ## [0.6.24] — 2026-04-13
 
 ### Added

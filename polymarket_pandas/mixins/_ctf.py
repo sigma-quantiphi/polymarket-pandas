@@ -110,6 +110,16 @@ _NEG_RISK_ADAPTER_ABI = [
         "stateMutability": "nonpayable",
         "type": "function",
     },
+    {
+        "inputs": [
+            {"name": "_conditionId", "type": "bytes32"},
+            {"name": "_amounts", "type": "uint256[]"},
+        ],
+        "name": "redeemPositions",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
 ]
 
 _PROXY_FACTORY_ABI = [
@@ -560,6 +570,8 @@ class CTFMixin:
         condition_id: str | bytes,
         index_sets: list[int] | None = None,
         *,
+        neg_risk: bool = False,
+        amounts: list[int] | None = None,
         estimate: bool = False,
         wait: bool = True,
         timeout: int = 120,
@@ -568,8 +580,17 @@ class CTFMixin:
 
         Args:
             condition_id: Market condition ID (hex string or bytes32).
-            index_sets: Outcome index sets to redeem.  Defaults to
-                ``[1, 2]`` (standard binary market).
+            index_sets: Outcome index sets to redeem (standard markets
+                only). Defaults to ``[1, 2]`` (standard binary market).
+                Ignored when ``neg_risk=True``.
+            neg_risk: ``True`` for neg-risk markets (uses NegRiskAdapter);
+                ``False`` for standard binary markets (ConditionalTokens).
+            amounts: Required when ``neg_risk=True``. A 2-element list of
+                token amounts in base units to redeem: ``[yes_amount,
+                no_amount]``. Only the winning side has a non-zero value;
+                the losing side should be ``0``. For standard markets
+                the contract reads the user's full balance so amounts
+                are not needed.
             estimate: If ``True``, return a :class:`GasEstimate` dict
                 instead of sending the transaction.
             wait: Wait for the transaction receipt.
@@ -582,17 +603,30 @@ class CTFMixin:
         self._require_ctf_auth()
         self._require_web3()
         cid = self._to_bytes32(condition_id)
-        if index_sets is None:
-            index_sets = DEFAULT_PARTITION
 
-        tx = self._ct_contract.functions.redeemPositions(
-            self._w3.to_checksum_address(USDC_E),
-            PARENT_COLLECTION_ID,
-            cid,
-            index_sets,
-        ).build_transaction(self._tx_params())
+        if neg_risk:
+            if amounts is None or len(amounts) != 2:
+                raise ValueError(
+                    "Neg-risk redemption requires amounts=[yes_amount,"
+                    " no_amount] in base units (6 decimals)."
+                )
+            tx = self._nr_contract.functions.redeemPositions(
+                cid, [int(a) for a in amounts]
+            ).build_transaction(self._tx_params())
+            target = NEG_RISK_ADAPTER
+        else:
+            if index_sets is None:
+                index_sets = DEFAULT_PARTITION
+            tx = self._ct_contract.functions.redeemPositions(
+                self._w3.to_checksum_address(USDC_E),
+                PARENT_COLLECTION_ID,
+                cid,
+                index_sets,
+            ).build_transaction(self._tx_params())
+            target = CONDITIONAL_TOKENS
+
         if estimate:
             return self.estimate_ctf_tx(tx)
         if self._has_proxy_wallet():
-            return self._send_ctf_tx_relayed(to=CONDITIONAL_TOKENS, tx_data=tx)
+            return self._send_ctf_tx_relayed(to=target, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)

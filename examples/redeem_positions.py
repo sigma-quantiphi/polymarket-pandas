@@ -9,6 +9,11 @@ redeemed for USDC.e at $1 per share. Losing tokens are worthless.
 Unlike merging (which requires both Yes and No), redeeming only
 requires that the market has resolved and you hold the winning side.
 
+Supports both standard binary markets (ConditionalTokens) and
+neg-risk multi-outcome markets (NegRiskAdapter) — the example
+auto-detects the market type and fills in the token amounts from
+the positions API.
+
 Requirements:
     pip install "polymarket-pandas[ctf]"
 
@@ -29,11 +34,6 @@ Usage:
 
     # Dry run (show what would be redeemed without sending a tx):
     python examples/redeem_positions.py --dry-run
-
-Note:
-    This example currently supports standard (binary) markets only.
-    Neg-risk markets use a different redeem API on the NegRiskAdapter
-    contract and are not yet supported by ``client.redeem_positions``.
 """
 
 from __future__ import annotations
@@ -48,21 +48,34 @@ load_dotenv()
 from polymarket_pandas import PolymarketPandas
 
 
-def redeem_one(client: PolymarketPandas, cid: str, row, dry_run: bool) -> None:
-    """Estimate + redeem a single market."""
-    print(f"\nMarket:       {row['title']}")
-    print(f"Condition ID: {cid}")
-    print(f"Outcome:      {row['outcome']}  ({row['size']:.6f} tokens)")
-    print(f"Value:        ${row['currentValue']:.2f}")
-    print(f"Neg-risk:     {row['negativeRisk']}")
+def redeem_one(client: PolymarketPandas, cid: str, market_rows, dry_run: bool) -> None:
+    """Estimate + redeem a single market. market_rows is a DataFrame slice
+    for one condition_id (1 or 2 rows, one per outcome)."""
+    first = market_rows.iloc[0]
+    neg_risk = bool(first["negativeRisk"])
+    total_value = market_rows["currentValue"].sum()
 
-    if row["negativeRisk"]:
-        print("  Skipping — neg-risk redemption not yet supported by client.redeem_positions.")
-        return
+    print(f"\nMarket:       {first['title']}")
+    print(f"Condition ID: {cid}")
+    print(f"Neg-risk:     {neg_risk}")
+    print(f"Value:        ${total_value:.2f}")
+    for _, r in market_rows.iterrows():
+        print(f"  {r['outcome']:>10}: {r['size']:.6f} tokens  (${r['currentValue']:.2f})")
+
+    # Build neg-risk amounts array if needed: [yes_amount, no_amount]
+    # Polymarket convention: outcome index 0 = Yes, 1 = No
+    redeem_kwargs: dict = {"condition_id": cid, "neg_risk": neg_risk}
+    if neg_risk:
+        amounts = [0, 0]
+        for _, r in market_rows.iterrows():
+            idx = 0 if r["outcome"].lower() in ("yes", "positive", "over", "up") else 1
+            amounts[idx] = int(r["size"] * 1e6)
+        redeem_kwargs["amounts"] = amounts
+        print(f"Amounts:      [yes={amounts[0]}, no={amounts[1]}]")
 
     # ── Estimate gas cost ─────────────────────────────────────────────
     try:
-        est = client.redeem_positions(condition_id=cid, estimate=True)
+        est = client.redeem_positions(**redeem_kwargs, estimate=True)
         print(f"Gas estimate: {est['gas']:,} units @ {est['gasPrice'] / 1e9:.1f} gwei")
         print(f"Redeem cost:  {est['costMatic']:.6f} MATIC")
         print(f"EOA balance:  {est['eoaBalance'] / 1e18:.6f} MATIC")
@@ -74,7 +87,7 @@ def redeem_one(client: PolymarketPandas, cid: str, row, dry_run: bool) -> None:
             )
             return
     except Exception as e:
-        print(f"  Gas estimate failed: {str(e)[:120]}")
+        print(f"  Gas estimate failed: {str(e)[:200]}")
         return
 
     if dry_run:
@@ -83,7 +96,7 @@ def redeem_one(client: PolymarketPandas, cid: str, row, dry_run: bool) -> None:
 
     # ── Redeem ────────────────────────────────────────────────────────
     print("  Redeeming ...")
-    tx = client.redeem_positions(condition_id=cid)
+    tx = client.redeem_positions(**redeem_kwargs)
     # Response keys differ: direct tx returns txHash/status/blockNumber,
     # relayed tx returns transactionHash/transactionID/state.
     tx_hash = tx.get("txHash") or tx.get("transactionHash")
@@ -135,31 +148,32 @@ def main() -> None:
         print("No redeemable positions found. Markets must be resolved first.")
         sys.exit(0)
 
-    # Collapse to one row per market (take the winning outcome)
-    # The redeemable flag already filters to winning tokens only.
-    positions = positions.sort_values("currentValue", ascending=False)
-    print(f"Found {len(positions)} redeemable position(s):\n")
-    print(
-        positions[["conditionId", "outcome", "size", "currentValue", "title"]]
-        .round(4)
-        .to_string(index=False)
+    # Sort markets by total redeemable value (desc)
+    totals = (
+        positions.groupby("conditionId")["currentValue"]
+        .sum()
+        .sort_values(ascending=False)
     )
+    print(f"Found {len(totals)} redeemable market(s):\n")
+    for cid, total in totals.items():
+        first_title = positions.loc[positions["conditionId"] == cid, "title"].iloc[0]
+        print(f"  ${total:>8.2f}  {cid[:20]}...  {first_title}")
 
     # ── 2. Pick the target(s) ─────────────────────────────────────────
     if args.all:
-        targets = positions
+        target_cids = list(totals.index)
     elif args.condition_id:
-        targets = positions.loc[positions["conditionId"] == args.condition_id]
-        if targets.empty:
+        if args.condition_id not in totals.index:
             print(f"\nNo redeemable position for condition ID: {args.condition_id}")
             sys.exit(1)
+        target_cids = [args.condition_id]
     else:
-        # Pick the most valuable one
-        targets = positions.head(1)
+        target_cids = [totals.index[0]]
 
     # ── 3. Redeem each target ─────────────────────────────────────────
-    for _, row in targets.iterrows():
-        redeem_one(client, row["conditionId"], row, args.dry_run)
+    for cid in target_cids:
+        market_rows = positions.loc[positions["conditionId"] == cid]
+        redeem_one(client, cid, market_rows, args.dry_run)
 
     client.close()
     print("\nDone!")
