@@ -68,6 +68,37 @@ all_markets = client.get_markets_all(closed=False)
 first_5 = client.get_markets_all(max_pages=5)
 ```
 
+### `get_markets_keyset(limit=300, after_cursor=None, **filters) -> MarketsKeysetPage`
+
+Fetch markets using **keyset (cursor) pagination**. Recommended for large scans — stable ordering, up to 1000 rows per page. The endpoint (`GET /markets/keyset`) does not accept `offset`; use `after_cursor` from the previous response instead.
+
+Returns `{"data": DataFrame[MarketSchema], "next_cursor": str | None}`. The server omits `next_cursor` on the final page.
+
+```python
+page = client.get_markets_keyset(limit=500, closed=False)
+df   = page["data"]
+
+# Manual pagination
+cursor = page.get("next_cursor")
+while cursor:
+    page = client.get_markets_keyset(limit=500, closed=False, after_cursor=cursor)
+    # ... process page["data"] ...
+    cursor = page.get("next_cursor")
+```
+
+See: <https://docs.polymarket.com/api-reference/markets/list-markets-keyset-pagination>
+
+### `get_markets_keyset_all(**kwargs) -> pd.DataFrame`
+
+Auto-paginate through all matching markets via keyset. Prefer this over `get_markets_all` for bulk scans.
+
+```python
+all_markets = client.get_markets_keyset_all(closed=False, limit=1000)
+
+# Cap pages
+first_3 = client.get_markets_keyset_all(max_pages=3, limit=1000)
+```
+
 ### `get_market_by_id(id, include_tag=None) -> dict`
 
 Fetch a single market by its numeric Gamma ID.

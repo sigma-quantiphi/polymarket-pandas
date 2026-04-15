@@ -16,6 +16,7 @@ from polymarket_pandas.schemas import (
     BuilderTradeSchema,
     ClobTradeSchema,
     CurrentRewardSchema,
+    MarketSchema,
     RewardsMarketMultiSchema,
     RewardsMarketSchema,
     SamplingMarketSchema,
@@ -96,6 +97,16 @@ class UserRewardsMarketsCursorPage(CursorPage):
     """User reward markets (``/rewards/user/markets``)."""
 
     data: DataFrame[UserRewardsMarketSchema]  # type: ignore[misc]
+
+
+class MarketsKeysetPage(TypedDict, total=False):
+    """Keyset-paginated markets response (Gamma ``/markets/keyset``).
+
+    ``next_cursor`` is omitted by the server on the final page.
+    """
+
+    data: DataFrame[MarketSchema]
+    next_cursor: str
 
 
 # ── CTF transaction receipts ──────────────────────────────────────────
@@ -351,6 +362,7 @@ __all__ = [
     "CurrentRewardsCursorPage",
     "CursorPage",
     "LastTradePrice",
+    "MarketsKeysetPage",
     "OrdersCursorPage",
     "RelayPayload",
     "RewardsMarketCursorPage",

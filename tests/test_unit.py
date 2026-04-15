@@ -304,6 +304,62 @@ def test_get_markets_returns_dataframe(client: PolymarketPandas, httpx_mock: HTT
     assert "slug" in df.columns
 
 
+def test_get_markets_keyset_returns_page(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    import re
+
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/markets/keyset\?.*"),
+        json={
+            "markets": [
+                {
+                    "id": 1,
+                    "slug": "kset-market",
+                    "clobTokenIds": '["tok1"]',
+                    "active": True,
+                    "closed": False,
+                    "volume24hr": "100",
+                }
+            ],
+            "next_cursor": "CURSOR_X",
+        },
+    )
+    page = client.get_markets_keyset(expand_events=False, expand_series=False, limit=5)
+    assert isinstance(page, dict)
+    assert isinstance(page["data"], pd.DataFrame)
+    assert page["data"]["slug"].iloc[0] == "kset-market"
+    assert page["next_cursor"] == "CURSOR_X"
+
+
+def test_get_markets_keyset_all_follows_cursor(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    import re
+
+    # page 1: has next_cursor
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/markets/keyset\?.*"),
+        json={
+            "markets": [
+                {"id": 1, "slug": "a", "clobTokenIds": '["t1"]', "closed": False},
+            ],
+            "next_cursor": "PAGE2",
+        },
+    )
+    # page 2: no next_cursor — stops
+    httpx_mock.add_response(
+        url=re.compile(
+            r"https://gamma-api\.polymarket\.com/markets/keyset\?.*after_cursor=PAGE2.*"
+        ),
+        json={
+            "markets": [
+                {"id": 2, "slug": "b", "clobTokenIds": '["t2"]', "closed": False},
+            ],
+        },
+    )
+    df = client.get_markets_keyset_all(expand_events=False, expand_series=False, limit=5)
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert set(df["slug"]) == {"a", "b"}
+
+
 def test_fetch_sports_event_filters_by_condition_id(
     client: PolymarketPandas, httpx_mock: HTTPXMock
 ):

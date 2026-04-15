@@ -9,6 +9,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.1] — 2026-04-15
+
+### Added
+- `GammaMixin.get_markets_keyset` — keyset (cursor) pagination for Gamma markets (`GET /markets/keyset`). Accepts `after_cursor` instead of `offset`, supports up to 1000 rows/page, and returns a `MarketsKeysetPage` TypedDict `{"data": DataFrame[MarketSchema], "next_cursor": str | None}` (server omits `next_cursor` on the final page).
+- `PolymarketPandas.get_markets_keyset_all` — auto-pager that follows `next_cursor` until exhausted, with `max_pages` cap.
+- `MarketsKeysetPage` TypedDict re-exported from the top-level package.
+- New MCP tool `get_markets_keyset` mirroring the sync method.
+- Docs section in `docs/api/markets.md` covering the keyset endpoint and manual-loop pattern.
+
+### Why
+Polymarket recommends keyset pagination for large market scans — stable ordering under concurrent writes and a larger max page size than the offset endpoint.
+
+---
+
 ## [0.8.0] — 2026-04-14
 
 ### Added

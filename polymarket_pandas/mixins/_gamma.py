@@ -14,6 +14,7 @@ from polymarket_pandas.schemas import (
     TagSchema,
     TeamSchema,
 )
+from polymarket_pandas.types import MarketsKeysetPage
 from polymarket_pandas.utils import _ts_to_iso, expand_dataframe
 
 
@@ -134,6 +135,103 @@ class GammaMixin:
         data = data.reset_index(drop=True)
         data.attrs["_raw_count"] = raw_count
         return data
+
+    def get_markets_keyset(
+        self,
+        limit: int | None = 300,
+        after_cursor: str | None = None,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        id: list[int] | None = None,
+        slug: list[str] | None = None,
+        clob_token_ids: list[str] | None = None,
+        condition_ids: list[str] | None = None,
+        market_maker_address: list[str] | None = None,
+        liquidity_num_min: float | None = None,
+        liquidity_num_max: float | None = None,
+        volume_num_min: float | None = None,
+        volume_num_max: float | None = None,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        tag_id: int | None = None,
+        related_tags: bool | None = None,
+        cyom: bool | None = None,
+        uma_resolution_status: str | None = None,
+        game_id: str | None = None,
+        sports_market_types: list[str] | None = None,
+        rewards_min_size: float | None = None,
+        question_ids: list[str] | None = None,
+        include_tag: bool | None = None,
+        closed: bool | None = None,
+        expand_clob_token_ids: bool = True,
+        expand_events: bool = True,
+        expand_series: bool = True,
+        expand_outcomes: bool = False,
+    ) -> MarketsKeysetPage:
+        """Fetch markets using keyset (cursor) pagination.
+
+        Returns ``{"data": DataFrame[MarketSchema], "next_cursor": str | None}``.
+        The server omits ``next_cursor`` on the final page. Unlike
+        :meth:`get_markets`, this endpoint does not accept ``offset``.
+
+        See: https://docs.polymarket.com/api-reference/markets/list-markets-keyset-pagination
+        """
+        data = self._request_gamma(
+            path="markets/keyset",
+            params={
+                "limit": limit,
+                "after_cursor": after_cursor,
+                "order": order,
+                "ascending": ascending,
+                "id": id,
+                "slug": slug,
+                "clob_token_ids": clob_token_ids,
+                "condition_ids": condition_ids,
+                "market_maker_address": market_maker_address,
+                "liquidity_num_min": liquidity_num_min,
+                "liquidity_num_max": liquidity_num_max,
+                "volume_num_min": volume_num_min,
+                "volume_num_max": volume_num_max,
+                "start_date_min": _ts_to_iso(start_date_min),
+                "start_date_max": _ts_to_iso(start_date_max),
+                "end_date_min": _ts_to_iso(end_date_min),
+                "end_date_max": _ts_to_iso(end_date_max),
+                "tag_id": tag_id,
+                "related_tags": related_tags,
+                "cyom": cyom,
+                "uma_resolution_status": uma_resolution_status,
+                "game_id": game_id,
+                "sports_market_types": sports_market_types,
+                "rewards_min_size": rewards_min_size,
+                "question_ids": question_ids,
+                "include_tag": include_tag,
+                "closed": closed,
+            },
+        )
+        markets = data.get("markets", []) if isinstance(data, dict) else []
+        next_cursor = data.get("next_cursor") if isinstance(data, dict) else None
+        raw_count = len(markets)
+        df = pd.DataFrame(markets)
+        if not df.empty:
+            if expand_events or expand_series:
+                df = expand_dataframe(df, field="events", column="events")
+                if expand_series and "eventsSeries" in df.columns:
+                    df = expand_dataframe(df, field="eventsSeries", column="eventsSeries")
+        df = self.preprocess_dataframe(df)
+        df = _coerce_outcome_prices(df, "outcomePrices")
+        if expand_outcomes and not df.empty:
+            df = _expand_outcomes(df, "outcomes", "outcomePrices", "clobTokenIds")
+        elif expand_clob_token_ids and not df.empty:
+            df = df.explode("clobTokenIds", ignore_index=True)
+            df["clobTokenIds"] = df["clobTokenIds"].astype(str)
+        df = df.reset_index(drop=True)
+        df.attrs["_raw_count"] = raw_count
+        page: MarketsKeysetPage = {"data": df}  # type: ignore[typeddict-item]
+        if next_cursor:
+            page["next_cursor"] = next_cursor
+        return page
 
     def get_market_by_id(self, id: int, include_tag: bool | None = None) -> dict:
         """Fetch a single market by its numeric ID.

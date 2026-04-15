@@ -938,6 +938,91 @@ class PolymarketPandas(
             expand_outcomes=expand_outcomes,
         )
 
+    def get_markets_keyset_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        after_cursor: str | None = None,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        id: list[int] | None = None,
+        slug: list[str] | None = None,
+        clob_token_ids: list[str] | None = None,
+        condition_ids: list[str] | None = None,
+        market_maker_address: list[str] | None = None,
+        liquidity_num_min: float | None = None,
+        liquidity_num_max: float | None = None,
+        volume_num_min: float | None = None,
+        volume_num_max: float | None = None,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        tag_id: int | None = None,
+        related_tags: bool | None = None,
+        cyom: bool | None = None,
+        uma_resolution_status: str | None = None,
+        game_id: str | None = None,
+        sports_market_types: list[str] | None = None,
+        rewards_min_size: float | None = None,
+        question_ids: list[str] | None = None,
+        include_tag: bool | None = None,
+        closed: bool | None = None,
+        expand_clob_token_ids: bool = True,
+        expand_events: bool = True,
+        expand_series: bool = True,
+        expand_outcomes: bool = False,
+    ) -> pd.DataFrame:
+        """Auto-page through all markets via keyset pagination and return a single DataFrame.
+
+        Stops when the server omits ``next_cursor`` (final page) or ``max_pages``
+        is reached.
+        """
+        pages: list[pd.DataFrame] = []
+        cursor = after_cursor
+        n = 0
+        while True:
+            page = self.get_markets_keyset(
+                limit=limit,
+                after_cursor=cursor,
+                order=order,
+                ascending=ascending,
+                id=id,
+                slug=slug,
+                clob_token_ids=clob_token_ids,
+                condition_ids=condition_ids,
+                market_maker_address=market_maker_address,
+                liquidity_num_min=liquidity_num_min,
+                liquidity_num_max=liquidity_num_max,
+                volume_num_min=volume_num_min,
+                volume_num_max=volume_num_max,
+                start_date_min=start_date_min,
+                start_date_max=start_date_max,
+                end_date_min=end_date_min,
+                end_date_max=end_date_max,
+                tag_id=tag_id,
+                related_tags=related_tags,
+                cyom=cyom,
+                uma_resolution_status=uma_resolution_status,
+                game_id=game_id,
+                sports_market_types=sports_market_types,
+                rewards_min_size=rewards_min_size,
+                question_ids=question_ids,
+                include_tag=include_tag,
+                closed=closed,
+                expand_clob_token_ids=expand_clob_token_ids,
+                expand_events=expand_events,
+                expand_series=expand_series,
+                expand_outcomes=expand_outcomes,
+            )
+            pages.append(page["data"])
+            cursor = page.get("next_cursor")
+            n += 1
+            if not cursor or (max_pages is not None and n >= max_pages):
+                break
+        return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame()
+
     def get_series_all(
         self,
         *,

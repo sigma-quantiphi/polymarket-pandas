@@ -221,6 +221,87 @@ def get_markets(
 
 
 @mcp.tool()
+def get_markets_keyset(
+    limit: int = 100,
+    after_cursor: str | None = None,
+    order: str | None = None,
+    ascending: bool | None = None,
+    slug: str | None = None,
+    clob_token_ids: str | None = None,
+    condition_ids: str | None = None,
+    liquidity_num_min: float | None = None,
+    liquidity_num_max: float | None = None,
+    volume_num_min: float | None = None,
+    volume_num_max: float | None = None,
+    start_date_min: str | None = None,
+    start_date_max: str | None = None,
+    end_date_min: str | None = None,
+    end_date_max: str | None = None,
+    tag_id: int | None = None,
+    closed: bool | None = None,
+    expand_events: bool = True,
+    expand_series: bool = True,
+    expand_clob_token_ids: bool = True,
+    max_rows: int | None = None,
+) -> str:
+    """Get Polymarket markets using keyset (cursor) pagination.
+
+    Unlike ``get_markets``, this endpoint uses ``after_cursor`` instead of
+    ``offset`` and is recommended for large scans (stable ordering, up to
+    1000/page).
+
+    Args:
+        limit: Number of markets to fetch (1-1000).
+        after_cursor: Opaque cursor from a previous response's ``next_cursor``.
+        order: Comma-separated sort fields (e.g. "volume_num,liquidity_num").
+        ascending: Sort direction.
+        slug: Comma-separated slugs to look up.
+        clob_token_ids: Comma-separated CLOB token IDs.
+        condition_ids: Comma-separated condition IDs.
+        liquidity_num_min: Min liquidity.
+        liquidity_num_max: Max liquidity.
+        volume_num_min: Min volume.
+        volume_num_max: Max volume.
+        start_date_min: Start date min (ISO-8601).
+        start_date_max: Start date max (ISO-8601).
+        end_date_min: End date min (ISO-8601).
+        end_date_max: End date max (ISO-8601).
+        tag_id: Filter by tag ID.
+        closed: None=all, True=closed, False=open.
+        expand_events: Inline event fields.
+        expand_series: Inline series fields.
+        expand_clob_token_ids: Inline CLOB token IDs.
+        max_rows: Max rows in output (default 200, 0=unlimited).
+    """
+    page = _client().get_markets_keyset(
+        limit=limit,
+        after_cursor=after_cursor,
+        order=_to_list(order),
+        ascending=ascending,
+        slug=_to_list(slug),
+        clob_token_ids=_to_list(clob_token_ids),
+        condition_ids=_to_list(condition_ids),
+        liquidity_num_min=liquidity_num_min,
+        liquidity_num_max=liquidity_num_max,
+        volume_num_min=volume_num_min,
+        volume_num_max=volume_num_max,
+        start_date_min=start_date_min,
+        start_date_max=start_date_max,
+        end_date_min=end_date_min,
+        end_date_max=end_date_max,
+        tag_id=tag_id if tag_id else None,
+        closed=closed,
+        expand_events=expand_events,
+        expand_series=expand_series,
+        expand_clob_token_ids=expand_clob_token_ids,
+    )
+    next_cursor = page.get("next_cursor")
+    body = _df_to_str(page["data"], max_rows)
+    cursor_line = f"\n\n**next_cursor:** `{next_cursor}`" if next_cursor else "\n\n*(final page)*"
+    return body + cursor_line
+
+
+@mcp.tool()
 def get_market_by_slug(slug: str) -> str:
     """Get detailed info for a single market by its URL slug."""
     return json.dumps(_client().get_market_by_slug(slug), default=str, indent=2)
