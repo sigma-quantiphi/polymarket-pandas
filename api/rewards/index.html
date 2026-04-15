@@ -1,0 +1,1655 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Pandas-native Python SDK for the full Polymarket API surface">
+      
+      
+      
+        <link rel="canonical" href="https://sigma-quantiphi.github.io/polymarket-pandas/api/rewards/">
+      
+      
+        <link rel="prev" href="../trading/">
+      
+      
+        <link rel="next" href="../bridge/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Rewards - polymarket-pandas</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rewards" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="polymarket-pandas" class="md-header__button md-logo" aria-label="polymarket-pandas" data-md-component="logo">
+      
+  <img src="../../favicon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            polymarket-pandas
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Rewards
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sigma-quantiphi/polymarket-pandas" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sigma-quantiphi/polymarket-pandas
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="polymarket-pandas" class="md-nav__button md-logo" aria-label="polymarket-pandas" data-md-component="logo">
+      
+  <img src="../../favicon.png" alt="logo">
+
+    </a>
+    polymarket-pandas
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sigma-quantiphi/polymarket-pandas" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sigma-quantiphi/polymarket-pandas
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../markets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markets & Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data & Positions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rewards
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rewards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#public-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public Endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Public Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_markets_currentsponsorednone-next_cursornone-expand_rewards_configfalse-currentrewardscursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_markets_current(sponsored=None, next_cursor=None, expand_rewards_config=False) -&gt; CurrentRewardsCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_markets_multikwargs-rewardsmarketmulticursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_markets_multi(**kwargs) -&gt; RewardsMarketMultiCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_marketcondition_id-sponsorednone-next_cursornone-expand_rewards_configfalse-expand_tokensfalse-rewardsmarketcursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_market(condition_id, sponsored=None, next_cursor=None, expand_rewards_config=False, expand_tokens=False) -&gt; RewardsMarketCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#private-endpoints-l2-auth-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Private Endpoints (L2 Auth Required)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Private Endpoints (L2 Auth Required)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_earningsdate-kwargs-userearningscursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_earnings(date, **kwargs) -&gt; UserEarningsCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_earnings_totaldate-kwargs-pddataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_earnings_total(date, **kwargs) -&gt; pd.DataFrame
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_percentagessignature_typenone-maker_addressnone-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_percentages(signature_type=None, maker_address=None) -&gt; dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_user_marketskwargs-userrewardsmarketscursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_user_markets(**kwargs) -&gt; UserRewardsMarketsCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../relayer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Relayer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ctf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CTF (On-Chain)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../xtracker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    XTracker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../websocket/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WebSocket
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../async/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async Client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parsers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Title Parsers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas & Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/dataframes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DataFrames & Type Coercion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/pagination/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pagination
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/order-building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Order Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/mcp-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#public-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public Endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Public Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_markets_currentsponsorednone-next_cursornone-expand_rewards_configfalse-currentrewardscursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_markets_current(sponsored=None, next_cursor=None, expand_rewards_config=False) -&gt; CurrentRewardsCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_markets_multikwargs-rewardsmarketmulticursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_markets_multi(**kwargs) -&gt; RewardsMarketMultiCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_marketcondition_id-sponsorednone-next_cursornone-expand_rewards_configfalse-expand_tokensfalse-rewardsmarketcursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_market(condition_id, sponsored=None, next_cursor=None, expand_rewards_config=False, expand_tokens=False) -&gt; RewardsMarketCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#private-endpoints-l2-auth-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Private Endpoints (L2 Auth Required)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Private Endpoints (L2 Auth Required)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_earningsdate-kwargs-userearningscursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_earnings(date, **kwargs) -&gt; UserEarningsCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_earnings_totaldate-kwargs-pddataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_earnings_total(date, **kwargs) -&gt; pd.DataFrame
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_percentagessignature_typenone-maker_addressnone-dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_percentages(signature_type=None, maker_address=None) -&gt; dict
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_rewards_user_marketskwargs-userrewardsmarketscursorpage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_rewards_user_markets(**kwargs) -&gt; UserRewardsMarketsCursorPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="rewards">Rewards<a class="headerlink" href="#rewards" title="Permanent link">&para;</a></h1>
+<p>CLOB rewards API endpoints (<code>clob.polymarket.com/rewards/...</code>) for querying reward configurations, earnings, and percentages.</p>
+<p>Cursor-paginated methods return a <code>CursorPage</code> dict with keys <code>data</code> (DataFrame), <code>next_cursor</code> (str), <code>count</code> (int), <code>limit</code> (int). Pass <code>next_cursor</code> from the previous response to fetch the next page. The sentinel value <code>"LTE="</code> indicates the last page. All cursor-paginated methods have corresponding <code>_all()</code> variants that auto-paginate.</p>
+<hr />
+<h2 id="public-endpoints">Public Endpoints<a class="headerlink" href="#public-endpoints" title="Permanent link">&para;</a></h2>
+<h3 id="get_rewards_markets_currentsponsorednone-next_cursornone-expand_rewards_configfalse-currentrewardscursorpage"><code>get_rewards_markets_current(sponsored=None, next_cursor=None, expand_rewards_config=False) -&gt; CurrentRewardsCursorPage</code><a class="headerlink" href="#get_rewards_markets_currentsponsorednone-next_cursornone-expand_rewards_configfalse-currentrewardscursorpage" title="Permanent link">&para;</a></h3>
+<p>Get all currently active reward configurations, organized by market. Cursor-paginated.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">page</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_markets_current</span><span class="p">()</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">df</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>        <span class="c1"># DataFrame[CurrentRewardSchema]</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">cursor</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;next_cursor&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># Auto-paginate all:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">all_rewards</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_markets_current_all</span><span class="p">()</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># Expand nested rewards_config into flat columns:</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">page</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_markets_current</span><span class="p">(</span><span class="n">expand_rewards_config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sponsored</code></td>
+<td>bool</td>
+<td>If True, returns sponsored reward configurations</td>
+</tr>
+<tr>
+<td><code>next_cursor</code></td>
+<td>str</td>
+<td>Opaque cursor from a previous response</td>
+</tr>
+<tr>
+<td><code>expand_rewards_config</code></td>
+<td>bool</td>
+<td>Flatten nested <code>rewards_config</code> list into prefixed columns</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get_rewards_markets_multikwargs-rewardsmarketmulticursorpage"><code>get_rewards_markets_multi(**kwargs) -&gt; RewardsMarketMultiCursorPage</code><a class="headerlink" href="#get_rewards_markets_multikwargs-rewardsmarketmulticursorpage" title="Permanent link">&para;</a></h3>
+<p>Get active markets with their reward configurations. Supports text search, tag filtering, numeric filters, and sorting. Cursor-paginated.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">page</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_markets_multi</span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">tag_slug</span><span class="o">=</span><span class="s2">&quot;crypto&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">order_by</span><span class="o">=</span><span class="s2">&quot;rate_per_day&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">position</span><span class="o">=</span><span class="s2">&quot;DESC&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">expand_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>q</code></td>
+<td>str</td>
+<td>Text search on market question/description</td>
+</tr>
+<tr>
+<td><code>tag_slug</code></td>
+<td>str</td>
+<td>Filter by tag slug</td>
+</tr>
+<tr>
+<td><code>event_id</code></td>
+<td>str</td>
+<td>Filter by event ID</td>
+</tr>
+<tr>
+<td><code>event_title</code></td>
+<td>str</td>
+<td>Case-insensitive event title search</td>
+</tr>
+<tr>
+<td><code>order_by</code></td>
+<td>str</td>
+<td>Sort field (e.g. <code>"rate_per_day"</code>, <code>"volume_24hr"</code>, <code>"spread"</code>, <code>"competitiveness"</code>)</td>
+</tr>
+<tr>
+<td><code>position</code></td>
+<td>str</td>
+<td>Sort direction: <code>"ASC"</code> or <code>"DESC"</code></td>
+</tr>
+<tr>
+<td><code>min_volume_24hr</code> / <code>max_volume_24hr</code></td>
+<td>float</td>
+<td>24h volume filter range</td>
+</tr>
+<tr>
+<td><code>min_spread</code> / <code>max_spread</code></td>
+<td>float</td>
+<td>Spread filter range</td>
+</tr>
+<tr>
+<td><code>min_price</code> / <code>max_price</code></td>
+<td>float</td>
+<td>First-token price filter range</td>
+</tr>
+<tr>
+<td><code>page_size</code></td>
+<td>int</td>
+<td>Items per page (max 500, default 100)</td>
+</tr>
+<tr>
+<td><code>next_cursor</code></td>
+<td>str</td>
+<td>Opaque cursor from a previous response</td>
+</tr>
+<tr>
+<td><code>expand_rewards_config</code></td>
+<td>bool</td>
+<td>Flatten nested <code>rewards_config</code> list</td>
+</tr>
+<tr>
+<td><code>expand_tokens</code></td>
+<td>bool</td>
+<td>Flatten nested <code>tokens</code> list</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get_rewards_marketcondition_id-sponsorednone-next_cursornone-expand_rewards_configfalse-expand_tokensfalse-rewardsmarketcursorpage"><code>get_rewards_market(condition_id, sponsored=None, next_cursor=None, expand_rewards_config=False, expand_tokens=False) -&gt; RewardsMarketCursorPage</code><a class="headerlink" href="#get_rewards_marketcondition_id-sponsorednone-next_cursornone-expand_rewards_configfalse-expand_tokensfalse-rewardsmarketcursorpage" title="Permanent link">&para;</a></h3>
+<p>Get reward configurations for a specific market. Cursor-paginated.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">page</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_market</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">condition_id</span><span class="o">=</span><span class="s2">&quot;0xConditionId...&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">expand_rewards_config</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">expand_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="private-endpoints-l2-auth-required">Private Endpoints (L2 Auth Required)<a class="headerlink" href="#private-endpoints-l2-auth-required" title="Permanent link">&para;</a></h2>
+<h3 id="get_rewards_earningsdate-kwargs-userearningscursorpage"><code>get_rewards_earnings(date, **kwargs) -&gt; UserEarningsCursorPage</code><a class="headerlink" href="#get_rewards_earningsdate-kwargs-userearningscursorpage" title="Permanent link">&para;</a></h3>
+<p>Get per-market user earnings for a specific day. Cursor-paginated.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">page</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_earnings</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="s2">&quot;2026-03-30&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">df</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>  <span class="c1"># DataFrame[UserEarningSchema]</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Auto-paginate all:</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">all_earnings</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_earnings_all</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="s2">&quot;2026-03-30&quot;</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date</code></td>
+<td>str</td>
+<td>Target date in <code>YYYY-MM-DD</code> format</td>
+</tr>
+<tr>
+<td><code>signature_type</code></td>
+<td>int</td>
+<td>Address derivation type (0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE)</td>
+</tr>
+<tr>
+<td><code>maker_address</code></td>
+<td>str</td>
+<td>Ethereum address to query</td>
+</tr>
+<tr>
+<td><code>sponsored</code></td>
+<td>bool</td>
+<td>If True, filter to sponsored earnings only</td>
+</tr>
+<tr>
+<td><code>next_cursor</code></td>
+<td>str</td>
+<td>Opaque cursor from a previous response</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get_rewards_earnings_totaldate-kwargs-pddataframe"><code>get_rewards_earnings_total(date, **kwargs) -&gt; pd.DataFrame</code><a class="headerlink" href="#get_rewards_earnings_totaldate-kwargs-pddataframe" title="Permanent link">&para;</a></h3>
+<p>Get total earnings for a user on a given day, grouped by asset. Not cursor-paginated.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">totals</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_earnings_total</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="s2">&quot;2026-03-30&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># columns: date, assetAddress, makerAddress, earnings, assetRate</span>
+</code></pre></div>
+<h3 id="get_rewards_percentagessignature_typenone-maker_addressnone-dict"><code>get_rewards_percentages(signature_type=None, maker_address=None) -&gt; dict</code><a class="headerlink" href="#get_rewards_percentagessignature_typenone-maker_addressnone-dict" title="Permanent link">&para;</a></h3>
+<p>Get real-time reward percentages per market for a user. Returns a dict mapping <code>condition_id</code> to percentage (float).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">pcts</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_percentages</span><span class="p">()</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># {&quot;0xConditionId1&quot;: 0.15, &quot;0xConditionId2&quot;: 0.08, ...}</span>
+</code></pre></div>
+<h3 id="get_rewards_user_marketskwargs-userrewardsmarketscursorpage"><code>get_rewards_user_markets(**kwargs) -&gt; UserRewardsMarketsCursorPage</code><a class="headerlink" href="#get_rewards_user_marketskwargs-userrewardsmarketscursorpage" title="Permanent link">&para;</a></h3>
+<p>Get user earnings combined with full market configurations. Supports search, filtering, and sorting. Cursor-paginated.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">page</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_rewards_user_markets</span><span class="p">(</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">date</span><span class="o">=</span><span class="s2">&quot;2026-03-30&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">order_by</span><span class="o">=</span><span class="s2">&quot;earnings&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">position</span><span class="o">=</span><span class="s2">&quot;DESC&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">expand_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">expand_rewards_config</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">expand_earnings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date</code></td>
+<td>str</td>
+<td>Target date in <code>YYYY-MM-DD</code> format (defaults to today)</td>
+</tr>
+<tr>
+<td><code>q</code></td>
+<td>str</td>
+<td>Text search on market question/description</td>
+</tr>
+<tr>
+<td><code>tag_slug</code></td>
+<td>str</td>
+<td>Filter by tag slug</td>
+</tr>
+<tr>
+<td><code>favorite_markets</code></td>
+<td>bool</td>
+<td>Filter to user-favorited markets only</td>
+</tr>
+<tr>
+<td><code>no_competition</code></td>
+<td>bool</td>
+<td>Filter for markets with no competition</td>
+</tr>
+<tr>
+<td><code>only_mergeable</code></td>
+<td>bool</td>
+<td>Filter for mergeable markets</td>
+</tr>
+<tr>
+<td><code>only_open_orders</code></td>
+<td>bool</td>
+<td>Filter for markets with user's open orders</td>
+</tr>
+<tr>
+<td><code>only_open_positions</code></td>
+<td>bool</td>
+<td>Filter for markets with user's open positions</td>
+</tr>
+<tr>
+<td><code>order_by</code></td>
+<td>str</td>
+<td>Sort field (e.g. <code>"earnings"</code>, <code>"rate_per_day"</code>, <code>"earning_percentage"</code>)</td>
+</tr>
+<tr>
+<td><code>position</code></td>
+<td>str</td>
+<td>Sort direction: <code>"ASC"</code> or <code>"DESC"</code></td>
+</tr>
+<tr>
+<td><code>page_size</code></td>
+<td>int</td>
+<td>Items per page (max 500, default 100)</td>
+</tr>
+<tr>
+<td><code>next_cursor</code></td>
+<td>str</td>
+<td>Opaque cursor from a previous response</td>
+</tr>
+<tr>
+<td><code>expand_rewards_config</code></td>
+<td>bool</td>
+<td>Flatten nested <code>rewards_config</code> list</td>
+</tr>
+<tr>
+<td><code>expand_tokens</code></td>
+<td>bool</td>
+<td>Flatten nested <code>tokens</code> list</td>
+</tr>
+<tr>
+<td><code>expand_earnings</code></td>
+<td>bool</td>
+<td>Flatten nested <code>earnings</code> list</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.highlight", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
