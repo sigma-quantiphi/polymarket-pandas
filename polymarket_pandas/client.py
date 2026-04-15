@@ -974,10 +974,19 @@ class PolymarketPandas(
         expand_series: bool = True,
         expand_outcomes: bool = False,
     ) -> pd.DataFrame:
-        """Auto-page through all markets via keyset pagination and return a single DataFrame.
+        """Auto-page through all markets via keyset pagination.
 
-        Stops when the server omits ``next_cursor`` (final page) or ``max_pages``
-        is reached.
+        Follows the server-supplied ``next_cursor`` until it is omitted (final
+        page) or ``max_pages`` is reached. Accepts the same filters as
+        :meth:`get_markets_keyset` plus ``max_pages`` and a starting
+        ``after_cursor``.
+
+        Prefer this over :meth:`get_markets_all` for bulk scans — it uses the
+        keyset endpoint (stable ordering, up to 1000 rows/page) instead of
+        offset pagination.
+
+        Returns:
+            pd.DataFrame — concatenation of all pages' ``data`` frames.
         """
         pages: list[pd.DataFrame] = []
         cursor = after_cursor

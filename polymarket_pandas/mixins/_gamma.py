@@ -172,9 +172,45 @@ class GammaMixin:
     ) -> MarketsKeysetPage:
         """Fetch markets using keyset (cursor) pagination.
 
-        Returns ``{"data": DataFrame[MarketSchema], "next_cursor": str | None}``.
-        The server omits ``next_cursor`` on the final page. Unlike
+        Recommended over :meth:`get_markets` for large scans — stable ordering
+        under concurrent writes, and up to 1000 rows per page. Unlike
         :meth:`get_markets`, this endpoint does not accept ``offset``.
+
+        Args:
+            limit: Rows per page (1-1000, default 300).
+            after_cursor: Opaque cursor from a previous response's
+                ``next_cursor``. Omit for the first page.
+            order: Sort fields (e.g. ``["volume_num", "liquidity_num"]``).
+            ascending: Sort direction (default ``True`` on the server).
+            id, slug, clob_token_ids, condition_ids, market_maker_address,
+            question_ids: Filter by IDs / slugs.
+            liquidity_num_min / liquidity_num_max: Liquidity range filter.
+            volume_num_min / volume_num_max: Volume range filter.
+            start_date_min / start_date_max: Start-date range (ISO-8601 or
+                ``pd.Timestamp``; naive values are treated as UTC).
+            end_date_min / end_date_max: End-date range.
+            tag_id: Filter by tag ID. ``related_tags`` widens to descendants.
+            cyom: Restrict to CYOM markets.
+            uma_resolution_status: Filter by UMA resolution status string.
+            game_id, sports_market_types: Sports-specific filters.
+            rewards_min_size: Minimum reward size.
+            include_tag: Include the ``tags`` relation on each market row.
+            closed: ``None`` for all, ``True`` for closed, ``False`` for open.
+            expand_clob_token_ids: Explode multi-outcome markets to one row
+                per CLOB token (default ``True``). Ignored when
+                ``expand_outcomes=True``.
+            expand_events: Inline ``events[*]`` fields as ``events<Field>``
+                columns via ``expand_dataframe`` (default ``True``).
+            expand_series: Inline ``eventsSeries[*]`` fields the same way
+                (default ``True``).
+            expand_outcomes: Explode parallel ``outcomes`` / ``outcomePrices``
+                / ``clobTokenIds`` lists into one row per outcome with
+                coerced numeric prices.
+
+        Returns:
+            :class:`MarketsKeysetPage` — a ``TypedDict`` with
+            ``data: DataFrame[MarketSchema]`` and optional ``next_cursor: str``
+            (server omits the cursor on the final page).
 
         See: https://docs.polymarket.com/api-reference/markets/list-markets-keyset-pagination
         """

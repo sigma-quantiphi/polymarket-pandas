@@ -54,8 +54,9 @@ polymarket_pandas/
   py.typed             # PEP 561 marker
   mixins/
     __init__.py        # Re-exports all 9 mixin classes
-    _gamma.py          # GammaMixin   — markets, events, tags, series, sports, comments, search,
-    #                                    profiles, fetch_sports_event (multi-call discovery helper)
+    _gamma.py          # GammaMixin   — markets (offset + keyset pagination), events, tags,
+    #                                    series, sports, comments, search, profiles,
+    #                                    fetch_sports_event (multi-call discovery helper)
     _data.py           # DataMixin    — positions, trades, leaderboard, accounting snapshot, builders
     _clob_public.py    # ClobPublicMixin — orderbook, prices, midpoints, spreads, price history,
     #                                      sampling/simplified markets, builder trades, rebates
@@ -63,7 +64,8 @@ polymarket_pandas/
     _rewards.py        # RewardsMixin  — reward configs, earnings, percentages, user reward markets
     _relayer.py        # RelayerMixin — Safe deployment, nonces, transactions, relay payload, submit
     _bridge.py         # BridgeMixin  — deposit/withdrawal addresses, quotes, supported assets, status
-    _ctf.py            # CTFMixin     — on-chain merge, split, redeem positions (requires web3)
+    _ctf.py            # CTFMixin     — on-chain merge, split, redeem positions + batch_ctf_ops
+    #                                    (bundled proxy-relayed inventory ops; requires web3)
     _uma.py            # UmaMixin      — UMA CTF Adapter + OptimisticOracleV2 —
     #                                    get_uma_question, get_oo_request,
     #                                    get_uma_state, propose_price,
@@ -169,6 +171,7 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 | `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Merge Yes + No tokens back into USDC.e |
 | `redeem_positions(condition_id, index_sets=None, neg_risk=False, amounts=None, estimate=False)` | Redeem winning tokens after market resolution (neg-risk requires `amounts=[yes, no]`) |
 | `approve_collateral(spender=None, amount=None, estimate=False)` | Approve USDC.e spending for a CTF contract |
+| `batch_ctf_ops(ops, auto_approve=False, estimate=False)` | Bundle N split/merge/redeem ops into a single proxy-relayed tx. `ops` is a `list[dict]` or `DataFrame` with `op`/`condition_id`/`amount`/`amount_usdc`/`neg_risk`/`index_sets`/`amounts`. Proxy-wallet only — raises `PolymarketAuthError` for EOAs. Aggregates allowance checks per spender. |
 | `estimate_ctf_tx(tx_data)` | Estimate gas cost without sending; returns `GasEstimate` dict |
 
 **Key design:**
@@ -237,6 +240,7 @@ Two patterns:
 
 - **Offset-based** — `_autopage(fetcher, ...)`: used by `get_tags_all`, `get_events_all`, `get_markets_all`, `get_series_all`, `get_teams_all`, `get_comments_all`, `get_comments_by_user_address_all`, `get_positions_all`, `get_closed_positions_all`, `get_market_positions_all`, `get_trades_all`, `get_user_activity_all`, `get_leaderboard_all`, `get_builder_leaderboard_all`. Reads default `limit` from the fetcher's signature via `inspect.signature`, increments `offset` by pre-expansion record count (`page.attrs["_raw_count"]`), stops on a short page. All `_all` methods have explicit parameter signatures matching their base methods.
 - **Cursor-based** — `_autopage_cursor(fetcher, ...)`: used by `get_sampling_markets_all`, `get_simplified_markets_all`, `get_sampling_simplified_markets_all`, `get_user_trades_all`, `get_active_orders_all`, and rewards `_all` methods. Stops when `next_cursor == "LTE="` (sentinel) or falsy.
+- **Keyset (Gamma)** — `get_markets_keyset` / `get_markets_keyset_all`: Gamma's `/markets/keyset` endpoint uses `after_cursor` (not `offset`) and omits `next_cursor` on the final page. Returns a `MarketsKeysetPage` TypedDict `{"data": DataFrame[MarketSchema], "next_cursor": str | None}`. The `_all` variant runs its own loop rather than using `_autopage_cursor` because the cursor kwarg name (`after_cursor`) and termination signal (absence of key, not `"LTE="` sentinel) both differ.
 
 Cursor-paginated single-page methods (`get_sampling_markets`, `get_simplified_markets`, `get_sampling_simplified_markets`, `get_builder_trades`, `get_user_trades`, `get_active_orders`, and all rewards cursor methods) return `CursorPage` TypedDict: `{"data": DataFrame, "next_cursor": str, "count": int, "limit": int}` instead of a bare DataFrame.
 
@@ -314,7 +318,7 @@ Two `pandera.DataFrameModel` schemas for **runtime input validation** (validated
 **TypedDicts** (`types.py`): Structural subtypes of `dict` for dict-returning endpoints. No runtime overhead, full IDE autocomplete.
 
 - **Cursor-paginated** (all inherit from `CursorPage` base with `next_cursor`, `count`, `limit`): `OrdersCursorPage`, `UserTradesCursorPage`, `SamplingMarketsCursorPage`, `SimplifiedMarketsCursorPage`, `BuilderTradesCursorPage`, `CurrentRewardsCursorPage`, `RewardsMarketMultiCursorPage`, `RewardsMarketCursorPage`, `UserEarningsCursorPage`, `UserRewardsMarketsCursorPage`. Each has `data: DataFrame[SpecificSchema]`.
-- **Other dicts**: `SignedOrder`, `SendOrderResponse`, `CancelOrdersResponse`, `TransactionReceipt`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `BridgeAddressInfo`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`.
+- **Other dicts**: `SignedOrder`, `SendOrderResponse`, `CancelOrdersResponse`, `TransactionReceipt`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `BridgeAddressInfo`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`, `MarketsKeysetPage`.
 
 **Pandera schemas** (`schemas.py`): `DataFrameModel` subclasses (via `pandera.pandas`) for DataFrame-returning endpoints. All use `strict=False` (extra columns allowed) and `coerce=True`. Annotation-only by default (no runtime validation unless user calls `.validate()`). Field names verified against the official Polymarket OpenAPI specs.
 
