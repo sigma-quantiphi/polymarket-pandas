@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.8.2] — 2026-04-15
+
 ### Added
 - `CTFMixin.batch_ctf_ops(ops, *, auto_approve, estimate)` — bundle multiple `split` / `merge` / `redeem` inventory operations into a single proxy-relayed transaction. Accepts a `list[dict]` or `pd.DataFrame` of ops. Aggregates per-spender allowance checks so `auto_approve=True` emits one approval per spender across the batch. Proxy-wallet users only (Polymarket has no published EOA multicall target); EOA callers get a clear `PolymarketAuthError`.
 
