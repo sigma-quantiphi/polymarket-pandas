@@ -140,6 +140,57 @@ All four CTF methods (`split_position`, `merge_positions`, `redeem_positions`, `
 
 ---
 
+## Batch Inventory Operations
+
+### `batch_ctf_ops(ops, *, auto_approve=False, estimate=False) -> SubmitTransactionResponse | GasEstimate`
+
+Bundle multiple split / merge / redeem operations into a **single proxy-relayed transaction**. Useful for market makers rebalancing across many conditions: one signature, one GSN relay hop, one base fee.
+
+**Proxy-wallet only.** Polymarket does not publish an EOA multicall target; EOA callers get a `PolymarketAuthError` directing them to the individual methods.
+
+Each op is a dict (or row in a DataFrame):
+
+| Key | Applies to | Description |
+|---|---|---|
+| `op` | all | `"split"`, `"merge"`, or `"redeem"` |
+| `condition_id` | all | Market condition ID (hex string) |
+| `amount` or `amount_usdc` | split, merge | Amount in base units or USDC |
+| `neg_risk` | all | `True` for NegRiskAdapter, default `False` |
+| `index_sets` | redeem (standard) | Defaults to `[1, 2]` |
+| `amounts` | redeem (neg-risk) | Required: `[yes_amount, no_amount]` |
+
+```python
+import pandas as pd
+
+ops = [
+    {"op": "merge",  "condition_id": "0x4aee...", "amount_usdc": 10.0},
+    {"op": "redeem", "condition_id": "0xabcd...", "neg_risk": True, "amounts": [5_000_000, 0]},
+    {"op": "split",  "condition_id": "0x1234...", "amount_usdc": 2.5},
+]
+
+# Dry-run to see gas cost of the bundled proxy call
+est = client.batch_ctf_ops(ops, estimate=True)
+print(f"Gas: {est['gas']:,}  Cost: {est['costMatic']:.6f} MATIC")
+
+# auto_approve=True coalesces allowance checks — one approval per spender,
+# for the sum of all split/merge amounts targeting that spender.
+resp = client.batch_ctf_ops(ops, auto_approve=True)
+print(resp["transactionHash"])
+
+# DataFrame input works too
+df = pd.DataFrame(ops)
+client.batch_ctf_ops(df)
+```
+
+**Why batch:**
+- 21k base fee charged once per bundled transaction, not per op
+- One ECDSA recovery / nonce bump / GSN relay round-trip
+- The underlying CTF logic still runs per op — this is a dispatch optimization, not a contract-level change
+
+See: <https://docs.polymarket.com/market-makers/inventory#batch-operations>
+
+---
+
 ## Notes
 
 - **Proxy wallet detection** is automatic. When `address` (proxy) differs from the EOA, all CTF operations route through the GSN relayer.

@@ -7,8 +7,13 @@ dependency: ``pip install polymarket-pandas[ctf]``.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from polymarket_pandas.exceptions import PolymarketAuthError
 from polymarket_pandas.types import GasEstimate, SubmitTransactionResponse, TransactionReceipt
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # ── Contract addresses (Polygon mainnet) ─────────────────────────────
 
@@ -630,3 +635,172 @@ class CTFMixin:
         if self._has_proxy_wallet():
             return self._send_ctf_tx_relayed(to=target, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
+
+    # ── Batch operations ─────────────────────────────────────────────
+
+    _VALID_OPS = ("split", "merge", "redeem")
+
+    def _build_ctf_call(self, op: dict) -> tuple[str, bytes, str | None, int]:
+        """Build a single CTF call for use in a batch proxy envelope.
+
+        Returns ``(target_address, calldata_bytes, approval_spender_or_None,
+        approval_amount)``. Approval fields are ``(None, 0)`` for ops that
+        don't need USDC.e approval (redeem).
+        """
+        op_name = op.get("op")
+        if op_name not in self._VALID_OPS:
+            raise ValueError(f"op must be one of {self._VALID_OPS}, got {op_name!r}")
+        cid = self._to_bytes32(op["condition_id"])
+        neg_risk = bool(op.get("neg_risk", False))
+        target = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
+
+        if op_name in ("split", "merge"):
+            amount = self._resolve_amount(op.get("amount"), op.get("amount_usdc"))
+            fn_name = "splitPosition" if op_name == "split" else "mergePositions"
+            contract = self._nr_contract if neg_risk else self._ct_contract
+            if neg_risk:
+                fn = getattr(contract.functions, fn_name)(cid, amount)
+            else:
+                fn = getattr(contract.functions, fn_name)(
+                    self._w3.to_checksum_address(USDC_E),
+                    PARENT_COLLECTION_ID,
+                    cid,
+                    DEFAULT_PARTITION,
+                    amount,
+                )
+            tx = fn.build_transaction(self._tx_params())
+            return target, bytes.fromhex(tx["data"][2:]), target, amount
+
+        # redeem
+        if neg_risk:
+            amounts = op.get("amounts")
+            if amounts is None or len(amounts) != 2:
+                raise ValueError("Neg-risk redeem requires amounts=[yes_amount, no_amount].")
+            tx = self._nr_contract.functions.redeemPositions(
+                cid, [int(a) for a in amounts]
+            ).build_transaction(self._tx_params())
+        else:
+            index_sets = op.get("index_sets") or DEFAULT_PARTITION
+            tx = self._ct_contract.functions.redeemPositions(
+                self._w3.to_checksum_address(USDC_E),
+                PARENT_COLLECTION_ID,
+                cid,
+                index_sets,
+            ).build_transaction(self._tx_params())
+        return target, bytes.fromhex(tx["data"][2:]), None, 0
+
+    def _send_ctf_batch_relayed(
+        self, calls: list[tuple[int, str, int, bytes]]
+    ) -> SubmitTransactionResponse:
+        """Submit a batch of proxy calls through the relayer in one transaction."""
+        self._require_builder_auth()
+        eoa = self._eoa_address()
+        payload = self.get_relay_payload(address=eoa, type="PROXY")
+        nonce = payload["nonce"]
+        relay = payload["address"]
+
+        proxy_data = self._encode_proxy_calls(calls)
+
+        try:
+            from web3.types import HexStr
+
+            est = self._w3.eth.estimate_gas(
+                {"from": eoa, "to": PROXY_FACTORY, "data": HexStr(proxy_data)}
+            )
+            gas_limit = str(est)
+        except Exception:
+            gas_limit = "10000000"
+        signature = self._sign_proxy_tx(
+            from_=eoa,
+            to=PROXY_FACTORY,
+            data=proxy_data,
+            nonce=nonce,
+            relay=relay,
+            gas_limit=gas_limit,
+        )
+        return self.submit_transaction(
+            from_=eoa,
+            to=PROXY_FACTORY,
+            proxy_wallet=self.address,
+            data=proxy_data,
+            nonce=nonce,
+            signature=signature,
+            type="PROXY",
+            signature_params={
+                "gasPrice": "0",
+                "gasLimit": gas_limit,
+                "relayerFee": "0",
+                "relayHub": RELAY_HUB,
+                "relay": relay,
+            },
+        )
+
+    def batch_ctf_ops(
+        self,
+        ops: list[dict] | pd.DataFrame,
+        *,
+        auto_approve: bool = False,
+        estimate: bool = False,
+    ) -> SubmitTransactionResponse | GasEstimate:
+        """Bundle multiple split/merge/redeem operations into one proxy call.
+
+        Each op dict accepts: ``op`` (``"split"`` | ``"merge"`` | ``"redeem"``),
+        ``condition_id``, ``amount`` or ``amount_usdc`` (split/merge),
+        ``neg_risk`` (bool), ``index_sets`` (redeem, standard), ``amounts``
+        (redeem, neg-risk). A DataFrame is converted via ``to_dict("records")``.
+
+        Gas savings come from a single proxy signature / GSN relay hop instead
+        of one per op. The underlying CTF calls still run individually.
+
+        Only proxy-wallet users are supported — Polymarket does not publish a
+        multicall target for EOAs. EOA senders get a clear error; use the
+        individual methods instead.
+
+        Args:
+            ops: List of op dicts or a DataFrame with columns named the same.
+            auto_approve: If ``True``, aggregate split/merge amounts per
+                spender and send a single approval per spender if the current
+                allowance is insufficient.
+            estimate: If ``True``, return a :class:`GasEstimate` for the
+                batched proxy call without submitting.
+
+        Returns:
+            :class:`SubmitTransactionResponse` on success, or
+            :class:`GasEstimate` when ``estimate=True``.
+        """
+        import pandas as pd
+
+        self._require_ctf_auth()
+        self._require_web3()
+
+        if isinstance(ops, pd.DataFrame):
+            ops = ops.to_dict(orient="records")
+        if not ops:
+            raise ValueError("ops must be a non-empty list of operation dicts.")
+        if not self._has_proxy_wallet():
+            raise PolymarketAuthError(
+                detail=(
+                    "batch_ctf_ops requires a proxy wallet; Polymarket's EOA path "
+                    "has no multicall target. Use individual split/merge/redeem "
+                    "calls instead."
+                )
+            )
+
+        calls: list[tuple[int, str, int, bytes]] = []
+        approvals: dict[str, int] = {}
+        for op in ops:
+            target, data, spender, approval_amount = self._build_ctf_call(op)
+            calls.append((1, target, 0, data))  # typeCode=1 (Call)
+            if spender is not None:
+                approvals[spender] = approvals.get(spender, 0) + approval_amount
+
+        if estimate:
+            proxy_data = self._encode_proxy_calls(calls)
+            tx = {"to": PROXY_FACTORY, "data": proxy_data, "from": self._eoa_address()}
+            return self.estimate_ctf_tx(tx)
+
+        if auto_approve:
+            for spender, total in approvals.items():
+                self._ensure_allowance(spender, total)
+
+        return self._send_ctf_batch_relayed(calls)

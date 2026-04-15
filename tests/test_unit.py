@@ -999,6 +999,136 @@ def test_send_ctf_tx_no_wait(ctf_client: PolymarketPandas, monkeypatch):
     assert "blockNumber" not in result
 
 
+# ── batch_ctf_ops ────────────────────────────────────────────────────────
+
+
+def _proxy_ctf_client(monkeypatch):
+    """Build a proxy-wallet CTF client with mocked web3 + relayer."""
+    pk = "0x" + "ab" * 32
+    proxy = "0xDEADBEEFdeadbeefDEADBEEFdeadbeef00000000"
+    c = PolymarketPandas(
+        use_tqdm=False,
+        address=proxy,
+        private_key=pk,
+        _builder_api_key="test-key",
+        _builder_api_secret="dGVzdC1zZWNyZXQ=",
+        _builder_api_passphrase="test-pass",
+    )
+    _mock_web3(c, monkeypatch)
+    # Proxy call tx data must be real hex
+    for contract_attr in ("_ct_contract", "_nr_contract"):
+        contract = getattr(c, contract_attr)
+        for fn_name in ("splitPosition", "mergePositions", "redeemPositions"):
+            getattr(contract.functions, fn_name).return_value.build_transaction.return_value = {
+                "data": "0x" + "ab" * 32,
+            }
+    captured: dict = {}
+
+    def fake_encode(calls):
+        captured["calls"] = calls
+        return "0x" + "cd" * 64
+
+    monkeypatch.setattr(c, "_encode_proxy_calls", fake_encode)
+    monkeypatch.setattr(
+        c,
+        "get_relay_payload",
+        lambda **kw: {"address": "0x" + "ee" * 20, "nonce": "42"},
+    )
+    submit = MagicMock(return_value={"transactionID": "abc", "transactionHash": "0x123"})
+    monkeypatch.setattr(c, "submit_transaction", submit)
+    return c, captured, submit
+
+
+def test_batch_ctf_ops_bundles_three_calls(monkeypatch):
+    c, captured, submit = _proxy_ctf_client(monkeypatch)
+    ops = [
+        {"op": "split", "condition_id": STUB_CONDITION_ID, "amount": 1_000_000},
+        {"op": "merge", "condition_id": STUB_CONDITION_ID, "amount": 500_000},
+        {"op": "redeem", "condition_id": STUB_CONDITION_ID},
+    ]
+    result = c.batch_ctf_ops(ops)
+    assert len(captured["calls"]) == 3
+    submit.assert_called_once()
+    assert submit.call_args[1]["to"] == "0xaB45c5A4B0c941a2F231C04C3f49182e1A254052"
+    assert result["transactionHash"] == "0x123"
+
+
+def test_batch_ctf_ops_dataframe_input(monkeypatch):
+    import pandas as pd
+
+    c, captured, _ = _proxy_ctf_client(monkeypatch)
+    df = pd.DataFrame(
+        [
+            {"op": "split", "condition_id": STUB_CONDITION_ID, "amount": 1_000_000},
+            {"op": "merge", "condition_id": STUB_CONDITION_ID, "amount": 500_000},
+        ]
+    )
+    c.batch_ctf_ops(df)
+    assert len(captured["calls"]) == 2
+
+
+def test_batch_ctf_ops_aggregates_approvals(monkeypatch):
+    c, _, _ = _proxy_ctf_client(monkeypatch)
+    # Current allowance is below the total so approval must fire exactly once
+    c._usdc_contract.functions.allowance.return_value.call.return_value = 0
+    ensure_calls: list[tuple[str, int]] = []
+    monkeypatch.setattr(
+        c,
+        "_ensure_allowance",
+        lambda spender, amount: ensure_calls.append((spender, amount)),
+    )
+    ops = [
+        {"op": "split", "condition_id": STUB_CONDITION_ID, "amount": 1_000_000, "neg_risk": False},
+        {"op": "merge", "condition_id": STUB_CONDITION_ID, "amount": 2_000_000, "neg_risk": False},
+        {"op": "redeem", "condition_id": STUB_CONDITION_ID},  # no approval
+    ]
+    c.batch_ctf_ops(ops, auto_approve=True)
+    # Single aggregated approval for CONDITIONAL_TOKENS spender
+    assert len(ensure_calls) == 1
+    assert ensure_calls[0] == (
+        "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
+        3_000_000,
+    )
+
+
+def test_batch_ctf_ops_rejects_eoa(ctf_client: PolymarketPandas, monkeypatch):
+    _mock_web3(ctf_client, monkeypatch)
+    with pytest.raises(PolymarketAuthError, match="proxy wallet"):
+        ctf_client.batch_ctf_ops(
+            [{"op": "merge", "condition_id": STUB_CONDITION_ID, "amount": 1_000_000}]
+        )
+
+
+def test_batch_ctf_ops_empty_raises(monkeypatch):
+    c, _, _ = _proxy_ctf_client(monkeypatch)
+    with pytest.raises(ValueError, match="non-empty"):
+        c.batch_ctf_ops([])
+
+
+def test_batch_ctf_ops_unknown_op_raises(monkeypatch):
+    c, _, _ = _proxy_ctf_client(monkeypatch)
+    with pytest.raises(ValueError, match="op must be one of"):
+        c.batch_ctf_ops([{"op": "swap", "condition_id": STUB_CONDITION_ID}])
+
+
+def test_batch_ctf_ops_neg_risk_redeem_requires_amounts(monkeypatch):
+    c, _, _ = _proxy_ctf_client(monkeypatch)
+    with pytest.raises(ValueError, match="amounts="):
+        c.batch_ctf_ops([{"op": "redeem", "condition_id": STUB_CONDITION_ID, "neg_risk": True}])
+
+
+def test_batch_ctf_ops_estimate(monkeypatch):
+    c, _, submit = _proxy_ctf_client(monkeypatch)
+    c._w3.eth.get_balance.return_value = 10**18
+    result = c.batch_ctf_ops(
+        [{"op": "merge", "condition_id": STUB_CONDITION_ID, "amount": 1_000_000}],
+        estimate=True,
+    )
+    submit.assert_not_called()
+    assert result["gas"] == 200_000
+    assert isinstance(result["costMatic"], float)
+
+
 # ── build_order ─────────────────────────────────────────────────────────────
 
 
