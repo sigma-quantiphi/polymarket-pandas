@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.3] — 2026-04-16
+
+### Added
+- `CTFMixin.convert_positions(market_id, index_set, amount)` — call `NegRiskAdapter.convertPositions` to convert NO tokens across multiple outcomes into YES tokens + USDC collateral. Supports `amount_usdc`, `auto_approve`, `estimate`, proxy wallet relay, and `batch_ctf_ops` integration (op `"convert"`).
+
+### Why
+Completes the neg-risk arbitrage flow: buy NO on all outcomes → `convert_positions` (N-1 NOs → 1 YES + (N-2) USDC) → `merge_positions` (YES+NO → 1 USDC). Previously required direct web3 contract calls.
+
+---
+
 ## [0.8.2] — 2026-04-15
 
 ### Added
