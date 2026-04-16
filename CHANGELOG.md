@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.6] — 2026-04-16
+
+### Added
+- WebSocket dict events (`new_market`, `market_resolved`) now pass through `preprocess_dict` — snake_case keys become camelCase, timestamps are converted to `pd.Timestamp`, numeric strings coerced to float.
+- `preprocess_dict` gains `int_datetime_unit` parameter (default `"s"`) for WS millisecond timestamps.
+- `_preprocess_dict` method added to both `PolymarketWebSocket` and `AsyncPolymarketWebSocket`.
+
+---
+
 ## [0.8.5] — 2026-04-16
 
 ### Fixed

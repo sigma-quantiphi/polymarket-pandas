@@ -25,6 +25,9 @@ from polymarket_pandas.utils import (
 from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
 )
+from polymarket_pandas.utils import (
+    preprocess_dict as _preprocess_dict,
+)
 
 _MARKET_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 _USER_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/user"
@@ -182,6 +185,19 @@ class PolymarketWebSocket:
             int_datetime_unit=int_datetime_unit,
         )
 
+    def _preprocess_dict(self, data: dict, *, int_datetime_unit: str = "s") -> dict:
+        return _preprocess_dict(
+            data,
+            numeric_columns=self._numeric_columns,
+            str_datetime_columns=self._str_datetime_columns,
+            int_datetime_columns=self._int_datetime_columns,
+            ms_int_datetime_columns=self._ms_int_datetime_columns,
+            bool_columns=self._bool_columns,
+            drop_columns=self._drop_columns,
+            json_columns=self._json_columns,
+            int_datetime_unit=int_datetime_unit,
+        )
+
     def _dispatch(self, named_cb, fallback_cb, event_type: str, payload) -> None:
         if named_cb is not None:
             named_cb(payload)
@@ -291,10 +307,12 @@ class PolymarketWebSocket:
                 self._dispatch(on_tick_size_change, on_message, event_type, df)
 
             elif event_type == "new_market":
-                self._dispatch(on_new_market, on_message, event_type, msg)
+                d = self._preprocess_dict(msg, int_datetime_unit="ms")
+                self._dispatch(on_new_market, on_message, event_type, d)
 
             elif event_type == "market_resolved":
-                self._dispatch(on_market_resolved, on_message, event_type, msg)
+                d = self._preprocess_dict(msg, int_datetime_unit="ms")
+                self._dispatch(on_market_resolved, on_message, event_type, d)
 
             elif on_message is not None:
                 on_message(event_type, msg)

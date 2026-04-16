@@ -640,12 +640,16 @@ def test_market_channel_new_market_dispatches_dict(ws: PolymarketWebSocket):
         {
             "event_type": "new_market",
             "market": "0xnew",
+            "timestamp": "1776352804476",
         }
     ).decode()
     _get_on_message(session)(MagicMock(), msg)
     assert len(received) == 1
     assert isinstance(received[0], dict)
     assert received[0]["market"] == "0xnew"
+    # preprocess_dict converts keys and timestamps
+    assert received[0]["eventType"] == "new_market"
+    assert isinstance(received[0]["timestamp"], pd.Timestamp)
 
 
 def test_market_channel_fallback_on_message(ws: PolymarketWebSocket):

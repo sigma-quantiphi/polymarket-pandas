@@ -41,6 +41,9 @@ from polymarket_pandas.utils import (
 from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
 )
+from polymarket_pandas.utils import (
+    preprocess_dict as _preprocess_dict,
+)
 
 _MARKET_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 _USER_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/user"
@@ -226,6 +229,19 @@ class AsyncPolymarketWebSocket:
             int_datetime_unit=int_datetime_unit,
         )
 
+    def _preprocess_dict(self, data: dict, *, int_datetime_unit: str = "s") -> dict:
+        return _preprocess_dict(
+            data,
+            numeric_columns=self._numeric_columns,
+            str_datetime_columns=self._str_datetime_columns,
+            int_datetime_columns=self._int_datetime_columns,
+            ms_int_datetime_columns=self._ms_int_datetime_columns,
+            bool_columns=self._bool_columns,
+            drop_columns=self._drop_columns,
+            json_columns=self._json_columns,
+            int_datetime_unit=int_datetime_unit,
+        )
+
     # ── Channel methods ─────────────────────────────────────────────────
 
     def market_channel(
@@ -264,6 +280,7 @@ class AsyncPolymarketWebSocket:
         )
 
         preprocess = self._preprocess
+        preprocess_dict = self._preprocess_dict
 
         def _parse_single(msg):
             event_type = msg.get("event_type", "")
@@ -291,7 +308,7 @@ class AsyncPolymarketWebSocket:
                 return event_type, preprocess(pd.DataFrame([msg]), int_datetime_unit="ms")
 
             elif event_type in ("new_market", "market_resolved"):
-                return event_type, msg
+                return event_type, preprocess_dict(msg, int_datetime_unit="ms")
 
             return event_type, msg
 

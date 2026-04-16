@@ -219,6 +219,7 @@ def preprocess_dict(
     bool_columns: tuple = DEFAULT_BOOL_COLUMNS,
     drop_columns: tuple = DEFAULT_DROP_COLUMNS,
     json_columns: tuple = DEFAULT_JSON_COLUMNS,
+    int_datetime_unit: str = "s",
 ) -> dict:
     """Apply the same type coercion as ``preprocess_dataframe`` to a single dict.
 
@@ -258,7 +259,7 @@ def preprocess_dict(
         val = data.get(key)
         if isinstance(val, (int, float)):
             try:
-                data[key] = pd.Timestamp(val, unit="s", tz="UTC")
+                data[key] = pd.Timestamp(val, unit=int_datetime_unit, tz="UTC")
             except Exception:
                 pass
 
