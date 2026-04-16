@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.5] — 2026-04-16
+
+### Fixed
+- **WebSocket timestamp unit** — market channel timestamps are milliseconds (13 digits), not seconds. All `_preprocess` calls in market channel now pass `int_datetime_unit="ms"`. Previously produced year-58260 datetimes.
+
+---
+
 ## [0.8.4] — 2026-04-16
 
 ### Fixed

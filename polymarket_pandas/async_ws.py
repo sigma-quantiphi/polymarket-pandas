@@ -277,16 +277,18 @@ class AsyncPolymarketWebSocket:
                     msg, record_path="asks", meta=orderbook_meta, errors="ignore"
                 )
                 asks["side"] = "asks"
-                return event_type, preprocess(pd.concat([bids, asks], ignore_index=True))
+                return event_type, preprocess(
+                    pd.concat([bids, asks], ignore_index=True), int_datetime_unit="ms"
+                )
 
             elif event_type == "price_change":
                 data = pd.json_normalize(
                     [msg], record_path="price_changes", meta=["market", "timestamp"]
                 )
-                return event_type, preprocess(data)
+                return event_type, preprocess(data, int_datetime_unit="ms")
 
             elif event_type in ("last_trade_price", "best_bid_ask", "tick_size_change"):
-                return event_type, preprocess(pd.DataFrame([msg]))
+                return event_type, preprocess(pd.DataFrame([msg]), int_datetime_unit="ms")
 
             elif event_type in ("new_market", "market_resolved"):
                 return event_type, msg

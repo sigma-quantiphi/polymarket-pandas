@@ -266,26 +266,28 @@ class PolymarketWebSocket:
                     msg, record_path="asks", meta=orderbook_meta, errors="ignore"
                 )
                 asks["side"] = "asks"
-                df = self._preprocess(pd.concat([bids, asks], ignore_index=True))
+                df = self._preprocess(
+                    pd.concat([bids, asks], ignore_index=True), int_datetime_unit="ms"
+                )
                 self._dispatch(on_book, on_message, event_type, df)
 
             elif event_type == "price_change":
                 data = pd.json_normalize(
                     [msg], record_path="price_changes", meta=["market", "timestamp"]
                 )
-                df = self._preprocess(data)
+                df = self._preprocess(data, int_datetime_unit="ms")
                 self._dispatch(on_price_change, on_message, event_type, df)
 
             elif event_type == "last_trade_price":
-                df = self._preprocess(pd.DataFrame([msg]))
+                df = self._preprocess(pd.DataFrame([msg]), int_datetime_unit="ms")
                 self._dispatch(on_last_trade_price, on_message, event_type, df)
 
             elif event_type == "best_bid_ask":
-                df = self._preprocess(pd.DataFrame([msg]))
+                df = self._preprocess(pd.DataFrame([msg]), int_datetime_unit="ms")
                 self._dispatch(on_best_bid_ask, on_message, event_type, df)
 
             elif event_type == "tick_size_change":
-                df = self._preprocess(pd.DataFrame([msg]))
+                df = self._preprocess(pd.DataFrame([msg]), int_datetime_unit="ms")
                 self._dispatch(on_tick_size_change, on_message, event_type, df)
 
             elif event_type == "new_market":
