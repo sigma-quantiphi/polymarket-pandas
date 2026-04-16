@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.7] — 2026-04-16
+
+### Changed
+- `preprocess_dict` now recursively preprocesses nested dicts and lists of dicts — e.g. `feeSchedule.taker_only` → `feeSchedule.takerOnly`, `event_message` keys renamed, nested numeric strings coerced.
+
+---
+
 ## [0.8.6] — 2026-04-16
 
 ### Added

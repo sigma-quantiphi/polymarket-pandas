@@ -226,6 +226,8 @@ def preprocess_dict(
     Converts numeric strings to ``float``, ISO-8601 timestamps to
     ``pd.Timestamp``, boolean-ish strings to ``bool``, and JSON-encoded
     strings to Python objects. Drops ``icon``/``image`` keys.
+
+    Recursively preprocesses nested dicts and lists of dicts.
     """
     # snake_case → camelCase keys
     data = {snake_to_camel(k): v for k, v in data.items()}
@@ -277,6 +279,23 @@ def preprocess_dict(
         val = data.get(key)
         if isinstance(val, str):
             data[key] = val.lower() not in ("false", "0", "")
+
+    # Recurse into nested dicts and lists of dicts
+    _kw = dict(
+        numeric_columns=numeric_columns,
+        str_datetime_columns=str_datetime_columns,
+        int_datetime_columns=int_datetime_columns,
+        ms_int_datetime_columns=ms_int_datetime_columns,
+        bool_columns=bool_columns,
+        drop_columns=drop_columns,
+        json_columns=json_columns,
+        int_datetime_unit=int_datetime_unit,
+    )
+    for key, val in data.items():
+        if isinstance(val, dict):
+            data[key] = preprocess_dict(val, **_kw)
+        elif isinstance(val, list) and val and isinstance(val[0], dict):
+            data[key] = [preprocess_dict(item, **_kw) for item in val]
 
     return data
 
