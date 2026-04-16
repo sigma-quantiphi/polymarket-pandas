@@ -1893,10 +1893,16 @@ def test_market_schema_validates_good_data():
 def test_orderbook_schema_validates_good_data():
     from polymarket_pandas.schemas import OrderbookSchema
 
+    row = {
+        "market": "0xabc",
+        "assetId": "tok1",
+        "timestamp": "1700000000",
+        "hash": "0x1",
+    }
     df = pd.DataFrame(
         [
-            {"price": 0.5, "size": 100.0, "side": "bids", "market": "0xabc", "assetId": "tok1", "timestamp": "1700000000", "hash": "0x1"},
-            {"price": 0.6, "size": 200.0, "side": "asks", "market": "0xabc", "assetId": "tok1", "timestamp": "1700000000", "hash": "0x1"},
+            {"price": 0.5, "size": 100.0, "side": "bids", **row},
+            {"price": 0.6, "size": 200.0, "side": "asks", **row},
         ]
     )
     validated = OrderbookSchema.validate(df)
