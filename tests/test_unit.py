@@ -843,6 +843,7 @@ def _mock_web3(ctf_client, monkeypatch):
             "splitPosition",
             "mergePositions",
             "redeemPositions",
+            "convertPositions",
             "approve",
         ):
             fn = getattr(contract.functions, fn_name, MagicMock())
@@ -999,6 +1000,35 @@ def test_send_ctf_tx_no_wait(ctf_client: PolymarketPandas, monkeypatch):
     assert "blockNumber" not in result
 
 
+# ── convert_positions ─────────────────────────────────────────────────────
+
+
+def test_convert_positions(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.convert_positions(STUB_CONDITION_ID, index_set=31, amount=1_000_000)
+    nr.functions.convertPositions.assert_called_once()
+    assert result["status"] == 1
+    assert "txHash" in result
+
+
+def test_convert_positions_amount_usdc(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    result = ctf_client.convert_positions(STUB_CONDITION_ID, index_set=7, amount_usdc=5.0)
+    nr.functions.convertPositions.assert_called_once()
+    assert result["status"] == 1
+
+
+def test_convert_positions_estimate(ctf_client: PolymarketPandas, monkeypatch):
+    ct, nr, _ = _mock_web3(ctf_client, monkeypatch)
+    ctf_client._w3.eth.get_balance.return_value = 10**18
+    result = ctf_client.convert_positions(
+        STUB_CONDITION_ID, index_set=31, amount=1_000_000, estimate=True
+    )
+    ctf_client._w3.eth.send_raw_transaction.assert_not_called()
+    assert result["gas"] == 200_000
+    assert isinstance(result["costMatic"], float)
+
+
 # ── batch_ctf_ops ────────────────────────────────────────────────────────
 
 
@@ -1018,7 +1048,7 @@ def _proxy_ctf_client(monkeypatch):
     # Proxy call tx data must be real hex
     for contract_attr in ("_ct_contract", "_nr_contract"):
         contract = getattr(c, contract_attr)
-        for fn_name in ("splitPosition", "mergePositions", "redeemPositions"):
+        for fn_name in ("splitPosition", "mergePositions", "redeemPositions", "convertPositions"):
             getattr(contract.functions, fn_name).return_value.build_transaction.return_value = {
                 "data": "0x" + "ab" * 32,
             }

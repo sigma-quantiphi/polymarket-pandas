@@ -125,6 +125,17 @@ _NEG_RISK_ADAPTER_ABI = [
         "stateMutability": "nonpayable",
         "type": "function",
     },
+    {
+        "inputs": [
+            {"name": "_marketId", "type": "bytes32"},
+            {"name": "_indexSet", "type": "uint256"},
+            {"name": "_amount", "type": "uint256"},
+        ],
+        "name": "convertPositions",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
 ]
 
 _PROXY_FACTORY_ABI = [
@@ -636,9 +647,66 @@ class CTFMixin:
             return self._send_ctf_tx_relayed(to=target, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
+    def convert_positions(
+        self,
+        market_id: str | bytes,
+        index_set: int,
+        amount: int | None = None,
+        *,
+        amount_usdc: float | None = None,
+        auto_approve: bool = False,
+        estimate: bool = False,
+        wait: bool = True,
+        timeout: int = 120,
+    ) -> TransactionReceipt | GasEstimate:
+        """Convert NO tokens across outcomes into YES tokens + USDC collateral.
+
+        Calls ``convertPositions`` on the NegRiskAdapter contract.  This is
+        the key operation for neg-risk arbitrage: buy NO on all outcomes,
+        then convert (N-1 NOs → 1 YES + (N-2) USDC), then merge (YES+NO → 1
+        USDC).
+
+        Args:
+            market_id: Neg-risk market ID (hex string or bytes32).  This is
+                the event-level ``negRiskMarketID`` from market data, **not**
+                the ``conditionId``.
+            index_set: Bitmask of which outcomes have NO positions to convert.
+                Bit N set = outcome N's NO token is included.  E.g. for 5
+                outcomes converting all NOs: ``0b11111`` = ``31``.
+            amount: Token amount in base units (6 decimals).
+            amount_usdc: Convenience alternative — amount in USDC
+                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
+            auto_approve: If ``True``, check USDC.e allowance and send
+                an approval transaction if needed before converting.
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
+            wait: Wait for the transaction receipt.
+            timeout: Seconds to wait for the receipt.
+
+        Returns:
+            dict with ``txHash`` and, if *wait*, ``status``, ``blockNumber``,
+            ``gasUsed``.  If *estimate*, returns :class:`GasEstimate` instead.
+        """
+        self._require_ctf_auth()
+        self._require_web3()
+        amount = self._resolve_amount(amount, amount_usdc)
+        mid = self._to_bytes32(market_id)
+
+        tx = self._nr_contract.functions.convertPositions(
+            mid, index_set, amount
+        ).build_transaction(self._tx_params())
+
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if auto_approve:
+            self._ensure_allowance(NEG_RISK_ADAPTER, amount)
+        if self._has_proxy_wallet():
+            return self._send_ctf_tx_relayed(to=NEG_RISK_ADAPTER, tx_data=tx)
+        return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
+
     # ── Batch operations ─────────────────────────────────────────────
 
-    _VALID_OPS = ("split", "merge", "redeem")
+    _VALID_OPS = ("split", "merge", "redeem", "convert")
 
     def _build_ctf_call(self, op: dict) -> tuple[str, bytes, str | None, int]:
         """Build a single CTF call for use in a batch proxy envelope.
@@ -653,6 +721,17 @@ class CTFMixin:
         cid = self._to_bytes32(op["condition_id"])
         neg_risk = bool(op.get("neg_risk", False))
         target = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
+
+        if op_name == "convert":
+            amount = self._resolve_amount(op.get("amount"), op.get("amount_usdc"))
+            index_set = op.get("index_set")
+            if index_set is None:
+                raise ValueError("convert op requires 'index_set' (bitmask of NO outcomes).")
+            mid = self._to_bytes32(op.get("market_id") or op["condition_id"])
+            tx = self._nr_contract.functions.convertPositions(
+                mid, int(index_set), amount
+            ).build_transaction(self._tx_params())
+            return NEG_RISK_ADAPTER, bytes.fromhex(tx["data"][2:]), NEG_RISK_ADAPTER, amount
 
         if op_name in ("split", "merge"):
             amount = self._resolve_amount(op.get("amount"), op.get("amount_usdc"))
