@@ -540,6 +540,40 @@ def test_market_channel_book_event(ws: PolymarketWebSocket):
     assert pd.api.types.is_numeric_dtype(df["price"])
 
 
+def test_market_channel_initial_dump_array(ws: PolymarketWebSocket):
+    """Server sends a JSON array of book snapshots on initial_dump — each is dispatched."""
+    received = []
+    session = ws.market_channel(
+        asset_ids=["tok1", "tok2"],
+        on_book=lambda df: received.append(df),
+    )
+    books = [
+        {
+            "event_type": "book",
+            "market": "0xabc",
+            "asset_id": "tok1",
+            "timestamp": "1700000000",
+            "hash": "0x1",
+            "bids": [{"price": "0.45", "size": "100"}],
+            "asks": [{"price": "0.55", "size": "200"}],
+        },
+        {
+            "event_type": "book",
+            "market": "0xdef",
+            "asset_id": "tok2",
+            "timestamp": "1700000001",
+            "hash": "0x2",
+            "bids": [{"price": "0.30", "size": "50"}],
+            "asks": [{"price": "0.70", "size": "60"}],
+        },
+    ]
+    msg = orjson.dumps(books).decode()
+    _get_on_message(session)(MagicMock(), msg)
+    assert len(received) == 2
+    assert isinstance(received[0], pd.DataFrame)
+    assert isinstance(received[1], pd.DataFrame)
+
+
 def test_market_channel_price_change(ws: PolymarketWebSocket):
     received = []
     session = ws.market_channel(
@@ -1859,7 +1893,12 @@ def test_market_schema_validates_good_data():
 def test_orderbook_schema_validates_good_data():
     from polymarket_pandas.schemas import OrderbookSchema
 
-    df = pd.DataFrame([{"price": 0.5, "size": 100.0}, {"price": 0.6, "size": 200.0}])
+    df = pd.DataFrame(
+        [
+            {"price": 0.5, "size": 100.0, "side": "bids", "market": "0xabc", "assetId": "tok1", "timestamp": "1700000000", "hash": "0x1"},
+            {"price": 0.6, "size": 200.0, "side": "asks", "market": "0xabc", "assetId": "tok1", "timestamp": "1700000000", "hash": "0x1"},
+        ]
+    )
     validated = OrderbookSchema.validate(df)
     assert len(validated) == 2
 

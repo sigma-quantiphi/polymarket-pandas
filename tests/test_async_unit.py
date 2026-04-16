@@ -209,6 +209,42 @@ def test_async_ws_market_channel_returns_session():
     assert isinstance(session, AsyncPolymarketWebSocketSession)
 
 
+def test_async_ws_market_channel_parses_array():
+    """market_channel _parse_fn handles JSON arrays (initial_dump snapshots)."""
+    import orjson
+
+    ws = AsyncPolymarketWebSocket()
+    session = ws.market_channel(asset_ids=["tok1", "tok2"])
+    books = [
+        {
+            "event_type": "book",
+            "market": "0xabc",
+            "asset_id": "tok1",
+            "timestamp": "1700000000",
+            "hash": "0x1",
+            "bids": [{"price": "0.45", "size": "100"}],
+            "asks": [{"price": "0.55", "size": "200"}],
+        },
+        {
+            "event_type": "book",
+            "market": "0xdef",
+            "asset_id": "tok2",
+            "timestamp": "1700000001",
+            "hash": "0x2",
+            "bids": [{"price": "0.30", "size": "50"}],
+            "asks": [{"price": "0.70", "size": "60"}],
+        },
+    ]
+    raw = orjson.dumps(books)
+    result = session._parse_fn(raw)
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert result[0][0] == "book"
+    assert isinstance(result[0][1], pd.DataFrame)
+    assert result[1][0] == "book"
+    assert isinstance(result[1][1], pd.DataFrame)
+
+
 def test_async_ws_user_channel_requires_creds():
     """user_channel raises without credentials."""
     ws = AsyncPolymarketWebSocket(api_key=None, api_secret=None, api_passphrase=None)

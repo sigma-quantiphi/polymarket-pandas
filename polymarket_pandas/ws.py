@@ -228,6 +228,10 @@ class PolymarketWebSocket:
         ``on_new_market`` / ``on_market_resolved``). Unhandled event types
         fall through to ``on_message``.
 
+        Book events dispatch ``DataFrame[OrderbookSchema]`` with columns
+        ``price``, ``size``, ``side``, ``market``, ``assetId``, ``timestamp``,
+        ``hash``, and optional ``minOrderSize``, ``tickSize``, ``negRisk``.
+
         Args:
             asset_ids: CLOB token IDs to subscribe to.
             level: Order-book depth level (1 or 2).
@@ -250,10 +254,7 @@ class PolymarketWebSocket:
             ws.send(orjson.dumps(sub))
             self._ping_thread(ws, ping_interval)
 
-        def _on_message(ws, raw: str):
-            if raw == "PONG":
-                return
-            msg = orjson.loads(raw)
+        def _handle_single(ws, msg):
             event_type = msg.get("event_type", "")
 
             if event_type == "book":
@@ -296,6 +297,16 @@ class PolymarketWebSocket:
             elif on_message is not None:
                 on_message(event_type, msg)
 
+        def _on_message(ws, raw: str):
+            if raw == "PONG":
+                return
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                for item in data:
+                    _handle_single(ws, item)
+            else:
+                _handle_single(ws, data)
+
         app = WebSocketApp(
             _MARKET_URL,
             on_open=_on_open,
@@ -319,6 +330,9 @@ class PolymarketWebSocket:
         """Open an authenticated user WebSocket for trade and order updates.
 
         Requires L2 API credentials (api_key, api_secret, api_passphrase).
+
+        Trade events dispatch ``DataFrame[ClobTradeSchema]``.
+        Order events dispatch ``DataFrame[ActiveOrderSchema]``.
 
         Args:
             markets: Condition IDs to monitor for the authenticated user.
@@ -346,10 +360,7 @@ class PolymarketWebSocket:
             ws.send(orjson.dumps(sub))
             self._ping_thread(ws, ping_interval)
 
-        def _on_message(ws, raw: str):
-            if raw == "PONG":
-                return
-            msg = orjson.loads(raw)
+        def _handle_single(ws, msg):
             event_type = msg.get("event_type", "")
 
             if event_type == "trade":
@@ -362,6 +373,16 @@ class PolymarketWebSocket:
 
             elif on_message is not None:
                 on_message(event_type, msg)
+
+        def _on_message(ws, raw: str):
+            if raw == "PONG":
+                return
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                for item in data:
+                    _handle_single(ws, item)
+            else:
+                _handle_single(ws, data)
 
         app = WebSocketApp(
             _USER_URL,
@@ -388,11 +409,7 @@ class PolymarketWebSocket:
         See: https://docs.polymarket.com/api-reference/wss
         """
 
-        def _on_message(ws, raw: str):
-            if raw == "ping":
-                ws.send("pong")
-                return
-            msg = orjson.loads(raw)
+        def _handle_single(ws, msg):
             event_type = msg.get("event_type", "")
 
             if event_type == "sport_result":
@@ -400,6 +417,17 @@ class PolymarketWebSocket:
                 self._dispatch(on_sport_result, on_message, event_type, df)
             elif on_message is not None:
                 on_message(event_type, msg)
+
+        def _on_message(ws, raw: str):
+            if raw == "ping":
+                ws.send("pong")
+                return
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                for item in data:
+                    _handle_single(ws, item)
+            else:
+                _handle_single(ws, data)
 
         app = WebSocketApp(
             _SPORTS_URL,
@@ -439,10 +467,7 @@ class PolymarketWebSocket:
             ws.send(sub)
             self._ping_thread(ws, ping_interval)
 
-        def _on_message(ws, raw: str):
-            if raw == "PONG":
-                return
-            msg = orjson.loads(raw)
+        def _handle_single(ws, msg):
             topic = msg.get("topic", "")
             payload = msg.get("payload", msg)
             if topic == "crypto_prices":
@@ -457,6 +482,16 @@ class PolymarketWebSocket:
                 self._dispatch(on_comment, on_message, topic, payload)
             elif on_message is not None:
                 on_message(topic, msg)
+
+        def _on_message(ws, raw: str):
+            if raw == "PONG":
+                return
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                for item in data:
+                    _handle_single(ws, item)
+            else:
+                _handle_single(ws, data)
 
         app = WebSocketApp(
             _RTDS_URL,

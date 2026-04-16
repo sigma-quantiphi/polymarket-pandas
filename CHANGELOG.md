@@ -9,6 +9,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.4] — 2026-04-16
+
+### Fixed
+- **WebSocket JSON array crash** — all channels (`market_channel`, `user_channel`, `sports_channel`, `rtds_channel`) now handle JSON arrays from the server (e.g. `initial_dump` book snapshots). Previously, array messages caused `AttributeError: 'list' object has no attribute 'get'` in both sync and async WebSocket clients.
+
+### Changed
+- **`OrderbookSchema`** — added `side`, `market`, `assetId`, `timestamp`, `hash` fields to match what `get_orderbook` / `get_orderbooks` and WebSocket book events actually return. Previously only declared `price` and `size`.
+- **`CurrentRewardSchema`**, **`RewardsMarketMultiSchema`**, **`RewardsMarketSchema`** — expand-only fields (`rewardsConfigId`, `tokensTokenId`, etc.) now use `required=False` so they pass validation both with and without `expand_rewards_config=True` / `expand_tokens=True`.
+- WebSocket `market_channel` docstrings now reference `DataFrame[OrderbookSchema]`; `user_channel` docstrings reference `DataFrame[ClobTradeSchema]` / `DataFrame[ActiveOrderSchema]`.
+
+---
+
 ## [0.8.3] — 2026-04-16
 
 ### Added

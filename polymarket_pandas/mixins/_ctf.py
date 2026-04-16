@@ -692,9 +692,9 @@ class CTFMixin:
         amount = self._resolve_amount(amount, amount_usdc)
         mid = self._to_bytes32(market_id)
 
-        tx = self._nr_contract.functions.convertPositions(
-            mid, index_set, amount
-        ).build_transaction(self._tx_params())
+        tx = self._nr_contract.functions.convertPositions(mid, index_set, amount).build_transaction(
+            self._tx_params()
+        )
 
         if estimate:
             return self.estimate_ctf_tx(tx)

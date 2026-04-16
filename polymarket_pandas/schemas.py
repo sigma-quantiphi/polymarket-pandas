@@ -170,13 +170,18 @@ class TeamSchema(_Lenient):
 
 
 class OrderbookSchema(_Lenient):
-    """Schema for ``get_orderbook`` / ``get_orderbooks``.
+    """Schema for ``get_orderbook`` / ``get_orderbooks`` and WebSocket book events.
 
     Source: ``GET clob.polymarket.com/book``
     """
 
     price: float = pa.Field(ge=0, le=1)
     size: float = pa.Field(ge=0)
+    side: str = pa.Field(isin=["bids", "asks"])
+    market: str | None = pa.Field(nullable=True)
+    assetId: str | None = pa.Field(nullable=True)
+    timestamp: str | None = pa.Field(nullable=True)
+    hash: str | None = pa.Field(nullable=True)
 
 
 class ClobTradeSchema(_Lenient):
@@ -588,7 +593,7 @@ class CurrentRewardSchema(_Lenient):
     nativeDailyRate: float | None = pa.Field(nullable=True)
     totalDailyRate: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
+    rewardsConfigId: float | None = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)
@@ -624,7 +629,7 @@ class RewardsMarketMultiSchema(_Lenient):
     tokensOutcome: str | None = pa.Field(nullable=True)
     tokensPrice: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
+    rewardsConfigId: float | None = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)
@@ -655,7 +660,7 @@ class RewardsMarketSchema(_Lenient):
     tokensOutcome: str | None = pa.Field(nullable=True)
     tokensPrice: float | None = pa.Field(nullable=True)
     # ── Expanded rewardsConfig fields (present when expand_rewards_config=True)
-    rewardsConfigId: pd.Int64Dtype = pa.Field(nullable=True)
+    rewardsConfigId: float | None = pa.Field(nullable=True)
     rewardsConfigAssetAddress: str | None = pa.Field(nullable=True)
     rewardsConfigStartDate: str | None = pa.Field(nullable=True)
     rewardsConfigEndDate: str | None = pa.Field(nullable=True)

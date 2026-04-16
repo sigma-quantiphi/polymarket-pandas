@@ -118,11 +118,21 @@ class AsyncPolymarketWebSocketSession:
                         continue
                     if self._parse_fn:
                         result = self._parse_fn(raw)
-                        if result is not None:
+                        if result is None:
+                            continue
+                        if isinstance(result, list):
+                            for item in result:
+                                if item is not None:
+                                    yield item
+                        else:
                             yield result
                     else:
                         msg = orjson.loads(raw)
-                        yield msg.get("event_type", ""), msg
+                        if isinstance(msg, list):
+                            for item in msg:
+                                yield item.get("event_type", ""), item
+                        else:
+                            yield msg.get("event_type", ""), msg
                     delay = 1  # reset backoff on successful message
             except (
                 websockets.ConnectionClosed,
@@ -233,6 +243,10 @@ class AsyncPolymarketWebSocket:
         Returns an ``AsyncPolymarketWebSocketSession`` that yields
         ``(event_type, payload)`` tuples via ``async for``.
 
+        Book events yield ``("book", DataFrame[OrderbookSchema])`` with columns
+        ``price``, ``size``, ``side``, ``market``, ``assetId``, ``timestamp``,
+        ``hash``, and optional ``minOrderSize``, ``tickSize``, ``negRisk``.
+
         Args:
             asset_ids: CLOB token IDs to subscribe to.
             level: Order-book depth level (1 or 2).
@@ -251,8 +265,7 @@ class AsyncPolymarketWebSocket:
 
         preprocess = self._preprocess
 
-        def _parse(raw):
-            msg = orjson.loads(raw)
+        def _parse_single(msg):
             event_type = msg.get("event_type", "")
 
             if event_type == "book":
@@ -280,6 +293,12 @@ class AsyncPolymarketWebSocket:
 
             return event_type, msg
 
+        def _parse(raw):
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                return [_parse_single(item) for item in data]
+            return _parse_single(data)
+
         return AsyncPolymarketWebSocketSession(
             _url=_MARKET_URL,
             _on_open_msg=sub,
@@ -299,6 +318,9 @@ class AsyncPolymarketWebSocket:
 
         Requires L2 API credentials. Yields ``(event_type, payload)`` tuples
         where event_type is ``"trade"`` or ``"order"``.
+
+        Trade events yield ``("trade", DataFrame[ClobTradeSchema])``.
+        Order events yield ``("order", DataFrame[ActiveOrderSchema])``.
 
         Args:
             markets: Condition IDs to monitor.
@@ -333,12 +355,17 @@ class AsyncPolymarketWebSocket:
 
         preprocess = self._preprocess
 
-        def _parse(raw):
-            msg = orjson.loads(raw)
+        def _parse_single(msg):
             event_type = msg.get("event_type", "")
             if event_type in ("trade", "order"):
                 return event_type, preprocess(pd.DataFrame([msg]))
             return event_type, msg
+
+        def _parse(raw):
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                return [_parse_single(item) for item in data]
+            return _parse_single(data)
 
         return AsyncPolymarketWebSocketSession(
             _url=_USER_URL,
@@ -360,12 +387,17 @@ class AsyncPolymarketWebSocket:
         """
         preprocess = self._preprocess
 
-        def _parse(raw):
-            msg = orjson.loads(raw)
+        def _parse_single(msg):
             event_type = msg.get("event_type", "")
             if event_type == "sport_result":
                 return event_type, preprocess(pd.DataFrame([msg]))
             return event_type, msg
+
+        def _parse(raw):
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                return [_parse_single(item) for item in data]
+            return _parse_single(data)
 
         return AsyncPolymarketWebSocketSession(
             _url=_SPORTS_URL,
@@ -395,12 +427,17 @@ class AsyncPolymarketWebSocket:
         sub = orjson.dumps(subscriptions)
         preprocess = self._preprocess
 
-        def _parse(raw):
-            msg = orjson.loads(raw)
+        def _parse_single(msg):
             event_type = msg.get("type", msg.get("event_type", ""))
             if event_type in ("crypto_prices", "crypto_prices_chainlink", "comment"):
                 return event_type, preprocess(pd.DataFrame([msg]), int_datetime_unit="ms")
             return event_type, msg
+
+        def _parse(raw):
+            data = orjson.loads(raw)
+            if isinstance(data, list):
+                return [_parse_single(item) for item in data]
+            return _parse_single(data)
 
         return AsyncPolymarketWebSocketSession(
             _url=_RTDS_URL,
