@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.8] — 2026-04-17
+
+### Added
+- `GammaMixin.get_events_keyset` — keyset (cursor) pagination for Gamma events (`GET /events/keyset`). Mirrors `get_markets_keyset`: accepts `after_cursor` instead of `offset`, supports up to 500 rows/page, and returns an `EventsKeysetPage` TypedDict `{"data": DataFrame[EventSchema], "next_cursor": str | None}` (server omits `next_cursor` on the final page).
+- `PolymarketPandas.get_events_keyset_all` — auto-pages through `/events/keyset` by following `next_cursor` until omitted. Accepts the same filters plus `max_pages`.
+- `EventsKeysetPage` TypedDict re-exported from the top-level package.
+
+---
+
 ## [0.8.7] — 2026-04-16
 
 ### Changed

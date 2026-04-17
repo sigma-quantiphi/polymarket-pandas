@@ -14,7 +14,7 @@ from polymarket_pandas.schemas import (
     TagSchema,
     TeamSchema,
 )
-from polymarket_pandas.types import MarketsKeysetPage
+from polymarket_pandas.types import EventsKeysetPage, MarketsKeysetPage
 from polymarket_pandas.utils import _ts_to_iso, expand_dataframe
 
 
@@ -372,6 +372,174 @@ class GammaMixin:
             data["marketsClobTokenIds"] = data["marketsClobTokenIds"].astype(str)
         data.attrs["_raw_count"] = raw_count
         return data
+
+    def get_events_keyset(
+        self,
+        limit: int | None = 300,
+        after_cursor: str | None = None,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        id: list[int] | None = None,
+        slug: list[str] | None = None,
+        closed: bool | None = None,
+        live: bool | None = None,
+        featured: bool | None = None,
+        cyom: bool | None = None,
+        title_search: str | None = None,
+        liquidity_min: float | None = None,
+        liquidity_max: float | None = None,
+        volume_min: float | None = None,
+        volume_max: float | None = None,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        start_time_min: str | pd.Timestamp | None = None,
+        start_time_max: str | pd.Timestamp | None = None,
+        tag_id: list[int] | None = None,
+        tag_slug: str | None = None,
+        exclude_tag_id: list[int] | None = None,
+        related_tags: bool | None = None,
+        tag_match: str | None = None,
+        series_id: list[int] | None = None,
+        game_id: list[int] | None = None,
+        event_date: str | pd.Timestamp | None = None,
+        event_week: int | None = None,
+        featured_order: bool | None = None,
+        recurrence: str | None = None,
+        created_by: list[str] | None = None,
+        parent_event_id: int | None = None,
+        include_children: bool | None = None,
+        partner_slug: str | None = None,
+        include_chat: bool | None = None,
+        include_template: bool | None = None,
+        include_best_lines: bool | None = None,
+        locale: str | None = None,
+        expand_markets: bool | None = True,
+        expand_clob_token_ids: bool | None = True,
+        expand_outcomes: bool = False,
+    ) -> EventsKeysetPage:
+        """Fetch events using keyset (cursor) pagination.
+
+        Recommended over :meth:`get_events` for large scans — stable ordering
+        under concurrent writes, and up to 500 rows per page. Unlike
+        :meth:`get_events`, this endpoint does not accept ``offset``.
+
+        Args:
+            limit: Rows per page (1-500, default 300).
+            after_cursor: Opaque cursor from a previous response's
+                ``next_cursor``. Omit for the first page.
+            order: Sort fields (e.g. ``["volume", "liquidity"]``).
+            ascending: Sort direction (default ``True`` on the server).
+            id, slug: Filter by event IDs or slugs.
+            closed, live, featured, cyom: Boolean flag filters.
+            title_search: Case-insensitive substring match on event title.
+            liquidity_min / liquidity_max: Liquidity range filter.
+            volume_min / volume_max: Volume range filter.
+            start_date_min / start_date_max: Start-date range (ISO-8601 or
+                ``pd.Timestamp``; naive values are treated as UTC).
+            end_date_min / end_date_max: End-date range.
+            start_time_min / start_time_max: Start-time range.
+            tag_id: Tag IDs to include.
+            tag_slug: Filter by a single tag slug.
+            exclude_tag_id: Tag IDs to exclude (cannot overlap ``tag_id``).
+            related_tags: Include descendants of ``tag_id``.
+            tag_match: Tag matching strategy.
+            series_id, game_id: Filter by series or game IDs.
+            event_date: Filter by event date.
+            event_week: Filter by event week.
+            featured_order: Order results by featured status.
+            recurrence: Filter by recurrence pattern.
+            created_by: Filter by creator addresses.
+            parent_event_id: Filter by parent event ID.
+            include_children: Include child events.
+            partner_slug: Attach ``external_partners`` to matching events.
+            include_chat: Include ``Chats`` and ``Series.Chats`` relations.
+            include_template: Include ``Templates`` relation.
+            include_best_lines: Include ``BestLines`` relation.
+            locale: Response locale.
+            expand_markets: Inline ``markets[*]`` fields as ``markets<Field>``
+                columns via ``expand_dataframe`` (default ``True``).
+            expand_clob_token_ids: Explode multi-outcome markets to one row
+                per CLOB token (default ``True``). Ignored when
+                ``expand_outcomes=True``.
+            expand_outcomes: Explode parallel ``marketsOutcomes`` /
+                ``marketsOutcomePrices`` / ``marketsClobTokenIds`` lists
+                into one row per outcome with coerced numeric prices.
+
+        Returns:
+            :class:`EventsKeysetPage` — a ``TypedDict`` with
+            ``data: DataFrame[EventSchema]`` and optional ``next_cursor: str``
+            (server omits the cursor on the final page).
+
+        See: https://docs.polymarket.com/api-reference/events/list-events-keyset-pagination
+        """
+        data = self._request_gamma(
+            path="events/keyset",
+            params={
+                "limit": limit,
+                "after_cursor": after_cursor,
+                "order": order,
+                "ascending": ascending,
+                "id": id,
+                "slug": slug,
+                "closed": closed,
+                "live": live,
+                "featured": featured,
+                "cyom": cyom,
+                "title_search": title_search,
+                "liquidity_min": liquidity_min,
+                "liquidity_max": liquidity_max,
+                "volume_min": volume_min,
+                "volume_max": volume_max,
+                "start_date_min": _ts_to_iso(start_date_min),
+                "start_date_max": _ts_to_iso(start_date_max),
+                "end_date_min": _ts_to_iso(end_date_min),
+                "end_date_max": _ts_to_iso(end_date_max),
+                "start_time_min": _ts_to_iso(start_time_min),
+                "start_time_max": _ts_to_iso(start_time_max),
+                "tag_id": tag_id,
+                "tag_slug": tag_slug,
+                "exclude_tag_id": exclude_tag_id,
+                "related_tags": related_tags,
+                "tag_match": tag_match,
+                "series_id": series_id,
+                "game_id": game_id,
+                "event_date": _ts_to_iso(event_date),
+                "event_week": event_week,
+                "featured_order": featured_order,
+                "recurrence": recurrence,
+                "created_by": created_by,
+                "parent_event_id": parent_event_id,
+                "include_children": include_children,
+                "partner_slug": partner_slug,
+                "include_chat": include_chat,
+                "include_template": include_template,
+                "include_best_lines": include_best_lines,
+                "locale": locale,
+            },
+        )
+        events = data.get("events", []) if isinstance(data, dict) else []
+        next_cursor = data.get("next_cursor") if isinstance(data, dict) else None
+        raw_count = len(events)
+        df = pd.DataFrame(events)
+        if expand_markets or expand_clob_token_ids:
+            df = expand_dataframe(df, field="markets", column="markets")
+        df = self.preprocess_dataframe(df)
+        df = _coerce_outcome_prices(df, "marketsOutcomePrices")
+        if expand_outcomes and not df.empty:
+            df = _expand_outcomes(
+                df, "marketsOutcomes", "marketsOutcomePrices", "marketsClobTokenIds"
+            )
+        elif expand_clob_token_ids and not df.empty and "marketsClobTokenIds" in df.columns:
+            df = df.explode("marketsClobTokenIds", ignore_index=True)
+            df["marketsClobTokenIds"] = df["marketsClobTokenIds"].astype(str)
+        df = df.reset_index(drop=True)
+        df.attrs["_raw_count"] = raw_count
+        page: EventsKeysetPage = {"data": df}  # type: ignore[typeddict-item]
+        if next_cursor:
+            page["next_cursor"] = next_cursor
+        return page
 
     def get_event_by_id(
         self,

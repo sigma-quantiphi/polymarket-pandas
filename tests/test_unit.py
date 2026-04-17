@@ -360,6 +360,60 @@ def test_get_markets_keyset_all_follows_cursor(client: PolymarketPandas, httpx_m
     assert set(df["slug"]) == {"a", "b"}
 
 
+def test_get_events_keyset_returns_page(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    import re
+
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/events/keyset\?.*"),
+        json={
+            "events": [
+                {
+                    "id": 1,
+                    "slug": "kset-event",
+                    "title": "Keyset event",
+                    "active": True,
+                    "closed": False,
+                    "markets": [],
+                }
+            ],
+            "next_cursor": "CURSOR_E",
+        },
+    )
+    page = client.get_events_keyset(expand_markets=False, expand_clob_token_ids=False, limit=5)
+    assert isinstance(page, dict)
+    assert isinstance(page["data"], pd.DataFrame)
+    assert page["data"]["slug"].iloc[0] == "kset-event"
+    assert page["next_cursor"] == "CURSOR_E"
+
+
+def test_get_events_keyset_all_follows_cursor(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    import re
+
+    # page 1: has next_cursor
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/events/keyset\?.*"),
+        json={
+            "events": [
+                {"id": 1, "slug": "a", "closed": False, "markets": []},
+            ],
+            "next_cursor": "PAGE2",
+        },
+    )
+    # page 2: no next_cursor — stops
+    httpx_mock.add_response(
+        url=re.compile(r"https://gamma-api\.polymarket\.com/events/keyset\?.*after_cursor=PAGE2.*"),
+        json={
+            "events": [
+                {"id": 2, "slug": "b", "closed": False, "markets": []},
+            ],
+        },
+    )
+    df = client.get_events_keyset_all(expand_markets=False, expand_clob_token_ids=False, limit=5)
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert set(df["slug"]) == {"a", "b"}
+
+
 def test_fetch_sports_event_filters_by_condition_id(
     client: PolymarketPandas, httpx_mock: HTTPXMock
 ):

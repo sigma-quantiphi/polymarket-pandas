@@ -867,6 +867,124 @@ class PolymarketPandas(
             expand_outcomes=expand_outcomes,
         )
 
+    def get_events_keyset_all(
+        self,
+        *,
+        max_pages: int | None = None,
+        limit: int | None = 300,
+        after_cursor: str | None = None,
+        order: list[str] | None = None,
+        ascending: bool | None = None,
+        id: list[int] | None = None,
+        slug: list[str] | None = None,
+        closed: bool | None = None,
+        live: bool | None = None,
+        featured: bool | None = None,
+        cyom: bool | None = None,
+        title_search: str | None = None,
+        liquidity_min: float | None = None,
+        liquidity_max: float | None = None,
+        volume_min: float | None = None,
+        volume_max: float | None = None,
+        start_date_min: str | pd.Timestamp | None = None,
+        start_date_max: str | pd.Timestamp | None = None,
+        end_date_min: str | pd.Timestamp | None = None,
+        end_date_max: str | pd.Timestamp | None = None,
+        start_time_min: str | pd.Timestamp | None = None,
+        start_time_max: str | pd.Timestamp | None = None,
+        tag_id: list[int] | None = None,
+        tag_slug: str | None = None,
+        exclude_tag_id: list[int] | None = None,
+        related_tags: bool | None = None,
+        tag_match: str | None = None,
+        series_id: list[int] | None = None,
+        game_id: list[int] | None = None,
+        event_date: str | pd.Timestamp | None = None,
+        event_week: int | None = None,
+        featured_order: bool | None = None,
+        recurrence: str | None = None,
+        created_by: list[str] | None = None,
+        parent_event_id: int | None = None,
+        include_children: bool | None = None,
+        partner_slug: str | None = None,
+        include_chat: bool | None = None,
+        include_template: bool | None = None,
+        include_best_lines: bool | None = None,
+        locale: str | None = None,
+        expand_markets: bool | None = True,
+        expand_clob_token_ids: bool | None = True,
+        expand_outcomes: bool = False,
+    ) -> pd.DataFrame:
+        """Auto-page through all events via keyset pagination.
+
+        Follows the server-supplied ``next_cursor`` until it is omitted (final
+        page) or ``max_pages`` is reached. Accepts the same filters as
+        :meth:`get_events_keyset` plus ``max_pages`` and a starting
+        ``after_cursor``.
+
+        Prefer this over :meth:`get_events_all` for bulk scans — it uses the
+        keyset endpoint (stable ordering, up to 500 rows/page) instead of
+        offset pagination.
+
+        Returns:
+            pd.DataFrame — concatenation of all pages' ``data`` frames.
+        """
+        pages: list[pd.DataFrame] = []
+        cursor = after_cursor
+        n = 0
+        while True:
+            page = self.get_events_keyset(
+                limit=limit,
+                after_cursor=cursor,
+                order=order,
+                ascending=ascending,
+                id=id,
+                slug=slug,
+                closed=closed,
+                live=live,
+                featured=featured,
+                cyom=cyom,
+                title_search=title_search,
+                liquidity_min=liquidity_min,
+                liquidity_max=liquidity_max,
+                volume_min=volume_min,
+                volume_max=volume_max,
+                start_date_min=start_date_min,
+                start_date_max=start_date_max,
+                end_date_min=end_date_min,
+                end_date_max=end_date_max,
+                start_time_min=start_time_min,
+                start_time_max=start_time_max,
+                tag_id=tag_id,
+                tag_slug=tag_slug,
+                exclude_tag_id=exclude_tag_id,
+                related_tags=related_tags,
+                tag_match=tag_match,
+                series_id=series_id,
+                game_id=game_id,
+                event_date=event_date,
+                event_week=event_week,
+                featured_order=featured_order,
+                recurrence=recurrence,
+                created_by=created_by,
+                parent_event_id=parent_event_id,
+                include_children=include_children,
+                partner_slug=partner_slug,
+                include_chat=include_chat,
+                include_template=include_template,
+                include_best_lines=include_best_lines,
+                locale=locale,
+                expand_markets=expand_markets,
+                expand_clob_token_ids=expand_clob_token_ids,
+                expand_outcomes=expand_outcomes,
+            )
+            pages.append(page["data"])
+            cursor = page.get("next_cursor")
+            n += 1
+            if not cursor or (max_pages is not None and n >= max_pages):
+                break
+        return pd.concat(pages, ignore_index=True) if pages else pd.DataFrame()
+
     def get_markets_all(
         self,
         *,

@@ -285,6 +285,15 @@ def test_get_events(events: pd.DataFrame) -> None:
     EventSchema.validate(events)
 
 
+def test_get_events_keyset(client: PolymarketPandas) -> None:
+    page = client.get_events_keyset(limit=25, closed=False)
+    assert isinstance(page, dict)
+    df = page["data"]
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    EventSchema.validate(df)
+
+
 def test_get_event_by_id(client: PolymarketPandas, event_id: int) -> None:
     result = client.get_event_by_id(event_id)
     assert isinstance(result, dict)

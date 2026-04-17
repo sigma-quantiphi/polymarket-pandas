@@ -16,6 +16,7 @@ from polymarket_pandas.schemas import (
     BuilderTradeSchema,
     ClobTradeSchema,
     CurrentRewardSchema,
+    EventSchema,
     MarketSchema,
     RewardsMarketMultiSchema,
     RewardsMarketSchema,
@@ -106,6 +107,16 @@ class MarketsKeysetPage(TypedDict, total=False):
     """
 
     data: DataFrame[MarketSchema]
+    next_cursor: str
+
+
+class EventsKeysetPage(TypedDict, total=False):
+    """Keyset-paginated events response (Gamma ``/events/keyset``).
+
+    ``next_cursor`` is omitted by the server on the final page.
+    """
+
+    data: DataFrame[EventSchema]
     next_cursor: str
 
 
@@ -361,6 +372,7 @@ __all__ = [
     "CancelOrdersResponse",
     "CurrentRewardsCursorPage",
     "CursorPage",
+    "EventsKeysetPage",
     "LastTradePrice",
     "MarketsKeysetPage",
     "OrdersCursorPage",
