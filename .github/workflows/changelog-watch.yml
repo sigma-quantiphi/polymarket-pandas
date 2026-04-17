@@ -34,12 +34,12 @@ jobs:
           FORCE_GUID: ${{ inputs.force_reprocess }}
       - name: Commit state if changed
         run: |
-          if git diff --quiet -- .github/changelog-seen.json; then
+          git add .github/changelog-seen.json
+          if git diff --cached --quiet; then
             echo "no state change"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/changelog-seen.json
           git commit -m "chore(changelog-watch): update seen GUIDs"
           git push
