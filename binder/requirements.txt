@@ -1,2 +1,2 @@
 polymarket-pandas>=0.6.21
-matplotlib>=3.8
+matplotlib>=3.10.9
