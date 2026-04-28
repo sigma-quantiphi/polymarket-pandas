@@ -13,12 +13,14 @@ import pandera.pandas as pa
 
 
 class PlaceOrderSchema(pa.DataFrameModel):
-    """Schema for signed-order DataFrames submitted to ``place_orders``.
+    """Schema for signed-V2-order DataFrames submitted to ``place_orders``.
 
-    Field constraints mirror the CLOB ``POST /orders`` request body.
+    Field constraints mirror the V2 CLOB ``POST /orders`` request body
+    (signed order: 11 fields + signature). ``nonce``, ``feeRateBps``,
+    ``taker``, and ``expiration`` were removed in V2.
     """
 
-    # ── Signed order fields (from build_order / API spec) ──────────────
+    # ── Signed order fields (from build_order / V2 API spec) ───────────
     salt: int = pa.Field(ge=0, description="Random salt for order uniqueness")
     maker: str = pa.Field(
         str_matches=r"^0x[0-9a-fA-F]{40}$",
@@ -27,10 +29,6 @@ class PlaceOrderSchema(pa.DataFrameModel):
     signer: str = pa.Field(
         str_matches=r"^0x[0-9a-fA-F]{40}$",
         description="Signer Ethereum address",
-    )
-    taker: str = pa.Field(
-        str_matches=r"^0x[0-9a-fA-F]{40}$",
-        description="Taker Ethereum address (0x0…0 for open orders)",
     )
     tokenId: str = pa.Field(str_length={"min_value": 1}, description="ERC-1155 token ID")
     makerAmount: str = pa.Field(
@@ -42,25 +40,35 @@ class PlaceOrderSchema(pa.DataFrameModel):
         description="Taker amount in fixed-math (6 decimals)",
     )
     side: str = pa.Field(isin=["BUY", "SELL"], description="Order side")
-    expiration: str = pa.Field(
+    signatureType: int = pa.Field(isin=[0, 1, 2], description="Signature type enum")
+    timestamp: str = pa.Field(
         str_matches=r"^\d+$",
-        description="Unix expiration timestamp (0 = GTC)",
+        description="Order creation time in milliseconds (replaces V1 nonce)",
     )
-    nonce: str = pa.Field(str_matches=r"^\d+$", description="Maker nonce")
-    feeRateBps: str = pa.Field(
-        str_matches=r"^\d+$",
-        description="Fee rate in basis points",
+    metadata: str = pa.Field(
+        str_matches=r"^0x[0-9a-fA-F]{64}$",
+        description="bytes32 hex string (zero by default)",
+    )
+    builder: str = pa.Field(
+        str_matches=r"^0x[0-9a-fA-F]{64}$",
+        description="bytes32 builder code (zero by default)",
     )
     signature: str = pa.Field(
         str_matches=r"^0x[0-9a-fA-F]+$",
         description="EIP-712 hex signature",
     )
-    signatureType: int = pa.Field(isin=[0, 1, 2], description="Signature type enum")
+    # ``expiration`` is V2 wire-body-only (NOT part of the signed struct).
+    # Optional — present for GTD orders, absent for GTC.
+    expiration: str | None = pa.Field(
+        nullable=True,
+        str_matches=r"^\d+$",
+        description="Optional GTD expiry (Unix seconds, wire-body only)",
+    )
 
     # ── Envelope fields added by submit_orders / build_and_submit ──────
     owner: str = pa.Field(description="API key of the order owner")
     orderType: str = pa.Field(
-        isin=["FOK", "GTC", "GTD"],
+        isin=["FOK", "GTC", "GTD", "FAK"],
         description="Order time-in-force type",
     )
     postOnly: bool | None = pa.Field(
@@ -91,15 +99,20 @@ class SubmitOrderSchema(pa.DataFrameModel):
         description="If True, reject order if it would immediately match (GTC/GTD only)",
     )
     orderType: str | None = pa.Field(
-        isin=["FOK", "GTC", "GTD"],
+        isin=["FOK", "GTC", "GTD", "FAK"],
         nullable=True,
         description="Time-in-force (default GTC)",
     )
-    expiration: object | None = pa.Field(nullable=True, description="Expiry (int/str/Timestamp)")
-    nonce: object | None = pa.Field(nullable=True, description="Order nonce")
     negRisk: object | None = pa.Field(nullable=True, description="Neg-risk flag")
     tickSize: float | None = pa.Field(nullable=True, gt=0, description="Tick size override")
-    feeRateBps: object | None = pa.Field(nullable=True, description="Fee rate bps override")
+    builderCode: object | None = pa.Field(
+        nullable=True,
+        description="Per-order V2 builder code (bytes32 hex)",
+    )
+    expiration: object | None = pa.Field(
+        nullable=True,
+        description="GTD expiration (int Unix seconds / ISO string / Timestamp)",
+    )
 
     class Config:
         strict = False

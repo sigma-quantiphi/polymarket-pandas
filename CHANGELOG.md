@@ -9,6 +9,64 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.0] — 2026-04-28
+
+**Polymarket CLOB V2 cutover release.** V2 went live on Polygon at ~11:00 UTC on 2026-04-28; V1 is no longer accessible. This release rewrites the trading path against the V2 EIP-712 domain, Order struct, exchange contracts, and collateral token (pUSD). Read endpoints (Gamma, Data, public CLOB, websockets) are unaffected.
+
+**Breaking changes — anyone building or signing orders MUST upgrade.** Pinning <0.9.0 against the V2 backend will produce signatures rejected by the exchange.
+
+### Changed
+- **EIP-712 order domain bumped to `version="2"`** with new V2 exchange addresses:
+  - `CTF_EXCHANGE = 0xE111180000d2663C0091e4f400237545B87B996B`
+  - `NEG_RISK_CTF_EXCHANGE = 0xe2222d279d744050d28e00520010520000310F59`
+- **Signed `Order` struct rewritten** to the V2 11-field layout: `salt, maker, signer, tokenId, makerAmount, takerAmount, side, signatureType, timestamp, metadata, builder`. Removed from the signed struct: `taker`, `expiration`, `nonce`, `feeRateBps`. Added: `timestamp` (uint256, ms), `metadata` (bytes32), `builder` (bytes32).
+- **Collateral migrated from USDC.e to pUSD** for `split_position` / `merge_positions` / `redeem_positions` / `convert_positions`. USDC.e remains the underlying asset for wrap/unwrap.
+- **`approve_collateral`** now defaults to approving pUSD; pass `token=USDC_E` to approve a different ERC-20.
+- **Builder attribution moved on-chain.** `place_order` / `place_orders` no longer attach `POLY_BUILDER_*` HMAC headers — attribution rides in the signed `builder` (bytes32) field. Builder HMAC plumbing is retained only for `get_builder_trades` reads.
+- **`PlaceOrderSchema` / `SubmitOrderSchema` / `SignedOrder`** updated to V2 wire shape (drop `nonce`/`feeRateBps`/`taker`; add `timestamp`/`metadata`/`builder`; `expiration` is now an optional non-signed wire field).
+- **`get_fee_rate`** is now a deprecation shim returning `0` — fees are no longer signed in V2.
+
+### Added
+- **`PolymarketPandas.builder_code`** dataclass field + `POLYMARKET_BUILDER_CODE` env var. Per-call override via `build_order(..., builder_code=...)`. Auto-padded to 32 bytes via `_normalize_builder_code`.
+- **`get_clob_market_info(condition_id)`** — V2 single-call replacement for tick / neg-risk / fee. `GET /clob-markets/{conditionId}`. TTL-cached.
+- **`get_builder_fee_rate(builder_code)`** — `GET /fees/builder-fees/{builder_code}`.
+- **`wrap_collateral` / `unwrap_collateral`** — wrap USDC.e → pUSD via `CollateralOnramp.wrap()` and unwrap via `CollateralOfframp.unwrap()`. Support `auto_approve` and `estimate`.
+- **`batch_ctf_ops`** now supports `"wrap"` and `"unwrap"` ops; allowance aggregation keyed by `(spender, token)`.
+- **`OrderType.FAK`** (fill-and-kill, distinct from FOK) accepted by both order schemas.
+- **`defer_exec`** envelope flag on `place_order`; `deferExec` column read by `place_orders`.
+- **`ClobMarketInfo`** TypedDict for the V2 `/clob-markets` response shape.
+
+### Removed
+- **V1 `/order` body fields** `nonce`, `feeRateBps`, `taker`, `expiration` from the signed struct (`expiration` retained as an optional wire-body field for GTD orders).
+- **`_request_clob_private(..., attribute=True)`** — flag is gone; builder attribution is no longer header-based.
+
+### Migration
+
+```python
+# v0.8.x — V1 (BROKEN against post-cutover backend)
+order = client.build_order(
+    "0x123...", 0.5, 100.0, "BUY",
+    fee_rate_bps=30, expiration=0, nonce=0,
+)
+
+# v0.9.0 — V2
+order = client.build_order(
+    "0x123...", 0.5, 100.0, "BUY",
+    builder_code="0x...",   # optional bytes32 attribution
+    expiration=1714000000,  # optional GTD; wire-body only, not signed
+)
+```
+
+If you previously held USDC.e on-chain, call `client.wrap_collateral(amount_usdc=100.0)` once to mint pUSD; subsequent `split_position` / `merge_positions` work against pUSD.
+
+### References
+
+- V2 migration guide: https://docs.polymarket.com/v2-migration
+- V2 contracts: https://docs.polymarket.com/resources/contracts
+- Reference implementation: https://github.com/Polymarket/py-clob-client-v2
+
+---
+
 ## [0.8.8] — 2026-04-17
 
 ### Added

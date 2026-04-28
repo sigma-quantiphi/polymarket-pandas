@@ -927,16 +927,21 @@ def _mock_web3(ctf_client, monkeypatch):
 
     ct = MagicMock()
     nr = MagicMock()
-    usdc = MagicMock()
+    pusd = MagicMock()
+    usdc_e = MagicMock()
+    onramp = MagicMock()
+    offramp = MagicMock()
 
     # Make build_transaction return a plain dict
-    for contract in (ct, nr, usdc):
+    for contract in (ct, nr, pusd, usdc_e, onramp, offramp):
         for fn_name in (
             "splitPosition",
             "mergePositions",
             "redeemPositions",
             "convertPositions",
             "approve",
+            "wrap",
+            "unwrap",
         ):
             fn = getattr(contract.functions, fn_name, MagicMock())
             fn.return_value.build_transaction.return_value = {"data": "0x"}
@@ -944,8 +949,13 @@ def _mock_web3(ctf_client, monkeypatch):
     ctf_client._w3 = mock_w3
     ctf_client._ct_contract = ct
     ctf_client._nr_contract = nr
-    ctf_client._usdc_contract = usdc
-    return ct, nr, usdc
+    ctf_client._pusd_contract = pusd
+    ctf_client._usdc_e_contract = usdc_e
+    ctf_client._onramp_contract = onramp
+    ctf_client._offramp_contract = offramp
+    # V2: default collateral is pUSD; tests that referenced the old
+    # ``usdc`` slot via the third return value now get the pUSD mock.
+    return ct, nr, pusd
 
 
 def test_split_position_standard(ctf_client: PolymarketPandas, monkeypatch):
@@ -1190,26 +1200,29 @@ def test_batch_ctf_ops_dataframe_input(monkeypatch):
 
 
 def test_batch_ctf_ops_aggregates_approvals(monkeypatch):
+    from polymarket_pandas.mixins._ctf import PUSD
+
     c, _, _ = _proxy_ctf_client(monkeypatch)
     # Current allowance is below the total so approval must fire exactly once
-    c._usdc_contract.functions.allowance.return_value.call.return_value = 0
-    ensure_calls: list[tuple[str, int]] = []
-    monkeypatch.setattr(
-        c,
-        "_ensure_allowance",
-        lambda spender, amount: ensure_calls.append((spender, amount)),
-    )
+    c._pusd_contract.functions.allowance.return_value.call.return_value = 0
+    ensure_calls: list[tuple[str, int, str]] = []
+
+    def _capture(spender, amount, *, token=None):
+        ensure_calls.append((spender, amount, token))
+
+    monkeypatch.setattr(c, "_ensure_allowance", _capture)
     ops = [
         {"op": "split", "condition_id": STUB_CONDITION_ID, "amount": 1_000_000, "neg_risk": False},
         {"op": "merge", "condition_id": STUB_CONDITION_ID, "amount": 2_000_000, "neg_risk": False},
         {"op": "redeem", "condition_id": STUB_CONDITION_ID},  # no approval
     ]
     c.batch_ctf_ops(ops, auto_approve=True)
-    # Single aggregated approval for CONDITIONAL_TOKENS spender
+    # Single aggregated approval for CONDITIONAL_TOKENS spender on pUSD
     assert len(ensure_calls) == 1
     assert ensure_calls[0] == (
         "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
         3_000_000,
+        PUSD,
     )
 
 
@@ -1324,7 +1337,6 @@ def test_build_order_salt_is_int(authed_client: PolymarketPandas):
         side="BUY",
         tick_size="0.01",
         neg_risk=False,
-        fee_rate_bps=0,
     )
     assert isinstance(order["salt"], int), f"salt should be int, got {type(order['salt'])}"
     assert isinstance(order["signatureType"], int)
@@ -1332,6 +1344,137 @@ def test_build_order_salt_is_int(authed_client: PolymarketPandas):
     assert isinstance(order["makerAmount"], str)
     assert isinstance(order["takerAmount"], str)
     assert isinstance(order["tokenId"], str)
+
+
+def test_build_order_v2_wire_shape(authed_client: PolymarketPandas):
+    """V2 build_order: no nonce/feeRateBps/taker; adds timestamp/metadata/builder.
+
+    ``expiration`` is V2 wire-body-only and absent on GTC orders (covered
+    separately by the GTD test).
+    """
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    # V1 fields fully removed
+    for legacy in ("nonce", "feeRateBps", "taker"):
+        assert legacy not in order, f"V2 wire body must not include legacy {legacy!r}"
+    # GTC default — no expiration on the wire
+    assert "expiration" not in order
+    # V2 fields present
+    for new_field in ("timestamp", "metadata", "builder"):
+        assert new_field in order, f"V2 wire body missing {new_field!r}"
+    # bytes32 fields are 0x-prefixed 32-byte hex
+    assert order["metadata"] == "0x" + "00" * 32
+    assert order["builder"] == "0x" + "00" * 32
+    # timestamp is a numeric millisecond string
+    assert order["timestamp"].isdigit() and int(order["timestamp"]) > 1_700_000_000_000
+
+
+def test_build_order_uses_v2_exchange_address(authed_client: PolymarketPandas):
+    """V2 EIP-712 signs against the new CTF Exchange contract."""
+    from polymarket_pandas.client import CTF_EXCHANGE, NEG_RISK_CTF_EXCHANGE
+
+    assert CTF_EXCHANGE == "0xE111180000d2663C0091e4f400237545B87B996B"
+    assert NEG_RISK_CTF_EXCHANGE == "0xe2222d279d744050d28e00520010520000310F59"
+
+
+def test_normalize_builder_code_pads_short_hex(authed_client: PolymarketPandas):
+    """Builder codes shorter than 32 bytes are left-padded with zeros."""
+    n = PolymarketPandas._normalize_builder_code
+    assert n(None) == "0x" + "00" * 32
+    assert n("") == "0x" + "00" * 32
+    # 16-byte builder ID gets left-padded
+    short = "0x" + "ab" * 16
+    expected = "0x" + "00" * 16 + "ab" * 16
+    assert n(short) == expected
+    # Already 32 bytes
+    full = "0x" + "cd" * 32
+    assert n(full) == full
+    # Without 0x prefix still works
+    assert n("ab" * 32) == "0x" + "ab" * 32
+
+
+def test_normalize_builder_code_rejects_invalid(authed_client: PolymarketPandas):
+    """Invalid builder codes raise ValueError before signing."""
+    with pytest.raises(ValueError, match="builder_code"):
+        PolymarketPandas._normalize_builder_code("0x" + "ab" * 33)  # too long
+    with pytest.raises(ValueError, match="builder_code"):
+        PolymarketPandas._normalize_builder_code("not-hex")
+
+
+def test_build_order_gtd_expiration_in_wire_body_only(authed_client: PolymarketPandas, monkeypatch):
+    """GTD orders surface `expiration` in the wire body but NOT in the signed struct.
+
+    V2 removed ``expiration`` from the EIP-712 signed Order, but the matching
+    engine still honors a top-level ``expiration`` field on the wire as a
+    soft cancel hint. To prove it's not signed, we pin both the salt and
+    timestamp; the signatures must then be byte-equal regardless of
+    expiration.
+    """
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+
+    # Pin the random salt — V2 build_order computes salt from time.time() *
+    # random.random(). Stubbing random.random to a constant yields a stable
+    # salt across both calls (paired with the timestamp_ms override).
+    monkeypatch.setattr("polymarket_pandas.client.random.random", lambda: 0.5)
+    monkeypatch.setattr("polymarket_pandas.client.time.time", lambda: 1_700_000_000.0)
+
+    common = dict(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+        timestamp_ms=1_700_000_000_000,
+    )
+    gtc = authed_client.build_order(**common)
+    gtd = authed_client.build_order(**common, expiration=1_800_000_000)
+
+    # GTC: no expiration field
+    assert "expiration" not in gtc
+    # GTD: expiration present as a string of Unix seconds
+    assert gtd.get("expiration") == "1800000000"
+    # Same salt + timestamp + everything else → identical EIP-712 signature.
+    # Proves expiration is excluded from the signed struct.
+    assert gtc["salt"] == gtd["salt"]
+    assert gtc["signature"] == gtd["signature"]
+
+
+def test_build_order_threads_builder_code(authed_client: PolymarketPandas):
+    """build_order uses per-call builder_code or self.builder_code."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    authed_client.builder_code = "0x" + "ee" * 32
+    # Per-call override wins over self.builder_code
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+        builder_code="0x" + "ff" * 32,
+    )
+    assert order["builder"] == "0x" + "ff" * 32
+    # Without per-call override, instance default applies
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    assert order["builder"] == "0x" + "ee" * 32
 
 
 # ── submit_orders (DataFrame) ──────────────────────────────────────────
@@ -1350,10 +1493,6 @@ def test_submit_orders_dataframe(authed_client: PolymarketPandas, httpx_mock: HT
     httpx_mock.add_response(
         url="https://clob.polymarket.com/tick-size?token_id=11111111111111111111",
         json={"minimum_tick_size": 0.01},
-    )
-    httpx_mock.add_response(
-        url="https://clob.polymarket.com/fee-rate?token_id=11111111111111111111",
-        json={"base_fee": 1000},
     )
     # Mock the batch /orders endpoint
     httpx_mock.add_response(
@@ -1395,10 +1534,6 @@ def test_submit_orders_post_only(authed_client: PolymarketPandas, httpx_mock: HT
     httpx_mock.add_response(
         url="https://clob.polymarket.com/tick-size?token_id=11111111111111111111",
         json={"minimum_tick_size": 0.01},
-    )
-    httpx_mock.add_response(
-        url="https://clob.polymarket.com/fee-rate?token_id=11111111111111111111",
-        json={"base_fee": 1000},
     )
     httpx_mock.add_response(
         url="https://clob.polymarket.com/orders",
@@ -1446,10 +1581,6 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
         url="https://clob.polymarket.com/tick-size?token_id=22222222222222222222",
         json={"minimum_tick_size": 0.01},
     )
-    httpx_mock.add_response(
-        url="https://clob.polymarket.com/fee-rate?token_id=22222222222222222222",
-        json={"base_fee": 0},
-    )
     # Two batch responses
     httpx_mock.add_response(
         url="https://clob.polymarket.com/orders",
@@ -1480,7 +1611,9 @@ def test_submit_orders_batches_over_15(authed_client: PolymarketPandas, httpx_mo
     assert len(second_batch) == 1
 
 
-# ── Builder attribution headers ──────────────────────────────────────────────
+# ── Builder attribution (V2) ─────────────────────────────────────────────────
+# In V2, POLY_BUILDER_* HMAC headers are deprecated for order placement.
+# Attribution is per-order via the signed `builder` (bytes32) field.
 
 
 _BUILDER_HEADERS = {
@@ -1491,10 +1624,10 @@ _BUILDER_HEADERS = {
 }
 
 
-def test_place_order_attaches_builder_headers_when_set(
+def test_place_order_does_not_attach_builder_hmac_in_v2(
     builder_client: PolymarketPandas, httpx_mock: HTTPXMock
 ):
-    """When builder creds are set, place_order attaches POLY_BUILDER_* headers."""
+    """V2: place_order never attaches POLY_BUILDER_* HMAC headers, even when set."""
     httpx_mock.add_response(
         url="https://clob.polymarket.com/order",
         json={"orderID": "0xabc", "status": "live"},
@@ -1507,54 +1640,32 @@ def test_place_order_attaches_builder_headers_when_set(
     req = next(r for r in httpx_mock.get_requests() if r.url.path == "/order")
     assert "POLY_API_KEY" in req.headers  # L2 still attached
     for h in _BUILDER_HEADERS:
-        assert h in req.headers, f"missing builder header {h}"
-    assert req.headers["POLY_BUILDER_API_KEY"] == "test-builder-api-key"
-    assert req.headers["POLY_BUILDER_PASSPHRASE"] == "test-builder-passphrase"
+        assert h not in req.headers, f"V2: builder HMAC header {h} must not appear"
 
 
-def test_place_order_no_builder_headers_when_unset(
-    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
-):
-    """Without builder creds, place_order sends only L2 headers."""
-    httpx_mock.add_response(
-        url="https://clob.polymarket.com/order",
-        json={"orderID": "0xabc", "status": "live"},
-    )
-    authed_client.place_order(
-        order={"fake": "signed-order"},
-        owner="test-api-key",
-        orderType="GTC",
-    )
-    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/order")
-    assert "POLY_API_KEY" in req.headers
-    for h in _BUILDER_HEADERS:
-        assert h not in req.headers, f"unexpected builder header {h}"
-
-
-def test_place_orders_attaches_builder_headers_when_set(
+def test_place_orders_does_not_attach_builder_hmac_in_v2(
     builder_client: PolymarketPandas, httpx_mock: HTTPXMock
 ):
-    """When builder creds are set, place_orders attaches POLY_BUILDER_* headers."""
+    """V2: place_orders never attaches POLY_BUILDER_* HMAC headers."""
     httpx_mock.add_response(
         url="https://clob.polymarket.com/orders",
         json=[{"orderID": "0xabc", "status": "live"}],
     )
-    # Build a minimal valid signed-order DataFrame matching PlaceOrderSchema.
+    # Minimal V2 signed-order DataFrame matching PlaceOrderSchema.
     orders_df = pd.DataFrame(
         [
             {
                 "salt": "1",
                 "maker": "0x" + "00" * 20,
                 "signer": "0x" + "00" * 20,
-                "taker": "0x" + "00" * 20,
                 "tokenId": "1" * 20,
                 "makerAmount": "1000000",
                 "takerAmount": "2000000",
-                "expiration": "0",
-                "nonce": "0",
-                "feeRateBps": "0",
                 "side": "BUY",
                 "signatureType": 1,
+                "timestamp": "1700000000000",
+                "metadata": "0x" + "00" * 32,
+                "builder": "0x" + "ee" * 32,
                 "signature": "0x" + "ab" * 32,
                 "owner": "test-api-key",
                 "orderType": "GTC",
@@ -1564,13 +1675,43 @@ def test_place_orders_attaches_builder_headers_when_set(
     builder_client.place_orders(orders_df)
     req = next(r for r in httpx_mock.get_requests() if r.url.path == "/orders")
     for h in _BUILDER_HEADERS:
-        assert h in req.headers, f"missing builder header {h}"
+        assert h not in req.headers, f"V2: builder HMAC header {h} must not appear on /orders"
+
+
+def test_submit_order_carries_builder_code_in_signed_body(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """V2: builder_code on the client lands in the signed order's `builder` field."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    authed_client.builder_code = "0x" + "cc" * 32
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=11111111111111111111",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=11111111111111111111",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/order",
+        json={"orderID": "0xabc", "status": "live"},
+    )
+    authed_client.submit_order("11111111111111111111", 0.50, 10.0, "BUY")
+    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/order")
+    body = orjson.loads(req.content)
+    assert body["order"]["builder"] == "0x" + "cc" * 32
+    # No V1 signed-only fields leaking through. expiration is permitted
+    # as a V2 wire-body field for GTD; submit_order's GTC default omits it.
+    for legacy in ("nonce", "feeRateBps", "taker"):
+        assert legacy not in body["order"]
+    assert "expiration" not in body["order"]
 
 
 def test_get_active_orders_does_not_attach_builder_headers(
     builder_client: PolymarketPandas, httpx_mock: HTTPXMock
 ):
-    """Non-order private endpoints (attribute=False default) skip builder headers."""
+    """Read endpoints stay on L2 only; builder HMAC is never attached here."""
     httpx_mock.add_response(
         url="https://clob.polymarket.com/data/orders",
         json={"data": [], "next_cursor": "LTE=", "count": 0, "limit": 100},
@@ -2101,29 +2242,31 @@ def test_get_user_trades_returns_cursor_page(
 # ── Order input validation schemas ────────────────────────────────────
 
 
+def _v2_signed_order_row(**overrides) -> dict:
+    """Helper: a minimal V2 signed-order dict matching PlaceOrderSchema."""
+    base = {
+        "salt": 12345,
+        "maker": "0x" + "ab" * 20,
+        "signer": "0x" + "cd" * 20,
+        "tokenId": "111222333",
+        "makerAmount": "5000000",
+        "takerAmount": "10000000",
+        "side": "BUY",
+        "signatureType": 1,
+        "timestamp": "1700000000000",
+        "metadata": "0x" + "00" * 32,
+        "builder": "0x" + "00" * 32,
+        "signature": "0xdeadbeef",
+        "owner": "my-api-key",
+        "orderType": "GTC",
+    }
+    base.update(overrides)
+    return base
+
+
 def test_place_order_schema_valid():
-    """PlaceOrderSchema accepts a well-formed signed-order DataFrame."""
-    df = pd.DataFrame(
-        [
-            {
-                "salt": 12345,
-                "maker": "0x" + "ab" * 20,
-                "signer": "0x" + "cd" * 20,
-                "taker": "0x" + "00" * 20,
-                "tokenId": "111222333",
-                "makerAmount": "5000000",
-                "takerAmount": "10000000",
-                "side": "BUY",
-                "expiration": "0",
-                "nonce": "0",
-                "feeRateBps": "30",
-                "signature": "0xdeadbeef",
-                "signatureType": 1,
-                "owner": "my-api-key",
-                "orderType": "GTC",
-            }
-        ]
-    )
+    """PlaceOrderSchema accepts a well-formed V2 signed-order DataFrame."""
+    df = pd.DataFrame([_v2_signed_order_row()])
     validated = PlaceOrderSchema.validate(df)
     assert len(validated) == 1
 
@@ -2132,27 +2275,7 @@ def test_place_order_schema_rejects_bad_side():
     """PlaceOrderSchema rejects invalid side values."""
     import pandera
 
-    df = pd.DataFrame(
-        [
-            {
-                "salt": 1,
-                "maker": "0x" + "ab" * 20,
-                "signer": "0x" + "cd" * 20,
-                "taker": "0x" + "00" * 20,
-                "tokenId": "111",
-                "makerAmount": "100",
-                "takerAmount": "200",
-                "side": "HOLD",
-                "expiration": "0",
-                "nonce": "0",
-                "feeRateBps": "0",
-                "signature": "0xaa",
-                "signatureType": 1,
-                "owner": "key",
-                "orderType": "GTC",
-            }
-        ]
-    )
+    df = pd.DataFrame([_v2_signed_order_row(side="HOLD")])
     with pytest.raises(pandera.errors.SchemaError):
         PlaceOrderSchema.validate(df)
 
@@ -2161,27 +2284,16 @@ def test_place_order_schema_rejects_bad_address():
     """PlaceOrderSchema rejects malformed Ethereum addresses."""
     import pandera
 
-    df = pd.DataFrame(
-        [
-            {
-                "salt": 1,
-                "maker": "not-an-address",
-                "signer": "0x" + "cd" * 20,
-                "taker": "0x" + "00" * 20,
-                "tokenId": "111",
-                "makerAmount": "100",
-                "takerAmount": "200",
-                "side": "BUY",
-                "expiration": "0",
-                "nonce": "0",
-                "feeRateBps": "0",
-                "signature": "0xaa",
-                "signatureType": 1,
-                "owner": "key",
-                "orderType": "GTC",
-            }
-        ]
-    )
+    df = pd.DataFrame([_v2_signed_order_row(maker="not-an-address")])
+    with pytest.raises(pandera.errors.SchemaError):
+        PlaceOrderSchema.validate(df)
+
+
+def test_place_order_schema_rejects_bad_builder_code():
+    """PlaceOrderSchema rejects builder values that aren't 32-byte hex."""
+    import pandera
+
+    df = pd.DataFrame([_v2_signed_order_row(builder="0xabcd")])
     with pytest.raises(pandera.errors.SchemaError):
         PlaceOrderSchema.validate(df)
 
@@ -2236,19 +2348,18 @@ def test_place_orders_rejects_over_15(authed_client: PolymarketPandas):
     """place_orders raises ValueError when given >15 orders."""
     df = pd.DataFrame(
         {
-            "salt": range(16),
+            "salt": list(range(16)),
             "maker": ["0x" + "ab" * 20] * 16,
             "signer": ["0x" + "cd" * 20] * 16,
-            "taker": ["0x" + "00" * 20] * 16,
             "tokenId": ["111"] * 16,
             "makerAmount": ["100"] * 16,
             "takerAmount": ["200"] * 16,
             "side": ["BUY"] * 16,
-            "expiration": ["0"] * 16,
-            "nonce": ["0"] * 16,
-            "feeRateBps": ["0"] * 16,
-            "signature": ["0xaa"] * 16,
             "signatureType": [1] * 16,
+            "timestamp": ["1700000000000"] * 16,
+            "metadata": ["0x" + "00" * 32] * 16,
+            "builder": ["0x" + "00" * 32] * 16,
+            "signature": ["0xaa"] * 16,
             "owner": ["key"] * 16,
             "orderType": ["GTC"] * 16,
         }

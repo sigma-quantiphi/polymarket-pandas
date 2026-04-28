@@ -15,6 +15,7 @@ from polymarket_pandas.schemas import (
 )
 from polymarket_pandas.types import (
     BuilderTradesCursorPage,
+    ClobMarketInfo,
     LastTradePrice,
     SamplingMarketsCursorPage,
     SimplifiedMarketsCursorPage,
@@ -66,22 +67,65 @@ class ClobPublicMixin:
         data = self._request_clob(path="neg-risk", params={"token_id": token_id})
         return bool(self._extract(data, "neg_risk"))
 
-    @instance_cache
-    def get_fee_rate(self, token_id: str | None = None) -> int:
-        """Get the base fee rate, optionally for a specific token.
+    def get_fee_rate(self, token_id: str | None = None) -> int:  # noqa: ARG002
+        """Deprecated in V2: fees are no longer signed into the order.
 
-        Results are cached per token_id for the lifetime of this client.
-
-        https://docs.polymarket.com/api-reference/clob/fee-rate
+        In CLOB V2 (cutover 2026-04-28), ``feeRateBps`` was removed from
+        the signed Order struct — operators determine the actual taker
+        fee at match time. Use :meth:`get_clob_market_info` to inspect
+        the current market fee schedule (``fd.r`` / ``fd.e`` /
+        ``fd.to``). This shim returns ``0`` so downstream callers that
+        still pass ``fee_rate_bps`` to legacy V1 code paths don't break.
 
         Args:
-            token_id: CLOB token ID. If ``None``, returns the global base fee.
+            token_id: CLOB token ID. Ignored — kept for signature compat.
 
         Returns:
-            int: The base fee in basis points.
+            int: Always ``0``.
         """
-        data = self._request_clob(path="fee-rate", params={"token_id": token_id})
-        return int(self._extract(data, "base_fee"))
+        return 0
+
+    @instance_cache(ttl=300)
+    def get_clob_market_info(self, condition_id: str) -> ClobMarketInfo:
+        """Fetch the V2 CLOB market info object (tokens / tick / neg-risk / fee).
+
+        Single-call replacement for the V1 trio
+        ``get_tick_size`` + ``get_neg_risk`` + ``get_fee_rate``. Results
+        are cached per ``condition_id`` with a 5-minute TTL.
+
+        https://docs.polymarket.com (V2; kebab-case path)
+
+        Args:
+            condition_id: Market condition ID (hex 0x-prefixed).
+
+        Returns:
+            ``ClobMarketInfo`` dict with abbreviated keys:
+              * ``mts`` (float): minimum tick size
+              * ``nr`` (bool): neg-risk flag
+              * ``fd`` (dict): fee details — ``r`` (rate), ``e`` (exponent)
+              * ``t`` (list[dict]): tokens — each ``{t: tokenID, o: outcome}``
+        """
+        return self._request_clob(path=f"clob-markets/{condition_id}")
+
+    def get_builder_fee_rate(self, builder_code: str) -> float:
+        """V2: get the configured fee rate for a builder code.
+
+        https://docs.polymarket.com (V2; ``GET /fees/builder-fees/{builder_code}``)
+
+        Args:
+            builder_code: 0x-prefixed bytes32 hex builder code.
+
+        Returns:
+            float: builder fee rate (used by fee-adjusted market-buy sizing).
+        """
+        data = self._request_clob(path=f"fees/builder-fees/{builder_code}")
+        # Response shape per the V2 SDK is a single fee-rate scalar; tolerate
+        # either {"rate": ...} or a plain number.
+        if isinstance(data, dict):
+            for key in ("rate", "feeRate", "r"):
+                if key in data:
+                    return float(data[key])
+        return float(data)
 
     def get_orderbook(self, token_id: str) -> DataFrame[OrderbookSchema]:
         """Get the L2 orderbook for a token.

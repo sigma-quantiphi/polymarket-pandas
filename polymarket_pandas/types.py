@@ -221,22 +221,66 @@ class SubmitTransactionResponse(TypedDict):
 # Used by: build_order
 
 
-class SignedOrder(TypedDict):
-    """EIP-712 signed CLOB order dict."""
+class SignedOrder(TypedDict, total=False):
+    """EIP-712 signed CLOB V2 order dict (11 signed fields + signature).
 
+    V1 fields ``taker``, ``nonce``, ``feeRateBps`` are removed.
+    ``timestamp`` (ms) replaces ``nonce`` for uniqueness; ``metadata``
+    and ``builder`` (both bytes32 hex) are added.
+
+    ``expiration`` is V2 **wire-body only** — not part of the signed
+    EIP-712 struct. Present for GTD orders, absent for GTC.
+    """
+
+    # Signed fields (always present)
     salt: int
     maker: str
     signer: str
-    taker: str
     tokenId: str
     makerAmount: str
     takerAmount: str
-    expiration: str
-    nonce: str
-    feeRateBps: str
     side: str
     signatureType: int
+    timestamp: str
+    metadata: str
+    builder: str
     signature: str
+    # Optional wire-body fields
+    expiration: str
+
+
+# ── V2 CLOB market info ───────────────────────────────────────────────
+# Used by: get_clob_market_info
+
+
+class ClobMarketInfoFee(TypedDict, total=False):
+    """Fee details inside ``ClobMarketInfo.fd`` (V2)."""
+
+    r: float  # rate
+    e: float  # exponent
+
+
+class ClobMarketInfoToken(TypedDict):
+    """Token entry inside ``ClobMarketInfo.t`` (V2)."""
+
+    t: str  # tokenID
+    o: str  # outcome
+
+
+class ClobMarketInfo(TypedDict, total=False):
+    """V2 ``GET /clob-markets/{conditionId}`` response (abbreviated keys).
+
+    Confirmed keys (live response 2026-04-28): ``mts`` (min tick),
+    ``mos`` (min order size), ``fd`` (fee details), ``t`` (tokens),
+    plus several short-named auxiliary keys whose semantics are not yet
+    documented (``aot``, ``r``, ``ao``, ``cbos``, ``ibce``, ``c``).
+    All keys are optional in this TypedDict to allow forward compatibility.
+    """
+
+    mts: float  # minimum tick size
+    mos: float  # minimum order size
+    fd: ClobMarketInfoFee
+    t: list[ClobMarketInfoToken]
 
 
 # ── Order placement responses ─────────────────────────────────────────
@@ -370,6 +414,9 @@ __all__ = [
     "BridgeAddressInfo",
     "BuilderTradesCursorPage",
     "CancelOrdersResponse",
+    "ClobMarketInfo",
+    "ClobMarketInfoFee",
+    "ClobMarketInfoToken",
     "CurrentRewardsCursorPage",
     "CursorPage",
     "EventsKeysetPage",

@@ -111,10 +111,12 @@ def _is_retryable_error(exc: BaseException) -> bool:
     return False
 
 
-# ── CTF Exchange contract addresses (Polygon mainnet) ────────────────
-CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
-NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
+# ── CTF Exchange V2 contract addresses (Polygon mainnet) ───────────
+# Polymarket CLOB V2 cutover: 2026-04-28 ~11:00 UTC. V1 addresses retired.
+CTF_EXCHANGE = "0xE111180000d2663C0091e4f400237545B87B996B"
+NEG_RISK_CTF_EXCHANGE = "0xe2222d279d744050d28e00520010520000310F59"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+ZERO_BYTES32 = "0x" + "00" * 32
 
 # Tick-size → (price_decimals, size_decimals, amount_decimals)
 _TICK_SIZES = {
@@ -204,6 +206,7 @@ class PolymarketPandas(
     _builder_api_key: str | None = field(default=None, repr=False)
     _builder_api_secret: str | None = field(default=None, repr=False)
     _builder_api_passphrase: str | None = field(default=None, repr=False)
+    builder_code: str | None = field(default=None, repr=False)
     _relayer_api_key: str | None = field(default=None, repr=False)
     _relayer_api_key_address: str | None = field(default=None, repr=False)
     numeric_columns: tuple = field(default=DEFAULT_NUMERIC_COLUMNS)
@@ -229,6 +232,7 @@ class PolymarketPandas(
             "_builder_api_key": ("POLYMARKET_BUILDER_API_KEY", None),
             "_builder_api_secret": ("POLYMARKET_BUILDER_API_SECRET", None),
             "_builder_api_passphrase": ("POLYMARKET_BUILDER_API_PASSPHRASE", None),
+            "builder_code": ("POLYMARKET_BUILDER_CODE", None),
             "_relayer_api_key": ("POLYMARKET_RELAYER_API_KEY", None),
             "_relayer_api_key_address": ("POLYMARKET_RELAYER_API_KEY_ADDRESS", None),
         },
@@ -583,8 +587,6 @@ class PolymarketPandas(
         method: str = "GET",
         params: dict | None = None,
         data: dict | list | None = None,
-        *,
-        attribute: bool = False,
     ) -> dict:
         self._require_l2_auth()
         headers = self._build_l2_headers(
@@ -592,14 +594,6 @@ class PolymarketPandas(
             request_path=f"/{path}",
             body=data,
         )
-        if attribute and self._has_builder_creds():
-            headers.update(
-                self._build_builder_headers(
-                    method=method,
-                    request_path=f"/{path}",
-                    body=data,
-                )
-            )
         response = self._send_request(
             method=method,
             url=f"{self.clob_url}{path}",
@@ -1655,6 +1649,22 @@ class PolymarketPandas(
         else:
             raise ValueError(f"side must be 'BUY' or 'SELL', got {side!r}")
 
+    @staticmethod
+    def _normalize_builder_code(code: str | None) -> str:
+        """Coerce a builder code to a 0x-prefixed 32-byte hex string.
+
+        ``None`` / empty → zero bytes32. Short hex (e.g. a 16-byte
+        builder ID) is left-padded with zeros. Invalid lengths raise.
+        """
+        if not code:
+            return ZERO_BYTES32
+        s = code.lower().removeprefix("0x")
+        if len(s) > 64 or any(c not in "0123456789abcdef" for c in s):
+            raise ValueError(
+                f"builder_code must be 0x-prefixed hex up to 32 bytes (64 hex chars); got {code!r}"
+            )
+        return "0x" + s.rjust(64, "0")
+
     def build_order(
         self,
         token_id: str,
@@ -1662,13 +1672,14 @@ class PolymarketPandas(
         size: float,
         side: str,
         *,
-        fee_rate_bps: int | None = None,
-        expiration: int | pd.Timestamp | str = 0,
-        nonce: int = 0,
         neg_risk: bool | None = None,
         tick_size: str | None = None,
+        builder_code: str | None = None,
+        metadata: str | None = None,
+        timestamp_ms: int | None = None,
+        expiration: int | pd.Timestamp | str | None = None,
     ) -> SignedOrder:
-        """Build and sign a CLOB order, ready for :meth:`place_order`.
+        """Build and sign a CLOB V2 order, ready for :meth:`place_order`.
 
         Args:
             token_id: CLOB token ID (ERC-1155 conditional token).
@@ -1678,18 +1689,26 @@ class PolymarketPandas(
                 ``0.0001``).
             size: Number of shares (conditional tokens).
             side: ``"BUY"`` or ``"SELL"``.
-            fee_rate_bps: Fee rate in basis points. Auto-fetched from the CLOB
-                API if not provided.
-            expiration: Unix timestamp, ``pd.Timestamp``, or ISO-8601 string
-                for GTD orders. ``0`` = no expiry.
-            nonce: Order nonce for on-chain cancellation (default 0).
             neg_risk: ``True`` if the market is neg-risk. Auto-fetched if not
                 provided.
             tick_size: Market tick size (``"0.1"``, ``"0.01"``, ``"0.001"``,
                 or ``"0.0001"``). Auto-fetched if not provided.
+            builder_code: 0x-prefixed bytes32 hex (up to 64 hex chars,
+                left-padded). Per-call override of ``self.builder_code``.
+                Defaults to zero bytes32 (no builder attribution).
+            metadata: 0x-prefixed bytes32 hex for arbitrary order metadata.
+                Defaults to zero bytes32.
+            timestamp_ms: Order timestamp in milliseconds. Defaults to
+                ``int(time.time() * 1000)``. Replaces V1's ``nonce`` field
+                for order uniqueness.
+            expiration: Optional Unix-seconds expiration for GTD orders.
+                Accepts ``int``, ``pd.Timestamp``, or ISO-8601 ``str``.
+                **In V2 this is a wire-body field only — not part of the
+                signed EIP-712 struct.** The matching engine treats it as
+                a soft cancel hint. Omit (or ``0``) for GTC orders.
 
         Returns:
-            dict: Signed order dict with all fields expected by :meth:`place_order`.
+            dict: Signed order dict ready for :meth:`place_order`.
         """
         if not self.private_key:
             raise PolymarketAuthError(detail="private_key is required to build orders.")
@@ -1699,8 +1718,6 @@ class PolymarketPandas(
             neg_risk = self.get_neg_risk(token_id)
         if tick_size is None:
             tick_size = str(self.get_tick_size(token_id))
-        if fee_rate_bps is None:
-            fee_rate_bps = self.get_fee_rate(token_id)
 
         # Snap price to the market's tick size to prevent "Invalid tick
         # size" rejections from floating-point drift.
@@ -1708,8 +1725,6 @@ class PolymarketPandas(
             price_dec = _TICK_SIZES[tick_size][0]
             ts_float = float(tick_size)
             price = _round_normal(round(price / ts_float) * ts_float, price_dec)
-
-        expiration = to_unix_timestamp(expiration)
 
         side_int, maker_amount, taker_amount = self._get_order_amounts(side, price, size, tick_size)
 
@@ -1719,11 +1734,16 @@ class PolymarketPandas(
         exchange = NEG_RISK_CTF_EXCHANGE if neg_risk else CTF_EXCHANGE
         salt = round(time.time() * random.random())
         sig_type = self.signature_type if self.signature_type is not None else 0
+        ts_ms = timestamp_ms if timestamp_ms is not None else int(time.time() * 1000)
+        meta_b32 = self._normalize_builder_code(metadata) if metadata else ZERO_BYTES32
+        builder_b32 = self._normalize_builder_code(
+            builder_code if builder_code is not None else self.builder_code
+        )
 
-        # EIP-712 signing
+        # EIP-712 signing — V2 domain (version="2") and 11-field Order struct
         domain = {
             "name": "Polymarket CTF Exchange",
-            "version": "1",
+            "version": "2",
             "chainId": self.chain_id,
             "verifyingContract": exchange,
         }
@@ -1732,30 +1752,28 @@ class PolymarketPandas(
                 {"name": "salt", "type": "uint256"},
                 {"name": "maker", "type": "address"},
                 {"name": "signer", "type": "address"},
-                {"name": "taker", "type": "address"},
                 {"name": "tokenId", "type": "uint256"},
                 {"name": "makerAmount", "type": "uint256"},
                 {"name": "takerAmount", "type": "uint256"},
-                {"name": "expiration", "type": "uint256"},
-                {"name": "nonce", "type": "uint256"},
-                {"name": "feeRateBps", "type": "uint256"},
                 {"name": "side", "type": "uint8"},
                 {"name": "signatureType", "type": "uint8"},
+                {"name": "timestamp", "type": "uint256"},
+                {"name": "metadata", "type": "bytes32"},
+                {"name": "builder", "type": "bytes32"},
             ],
         }
         message = {
             "salt": salt,
             "maker": maker,
             "signer": eoa,
-            "taker": ZERO_ADDRESS,
             "tokenId": int(token_id),
             "makerAmount": maker_amount,
             "takerAmount": taker_amount,
-            "expiration": expiration,
-            "nonce": nonce,
-            "feeRateBps": fee_rate_bps,
             "side": side_int,
             "signatureType": sig_type,
+            "timestamp": ts_ms,
+            "metadata": bytes.fromhex(meta_b32.removeprefix("0x")),
+            "builder": bytes.fromhex(builder_b32.removeprefix("0x")),
         }
         signable = encode_typed_data(
             full_message={
@@ -1767,21 +1785,26 @@ class PolymarketPandas(
         )
         sig = "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
 
-        return {
+        wire: dict = {
             "salt": salt,
             "maker": maker,
             "signer": eoa,
-            "taker": ZERO_ADDRESS,
             "tokenId": token_id,
             "makerAmount": str(maker_amount),
             "takerAmount": str(taker_amount),
-            "expiration": str(expiration),
-            "nonce": str(nonce),
-            "feeRateBps": str(fee_rate_bps),
             "side": side.upper(),
             "signatureType": sig_type,
+            "timestamp": str(ts_ms),
+            "metadata": meta_b32,
+            "builder": builder_b32,
             "signature": sig,
         }
+        # `expiration` is a non-signed wire-body field in V2 — used by the
+        # matching engine as a GTD cancel hint only. Omit when zero/None
+        # so GTC orders stay clean.
+        if expiration:
+            wire["expiration"] = str(to_unix_timestamp(expiration))
+        return wire
 
     def submit_order(
         self,
@@ -1806,18 +1829,17 @@ class PolymarketPandas(
             post_only: If True, reject the order if it would immediately
                 match (maker-only). Only valid with GTC/GTD.
             **kwargs: Forwarded to :meth:`build_order` (``neg_risk``,
-                ``tick_size``, ``fee_rate_bps``, ``expiration``, ``nonce``).
+                ``tick_size``, ``builder_code``, ``metadata``, ``timestamp_ms``).
 
         Returns:
             dict: API response from the CLOB order endpoint.
 
         Note:
-            If builder API credentials are configured on the client
-            (``_builder_api_key`` / ``_builder_api_secret`` /
-            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
-            vars), ``POLY_BUILDER_*`` attribution headers are automatically
-            attached and matched fills will be credited to the builder for
-            rewards.
+            V2: Builder attribution is carried in the signed order's
+            ``builder`` (bytes32) field. Set ``builder_code=`` here, the
+            ``builder_code`` constructor arg, or the
+            ``POLYMARKET_BUILDER_CODE`` env var. ``POLY_BUILDER_*`` HMAC
+            headers are no longer attached to order placement.
         """
         self._require_l2_auth()
         order = self.build_order(token_id, price, size, side, **kwargs)
@@ -1836,15 +1858,15 @@ class PolymarketPandas(
         Required columns: ``tokenId``, ``price``, ``size``, ``side``.
 
         Optional columns: ``orderType`` (default ``"GTC"``), ``postOnly``
-        (default ``False``), ``expiration``, ``nonce``, ``negRisk``,
-        ``tickSize``, ``feeRateBps``.
+        (default ``False``), ``negRisk``, ``tickSize``, ``builderCode``,
+        ``expiration`` (Unix seconds / ISO string / Timestamp; for GTD).
 
         Prices are automatically snapped to each market's tick size
         (valid ticks: ``0.1``, ``0.01``, ``0.001``, ``0.0001``) to
         prevent floating-point rejections.
 
-        Market parameters (``neg_risk``, ``tick_size``, ``fee_rate_bps``) are
-        auto-fetched from the CLOB API (and cached) when not provided.
+        Market parameters (``neg_risk``, ``tick_size``) are auto-fetched
+        from the CLOB API (and cached) when not provided.
 
         Orders are batched in groups of 15 (the CLOB limit) and submitted
         via the ``/orders`` endpoint.
@@ -1856,12 +1878,9 @@ class PolymarketPandas(
             pd.DataFrame: API responses for each batch.
 
         Note:
-            If builder API credentials are configured on the client
-            (``_builder_api_key`` / ``_builder_api_secret`` /
-            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
-            vars), ``POLY_BUILDER_*`` attribution headers are automatically
-            attached and matched fills will be credited to the builder for
-            rewards.
+            V2: Builder attribution is per-order via the signed
+            ``builder`` field. Provide a ``builderCode`` column or set
+            ``builder_code`` on the client.
         """
         self._require_l2_auth()
 
@@ -1878,11 +1897,10 @@ class PolymarketPandas(
                     price=float(row.price),
                     size=float(row.size),
                     side=str(row.side),
-                    fee_rate_bps=getattr(row, "feeRateBps", None),
-                    expiration=getattr(row, "expiration", 0),
-                    nonce=getattr(row, "nonce", 0),
                     neg_risk=getattr(row, "negRisk", None),
                     tick_size=getattr(row, "tickSize", None),
+                    builder_code=getattr(row, "builderCode", None),
+                    expiration=getattr(row, "expiration", None),
                 )
             )
             order["owner"] = self._api_key

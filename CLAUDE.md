@@ -114,10 +114,10 @@ A `@dataclass` that inherits from all 9 mixins. `client.py` contains infrastruct
 **Authentication layers:**
 - **L1 (EIP-712)** — `_build_l1_headers`: used only for `create_api_key` / `derive_api_key`. Requires `private_key`.
 - **L2 (HMAC-SHA256)** — `_build_l2_headers`: all private CLOB endpoints. Requires `_api_key` / `_api_secret` / `_api_passphrase`.
-- **Builder HMAC** — `_build_builder_headers`: same scheme as L2 but with `POLY_BUILDER_*` headers and builder credentials. Used by the dedicated `_request_clob_builder` helper for `get_builder_trades`, **and** auto-attached as **attribution headers** alongside L2 on `place_order` / `place_orders` (via `_request_clob_private(..., attribute=True)`) when builder credentials are configured — fills are then credited to the builder for rewards.
+- **Builder HMAC** — `_build_builder_headers`: same scheme as L2 but with `POLY_BUILDER_*` headers and builder credentials. Used by `_request_clob_builder` for `get_builder_trades` only. **V2 (2026-04-28 cutover): no longer attached to `place_order` / `place_orders`** — builder attribution is now per-order via the signed `builder` (bytes32) field. Set `builder_code=` on the constructor or `POLYMARKET_BUILDER_CODE` env var; per-call override via `build_order(..., builder_code=...)`.
 - **Relayer key** — plain headers `RELAYER_API_KEY` + `RELAYER_API_KEY_ADDRESS` (no signing). Built by `_relayer_auth_headers()`.
 
-All credentials fall back to env vars (`POLYMARKET_ADDRESS`, `POLYMARKET_PRIVATE_KEY`, `POLYMARKET_API_KEY`, etc.).
+All credentials fall back to env vars (`POLYMARKET_ADDRESS`, `POLYMARKET_PRIVATE_KEY`, `POLYMARKET_API_KEY`, `POLYMARKET_BUILDER_CODE`, etc.).
 
 ### Exceptions (`exceptions.py`)
 
@@ -132,26 +132,32 @@ All four are exported from the top-level package. `_handle_response` maps HTTP e
 
 `_extract(data, key)` raises `PolymarketAPIError` with context when an expected key is missing from a response dict — used by scalar-returning endpoints like `get_tick_size`, `get_midpoint_price`, etc.
 
-### Order building (`build_order`)
+### Order building (`build_order`) — V2
 
-`build_order(token_id, price, size, side, ...)` in `client.py` constructs and EIP-712-signs a CLOB order. Returns a `SignedOrder` TypedDict ready for `place_order()`.
+`build_order(token_id, price, size, side, ...)` in `client.py` constructs and EIP-712-signs a CLOB **V2** order. Returns a `SignedOrder` TypedDict ready for `place_order()`.
 
-**Expiration conversion:** The `expiration` parameter accepts `int` (Unix seconds), `pd.Timestamp`, or ISO-8601 `str`. Values are auto-converted to int via `to_unix_timestamp()` in `utils.py` before signing. `0` = no expiry (GTC).
+**V1 fields removed (2026-04-28 cutover):** `taker`, `expiration`, `nonce`, `feeRateBps`. Fees are determined by the operator at match time (no longer signed). Order uniqueness comes from `timestamp` (ms), not nonce. Cancellation is via the existing `/cancel-*` REST endpoints (the on-chain nonce wipe is gone).
+
+**V2 fields added:** `timestamp` (uint256, ms), `metadata` (bytes32, defaults zero), `builder` (bytes32, defaults zero) — all in the signed struct.
 
 **Signing details:**
-- **Domain**: `name="Polymarket CTF Exchange"`, `version="1"`, `chainId=137`, `verifyingContract=<exchange>`
-- **Exchange contracts** (Polygon mainnet):
-  - Standard: `CTF_EXCHANGE = 0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`
-  - Neg-risk: `NEG_RISK_CTF_EXCHANGE = 0xC5d563A36AE78145C45a50134d48A1215220f80a`
+- **Domain**: `name="Polymarket CTF Exchange"`, `version="2"`, `chainId=137`, `verifyingContract=<exchange>`
+- **V2 exchange contracts** (Polygon mainnet):
+  - Standard: `CTF_EXCHANGE = 0xE111180000d2663C0091e4f400237545B87B996B`
+  - Neg-risk: `NEG_RISK_CTF_EXCHANGE = 0xe2222d279d744050d28e00520010520000310F59`
+- **Order struct (signed; field order matters for the EIP-712 hash):** `salt, maker, signer, tokenId, makerAmount, takerAmount, side, signatureType, timestamp, metadata, builder` — 11 fields total.
 - **Amount calculation**: `makerAmount` / `takerAmount` depend on `side`:
-  - BUY: makerAmount = USDC spent = `size * price * 1e6`, takerAmount = shares received = `size * 1e6`
-  - SELL: makerAmount = shares sold = `size * 1e6`, takerAmount = USDC received = `size * price * 1e6`
+  - BUY: makerAmount = pUSD spent = `size * price * 1e6`, takerAmount = shares received = `size * 1e6`
+  - SELL: makerAmount = shares sold = `size * 1e6`, takerAmount = pUSD received = `size * price * 1e6`
 - **Tick-size rounding**: price/size decimals derived from tick_size (0.1→1dp, 0.01→2dp, 0.001→3dp, 0.0001→4dp)
 - **Signature types**: 0=EOA, 1=POLY_PROXY (default), 2=POLY_GNOSIS_SAFE
+- **Builder code helper**: `_normalize_builder_code(s)` left-pads short hex to 32 bytes; `None`/empty → zero bytes32.
 
 ### CTFMixin — On-chain operations (`_ctf.py`)
 
 On-chain merge / split / redeem via Polymarket's Conditional Token Framework contracts on Polygon. Requires `web3` optional dependency: `pip install polymarket-pandas[ctf]`.
+
+**V2 collateral migration (2026-04-28):** USDC.e → pUSD. The CTF / NegRiskAdapter contracts are unchanged on chain but now denominate positions in pUSD. USDC.e remains the underlying asset for `wrap_collateral` / `unwrap_collateral`.
 
 **Contract addresses (Polygon mainnet):**
 
@@ -159,7 +165,10 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 |---|---|
 | ConditionalTokens | `0x4D97DCd97eC945f40cF65F87097ACe5EA0476045` |
 | NegRiskAdapter | `0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296` |
-| USDC.e (collateral) | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
+| pUSD (V2 collateral) | `0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB` |
+| USDC.e (underlying) | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
+| CollateralOnramp (`wrap`) | `0x93070a847efEf7F70739046A929D47a521F5B8ee` |
+| CollateralOfframp (`unwrap`) | `0x2957922Eb93258b93368531d39fAcCA3B4dC5854` |
 | ProxyFactory (GSN) | `0xaB45c5A4B0c941a2F231C04C3f49182e1A254052` |
 | RelayHub (GSN) | `0xD216153c06E857cD7f72665E0aF1d7D82172F494` |
 
@@ -167,18 +176,20 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 
 | Method | Description |
 |---|---|
-| `split_position(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Split USDC.e into Yes + No outcome tokens |
-| `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Merge Yes + No tokens back into USDC.e |
+| `wrap_collateral(amount=None, amount_usdc=None, to=None, auto_approve=False, estimate=False)` | Wrap USDC.e → pUSD via `CollateralOnramp.wrap()` |
+| `unwrap_collateral(amount=None, amount_usdc=None, to=None, auto_approve=False, estimate=False)` | Unwrap pUSD → USDC.e via `CollateralOfframp.unwrap()` |
+| `split_position(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Split pUSD into Yes + No outcome tokens |
+| `merge_positions(condition_id, amount=None, amount_usdc=None, neg_risk=False, auto_approve=False, estimate=False)` | Merge Yes + No tokens back into pUSD |
 | `redeem_positions(condition_id, index_sets=None, neg_risk=False, amounts=None, estimate=False)` | Redeem winning tokens after market resolution (neg-risk requires `amounts=[yes, no]`) |
-| `approve_collateral(spender=None, amount=None, estimate=False)` | Approve USDC.e spending for a CTF contract |
-| `batch_ctf_ops(ops, auto_approve=False, estimate=False)` | Bundle N split/merge/redeem ops into a single proxy-relayed tx. `ops` is a `list[dict]` or `DataFrame` with `op`/`condition_id`/`amount`/`amount_usdc`/`neg_risk`/`index_sets`/`amounts`. Proxy-wallet only — raises `PolymarketAuthError` for EOAs. Aggregates allowance checks per spender. |
+| `approve_collateral(spender=None, amount=None, token=PUSD, estimate=False)` | Approve a CTF / onramp / offramp contract to spend pUSD (or USDC.e via `token=USDC_E`) |
+| `batch_ctf_ops(ops, auto_approve=False, estimate=False)` | Bundle N split/merge/redeem/convert/wrap/unwrap ops into a single proxy-relayed tx. `ops` is a `list[dict]` or `DataFrame`. Proxy-wallet only — raises `PolymarketAuthError` for EOAs. Allowance checks are aggregated per `(spender, token)` pair. |
 | `estimate_ctf_tx(tx_data)` | Estimate gas cost without sending; returns `GasEstimate` dict |
 
 **Key design:**
 - `web3` is lazily imported — `_require_web3()` initializes `_w3`, `_ct_contract`, `_nr_contract`, `_usdc_contract` on first call. Users who never call CTF methods never need web3 installed.
 - Auth guard: `_require_ctf_auth()` checks `private_key` before `_require_web3()` in every public method.
-- `neg_risk=True` routes split/merge through NegRiskAdapter (2-param ABI); `False` uses ConditionalTokens (5-param ABI with collateral, parentCollectionId=bytes32(0), partition=[1,2]).
-- Amounts are in USDC.e base units (6 decimals): `1_000_000` = 1.00 USDC.
+- `neg_risk=True` routes split/merge through NegRiskAdapter (2-param ABI); `False` uses ConditionalTokens (5-param ABI with collateral=pUSD, parentCollectionId=bytes32(0), partition=[1,2]).
+- Amounts are in pUSD base units (6 decimals): `1_000_000` = 1.00 pUSD.
 - Returns dict with `txHash`, `status`, `blockNumber`, `gasUsed` (when `wait=True`).
 - `estimate=True` on any method returns a `GasEstimate` dict (`gas`, `gasPrice`, `costWei`, `costMatic`, `eoaBalance`) without sending.
 - `auto_approve=True` on `split_position`/`merge_positions` checks the on-chain USDC.e allowance and sends an approval tx if insufficient.
@@ -299,8 +310,8 @@ All `_request_*` helpers pass `params` through `filter_params` before sending. I
 
 Two `pandera.DataFrameModel` schemas for **runtime input validation** (validated automatically, not annotation-only):
 
-- **`PlaceOrderSchema`** — validates signed-order DataFrames for `place_orders()`. Enforces Ethereum address format, numeric string patterns for amounts/nonce/expiration/feeRateBps, `side` ∈ `["BUY","SELL"]`, `signatureType` ∈ `[0,1,2]`, `orderType` ∈ `["FOK","GTC","GTD"]`. Optional `postOnly` bool.
-- **`SubmitOrderSchema`** — validates unsigned-intent DataFrames for `submit_orders()`. Required camelCase columns: `tokenId`, `price` (0,1], `size` (>0), `side`. Optional: `orderType`, `postOnly`, `expiration`, `nonce`, `negRisk`, `tickSize`, `feeRateBps`.
+- **`PlaceOrderSchema`** (V2) — validates signed-order DataFrames for `place_orders()`. Enforces Ethereum address format, numeric string patterns for amounts/timestamp, 32-byte hex for `metadata`/`builder`, `side` ∈ `["BUY","SELL"]`, `signatureType` ∈ `[0,1,2]`, `orderType` ∈ `["FOK","GTC","GTD"]`. Optional `postOnly` bool. V1 fields `nonce`/`feeRateBps`/`taker`/`expiration` are no longer accepted.
+- **`SubmitOrderSchema`** — validates unsigned-intent DataFrames for `submit_orders()`. Required camelCase columns: `tokenId`, `price` (0,1], `size` (>0), `side`. Optional: `orderType`, `postOnly`, `negRisk`, `tickSize`, `builderCode`.
 - **`OrderSchema`** — backward-compat alias for `PlaceOrderSchema`.
 
 `place_orders()` also enforces the CLOB API's 15-order-per-call limit.
@@ -318,7 +329,7 @@ Two `pandera.DataFrameModel` schemas for **runtime input validation** (validated
 **TypedDicts** (`types.py`): Structural subtypes of `dict` for dict-returning endpoints. No runtime overhead, full IDE autocomplete.
 
 - **Cursor-paginated** (all inherit from `CursorPage` base with `next_cursor`, `count`, `limit`): `OrdersCursorPage`, `UserTradesCursorPage`, `SamplingMarketsCursorPage`, `SimplifiedMarketsCursorPage`, `BuilderTradesCursorPage`, `CurrentRewardsCursorPage`, `RewardsMarketMultiCursorPage`, `RewardsMarketCursorPage`, `UserEarningsCursorPage`, `UserRewardsMarketsCursorPage`. Each has `data: DataFrame[SpecificSchema]`.
-- **Other dicts**: `SignedOrder`, `SendOrderResponse`, `CancelOrdersResponse`, `TransactionReceipt`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `BridgeAddressInfo`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`, `MarketsKeysetPage`, `EventsKeysetPage`.
+- **Other dicts**: `SignedOrder`, `SendOrderResponse`, `CancelOrdersResponse`, `TransactionReceipt`, `ApiCredentials`, `BalanceAllowance`, `BridgeAddress`, `BridgeAddressInfo`, `RelayPayload`, `SubmitTransactionResponse`, `LastTradePrice`, `MarketsKeysetPage`, `EventsKeysetPage`, `ClobMarketInfo` (V2).
 
 **Pandera schemas** (`schemas.py`): `DataFrameModel` subclasses (via `pandera.pandas`) for DataFrame-returning endpoints. All use `strict=False` (extra columns allowed) and `coerce=True`. Annotation-only by default (no runtime validation unless user calls `.validate()`). Field names verified against the official Polymarket OpenAPI specs.
 
@@ -332,7 +343,7 @@ Two `pandera.DataFrameModel` schemas for **runtime input validation** (validated
 
 ### `to_unix_timestamp` (`utils.py`)
 
-Converts `int`, `float`, `str` (ISO-8601), `pd.Timestamp`, or `datetime.datetime` to Unix seconds (int). Used by `build_order()` to accept flexible expiration formats. Naive timestamps are assumed UTC.
+Converts `int`, `float`, `str` (ISO-8601), `pd.Timestamp`, or `datetime.datetime` to Unix seconds (int). Used by date-range query parameters. Naive timestamps are assumed UTC. (Previously also used by `build_order` for the V1 `expiration` field, which was removed in V2.)
 
 ## Explorer (Streamlit Dashboard)
 

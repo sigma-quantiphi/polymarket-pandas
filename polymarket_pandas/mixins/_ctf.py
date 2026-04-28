@@ -20,7 +20,13 @@ if TYPE_CHECKING:
 PROXY_FACTORY = "0xaB45c5A4B0c941a2F231C04C3f49182e1A254052"
 RELAY_HUB = "0xD216153c06E857cD7f72665E0aF1d7D82172F494"
 
+# V2 collateral migration: USDC.e → pUSD. CTF/NegRiskAdapter remain on the
+# same on-chain addresses but are now backed by pUSD as the collateral
+# token. USDC_E is still used as the underlying asset for wrap/unwrap.
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+PUSD = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
+COLLATERAL_ONRAMP = "0x93070a847efEf7F70739046A929D47a521F5B8ee"
+COLLATERAL_OFFRAMP = "0x2957922Eb93258b93368531d39fAcCA3B4dC5854"
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
 CONDITIONAL_TOKENS = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
 
@@ -138,6 +144,34 @@ _NEG_RISK_ADAPTER_ABI = [
     },
 ]
 
+_COLLATERAL_ONRAMP_ABI = [
+    {
+        "inputs": [
+            {"name": "_asset", "type": "address"},
+            {"name": "_to", "type": "address"},
+            {"name": "_amount", "type": "uint256"},
+        ],
+        "name": "wrap",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+]
+
+_COLLATERAL_OFFRAMP_ABI = [
+    {
+        "inputs": [
+            {"name": "_asset", "type": "address"},
+            {"name": "_to", "type": "address"},
+            {"name": "_amount", "type": "uint256"},
+        ],
+        "name": "unwrap",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+]
+
 _PROXY_FACTORY_ABI = [
     {
         "inputs": [
@@ -190,9 +224,22 @@ class CTFMixin:
             address=Web3.to_checksum_address(NEG_RISK_ADAPTER),
             abi=_NEG_RISK_ADAPTER_ABI,
         )
-        self._usdc_contract = self._w3.eth.contract(
+        # V2 collateral is pUSD. USDC.e is kept around for wrap/unwrap.
+        self._pusd_contract = self._w3.eth.contract(
+            address=Web3.to_checksum_address(PUSD),
+            abi=_ERC20_ABI,
+        )
+        self._usdc_e_contract = self._w3.eth.contract(
             address=Web3.to_checksum_address(USDC_E),
             abi=_ERC20_ABI,
+        )
+        self._onramp_contract = self._w3.eth.contract(
+            address=Web3.to_checksum_address(COLLATERAL_ONRAMP),
+            abi=_COLLATERAL_ONRAMP_ABI,
+        )
+        self._offramp_contract = self._w3.eth.contract(
+            address=Web3.to_checksum_address(COLLATERAL_OFFRAMP),
+            abi=_COLLATERAL_OFFRAMP_ABI,
         )
 
     def _require_ctf_auth(self) -> None:
@@ -376,14 +423,27 @@ class CTFMixin:
             },
         )
 
-    def _ensure_allowance(self, spender: str, amount: int) -> None:
-        """Approve *spender* if current USDC.e allowance is below *amount*."""
+    def _ensure_allowance(
+        self,
+        spender: str,
+        amount: int,
+        *,
+        token: str | None = None,
+    ) -> None:
+        """Approve *spender* if current allowance is below *amount*.
+
+        Defaults to checking pUSD allowance (the V2 collateral). Pass
+        ``token`` to check a different ERC-20 (e.g. USDC.e for the
+        wrap/unwrap onramp/offramp paths).
+        """
         owner = self.address if self._has_proxy_wallet() else self._eoa_address()
-        allowance = self._usdc_contract.functions.allowance(
+        token = token or PUSD
+        contract = self._pusd_contract if token == PUSD else self._usdc_e_contract
+        allowance = contract.functions.allowance(
             owner, self._w3.to_checksum_address(spender)
         ).call()
         if allowance < amount:
-            self.approve_collateral(spender=spender)
+            self.approve_collateral(spender=spender, token=token)
 
     # ── Public methods ───────────────────────────────────────────────
 
@@ -424,18 +484,22 @@ class CTFMixin:
         spender: str | None = None,
         amount: int | None = None,
         *,
+        token: str | None = None,
         estimate: bool = False,
         wait: bool = True,
         timeout: int = 120,
     ) -> TransactionReceipt | GasEstimate:
-        """Approve a CTF contract to spend USDC.e on your behalf.
+        """Approve a CTF contract to spend pUSD on your behalf.
 
         Args:
             spender: Contract address to approve.  Defaults to the
                 ConditionalTokens contract.  Pass the NegRiskAdapter
                 address for neg-risk markets.
-            amount: Amount in USDC.e base units (6 decimals).
+            amount: Amount in pUSD base units (6 decimals).
                 ``None`` for max (unlimited) approval.
+            token: ERC-20 to approve (default pUSD). Pass ``USDC_E`` to
+                approve the onramp for wrapping or another token. The
+                offramp/onramp wrappers handle this internally.
             estimate: If ``True``, return a :class:`GasEstimate` dict
                 instead of sending the transaction.
             wait: Wait for the transaction receipt.
@@ -449,16 +513,113 @@ class CTFMixin:
         self._require_web3()
         if spender is None:
             spender = CONDITIONAL_TOKENS
+        if token is None:
+            token = PUSD
 
         if amount is None:
             amount = 2**256 - 1
-        tx = self._usdc_contract.functions.approve(
+        contract = self._pusd_contract if token == PUSD else self._usdc_e_contract
+        tx = contract.functions.approve(
             self._w3.to_checksum_address(spender), amount
         ).build_transaction(self._tx_params())
         if estimate:
             return self.estimate_ctf_tx(tx)
         if self._has_proxy_wallet():
-            return self._send_ctf_tx_relayed(to=USDC_E, tx_data=tx)
+            return self._send_ctf_tx_relayed(to=token, tx_data=tx)
+        return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
+
+    def wrap_collateral(
+        self,
+        amount: int | None = None,
+        *,
+        amount_usdc: float | None = None,
+        to: str | None = None,
+        auto_approve: bool = False,
+        estimate: bool = False,
+        wait: bool = True,
+        timeout: int = 120,
+    ) -> TransactionReceipt | GasEstimate:
+        """Wrap USDC.e into pUSD via the CollateralOnramp.
+
+        Calls ``CollateralOnramp.wrap(USDC_E, to, amount)``. The user
+        must hold USDC.e and have approved the onramp to spend it (or
+        pass ``auto_approve=True``).
+
+        Args:
+            amount: Amount in USDC.e base units (6 decimals).
+            amount_usdc: Convenience alternative — amount in USDC
+                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
+            to: Recipient of the minted pUSD. Defaults to ``self.address``
+                (proxy wallet) or the EOA.
+            auto_approve: If ``True``, check the onramp's USDC.e
+                allowance and send an approval transaction if needed.
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
+            wait: Wait for the transaction receipt.
+            timeout: Seconds to wait for the receipt.
+        """
+        self._require_ctf_auth()
+        self._require_web3()
+        amount = self._resolve_amount(amount, amount_usdc)
+        recipient = to or self.address or self._eoa_address()
+        tx = self._onramp_contract.functions.wrap(
+            self._w3.to_checksum_address(USDC_E),
+            self._w3.to_checksum_address(recipient),
+            amount,
+        ).build_transaction(self._tx_params())
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if auto_approve:
+            self._ensure_allowance(COLLATERAL_ONRAMP, amount, token=USDC_E)
+        if self._has_proxy_wallet():
+            return self._send_ctf_tx_relayed(to=COLLATERAL_ONRAMP, tx_data=tx)
+        return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
+
+    def unwrap_collateral(
+        self,
+        amount: int | None = None,
+        *,
+        amount_usdc: float | None = None,
+        to: str | None = None,
+        auto_approve: bool = False,
+        estimate: bool = False,
+        wait: bool = True,
+        timeout: int = 120,
+    ) -> TransactionReceipt | GasEstimate:
+        """Unwrap pUSD back into USDC.e via the CollateralOfframp.
+
+        Calls ``CollateralOfframp.unwrap(USDC_E, to, amount)``. The user
+        must hold pUSD and have approved the offramp to spend it (or
+        pass ``auto_approve=True``).
+
+        Args:
+            amount: Amount in pUSD base units (6 decimals).
+            amount_usdc: Convenience alternative — amount in pUSD
+                (e.g. ``1.0`` for 1 pUSD). Mutually exclusive with ``amount``.
+            to: Recipient of the unwrapped USDC.e. Defaults to
+                ``self.address`` (proxy wallet) or the EOA.
+            auto_approve: If ``True``, check the offramp's pUSD allowance
+                and send an approval transaction if needed.
+            estimate: If ``True``, return a :class:`GasEstimate` dict
+                instead of sending the transaction.
+            wait: Wait for the transaction receipt.
+            timeout: Seconds to wait for the receipt.
+        """
+        self._require_ctf_auth()
+        self._require_web3()
+        amount = self._resolve_amount(amount, amount_usdc)
+        recipient = to or self.address or self._eoa_address()
+        tx = self._offramp_contract.functions.unwrap(
+            self._w3.to_checksum_address(USDC_E),
+            self._w3.to_checksum_address(recipient),
+            amount,
+        ).build_transaction(self._tx_params())
+        if estimate:
+            return self.estimate_ctf_tx(tx)
+        if auto_approve:
+            self._ensure_allowance(COLLATERAL_OFFRAMP, amount, token=PUSD)
+        if self._has_proxy_wallet():
+            return self._send_ctf_tx_relayed(to=COLLATERAL_OFFRAMP, tx_data=tx)
         return self._send_ctf_tx(tx, wait=wait, timeout=timeout)
 
     def split_position(
@@ -473,18 +634,18 @@ class CTFMixin:
         wait: bool = True,
         timeout: int = 120,
     ) -> TransactionReceipt | GasEstimate:
-        """Split USDC.e collateral into Yes + No outcome tokens.
+        """Split pUSD collateral into Yes + No outcome tokens.
 
         Args:
             condition_id: Market condition ID (hex string or bytes32).
-            amount: USDC.e amount in base units (6 decimals).
-                E.g. ``1_000_000`` = 1.00 USDC.
-            amount_usdc: Convenience alternative — amount in USDC
-                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
+            amount: pUSD amount in base units (6 decimals).
+                E.g. ``1_000_000`` = 1.00 pUSD.
+            amount_usdc: Convenience alternative — amount in pUSD
+                (e.g. ``1.0`` for 1 pUSD). Mutually exclusive with ``amount``.
             neg_risk: ``True`` for neg-risk (multi-outcome) markets
                 (uses NegRiskAdapter); ``False`` for standard binary
                 markets (uses ConditionalTokens).
-            auto_approve: If ``True``, check USDC.e allowance and send
+            auto_approve: If ``True``, check pUSD allowance and send
                 an approval transaction if needed before splitting.
             estimate: If ``True``, return a :class:`GasEstimate` dict
                 instead of sending the transaction.
@@ -506,7 +667,7 @@ class CTFMixin:
             )
         else:
             tx = self._ct_contract.functions.splitPosition(
-                self._w3.to_checksum_address(USDC_E),
+                self._w3.to_checksum_address(PUSD),
                 PARENT_COLLECTION_ID,
                 cid,
                 DEFAULT_PARTITION,
@@ -534,16 +695,16 @@ class CTFMixin:
         wait: bool = True,
         timeout: int = 120,
     ) -> TransactionReceipt | GasEstimate:
-        """Merge equal amounts of Yes + No outcome tokens back into USDC.e.
+        """Merge equal amounts of Yes + No outcome tokens back into pUSD.
 
         Args:
             condition_id: Market condition ID (hex string or bytes32).
             amount: Token amount in base units (6 decimals).
-            amount_usdc: Convenience alternative — amount in USDC
-                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
+            amount_usdc: Convenience alternative — amount in pUSD
+                (e.g. ``1.0`` for 1 pUSD). Mutually exclusive with ``amount``.
             neg_risk: ``True`` for neg-risk markets (NegRiskAdapter);
                 ``False`` for standard binary markets (ConditionalTokens).
-            auto_approve: If ``True``, check USDC.e allowance and send
+            auto_approve: If ``True``, check pUSD allowance and send
                 an approval transaction if needed before merging.
             estimate: If ``True``, return a :class:`GasEstimate` dict
                 instead of sending the transaction.
@@ -565,7 +726,7 @@ class CTFMixin:
             )
         else:
             tx = self._ct_contract.functions.mergePositions(
-                self._w3.to_checksum_address(USDC_E),
+                self._w3.to_checksum_address(PUSD),
                 PARENT_COLLECTION_ID,
                 cid,
                 DEFAULT_PARTITION,
@@ -592,7 +753,7 @@ class CTFMixin:
         wait: bool = True,
         timeout: int = 120,
     ) -> TransactionReceipt | GasEstimate:
-        """Redeem winning outcome tokens for USDC.e after market resolution.
+        """Redeem winning outcome tokens for pUSD after market resolution.
 
         Args:
             condition_id: Market condition ID (hex string or bytes32).
@@ -634,7 +795,7 @@ class CTFMixin:
             if index_sets is None:
                 index_sets = DEFAULT_PARTITION
             tx = self._ct_contract.functions.redeemPositions(
-                self._w3.to_checksum_address(USDC_E),
+                self._w3.to_checksum_address(PUSD),
                 PARENT_COLLECTION_ID,
                 cid,
                 index_sets,
@@ -659,12 +820,12 @@ class CTFMixin:
         wait: bool = True,
         timeout: int = 120,
     ) -> TransactionReceipt | GasEstimate:
-        """Convert NO tokens across outcomes into YES tokens + USDC collateral.
+        """Convert NO tokens across outcomes into YES tokens + pUSD collateral.
 
         Calls ``convertPositions`` on the NegRiskAdapter contract.  This is
         the key operation for neg-risk arbitrage: buy NO on all outcomes,
-        then convert (N-1 NOs → 1 YES + (N-2) USDC), then merge (YES+NO → 1
-        USDC).
+        then convert (N-1 NOs → 1 YES + (N-2) pUSD), then merge (YES+NO → 1
+        pUSD).
 
         Args:
             market_id: Neg-risk market ID (hex string or bytes32).  This is
@@ -674,9 +835,9 @@ class CTFMixin:
                 Bit N set = outcome N's NO token is included.  E.g. for 5
                 outcomes converting all NOs: ``0b11111`` = ``31``.
             amount: Token amount in base units (6 decimals).
-            amount_usdc: Convenience alternative — amount in USDC
-                (e.g. ``1.0`` for 1 USDC). Mutually exclusive with ``amount``.
-            auto_approve: If ``True``, check USDC.e allowance and send
+            amount_usdc: Convenience alternative — amount in pUSD
+                (e.g. ``1.0`` for 1 pUSD). Mutually exclusive with ``amount``.
+            auto_approve: If ``True``, check pUSD allowance and send
                 an approval transaction if needed before converting.
             estimate: If ``True``, return a :class:`GasEstimate` dict
                 instead of sending the transaction.
@@ -706,18 +867,50 @@ class CTFMixin:
 
     # ── Batch operations ─────────────────────────────────────────────
 
-    _VALID_OPS = ("split", "merge", "redeem", "convert")
+    _VALID_OPS = ("split", "merge", "redeem", "convert", "wrap", "unwrap")
 
-    def _build_ctf_call(self, op: dict) -> tuple[str, bytes, str | None, int]:
+    def _build_ctf_call(self, op: dict) -> tuple[str, bytes, str | None, str, int]:
         """Build a single CTF call for use in a batch proxy envelope.
 
         Returns ``(target_address, calldata_bytes, approval_spender_or_None,
-        approval_amount)``. Approval fields are ``(None, 0)`` for ops that
-        don't need USDC.e approval (redeem).
+        approval_token, approval_amount)``. ``approval_token`` is the ERC-20
+        the spender pulls (pUSD for split/merge/convert, USDC.e for wrap,
+        pUSD for unwrap). For redeem ops ``approval_spender`` is ``None``
+        and the token/amount are ignored.
         """
         op_name = op.get("op")
         if op_name not in self._VALID_OPS:
             raise ValueError(f"op must be one of {self._VALID_OPS}, got {op_name!r}")
+
+        if op_name in ("wrap", "unwrap"):
+            amount = self._resolve_amount(op.get("amount"), op.get("amount_usdc"))
+            recipient = op.get("to") or self.address or self._eoa_address()
+            if op_name == "wrap":
+                tx = self._onramp_contract.functions.wrap(
+                    self._w3.to_checksum_address(USDC_E),
+                    self._w3.to_checksum_address(recipient),
+                    amount,
+                ).build_transaction(self._tx_params())
+                return (
+                    COLLATERAL_ONRAMP,
+                    bytes.fromhex(tx["data"][2:]),
+                    COLLATERAL_ONRAMP,
+                    USDC_E,
+                    amount,
+                )
+            tx = self._offramp_contract.functions.unwrap(
+                self._w3.to_checksum_address(USDC_E),
+                self._w3.to_checksum_address(recipient),
+                amount,
+            ).build_transaction(self._tx_params())
+            return (
+                COLLATERAL_OFFRAMP,
+                bytes.fromhex(tx["data"][2:]),
+                COLLATERAL_OFFRAMP,
+                PUSD,
+                amount,
+            )
+
         cid = self._to_bytes32(op["condition_id"])
         neg_risk = bool(op.get("neg_risk", False))
         target = NEG_RISK_ADAPTER if neg_risk else CONDITIONAL_TOKENS
@@ -731,7 +924,13 @@ class CTFMixin:
             tx = self._nr_contract.functions.convertPositions(
                 mid, int(index_set), amount
             ).build_transaction(self._tx_params())
-            return NEG_RISK_ADAPTER, bytes.fromhex(tx["data"][2:]), NEG_RISK_ADAPTER, amount
+            return (
+                NEG_RISK_ADAPTER,
+                bytes.fromhex(tx["data"][2:]),
+                NEG_RISK_ADAPTER,
+                PUSD,
+                amount,
+            )
 
         if op_name in ("split", "merge"):
             amount = self._resolve_amount(op.get("amount"), op.get("amount_usdc"))
@@ -741,14 +940,14 @@ class CTFMixin:
                 fn = getattr(contract.functions, fn_name)(cid, amount)
             else:
                 fn = getattr(contract.functions, fn_name)(
-                    self._w3.to_checksum_address(USDC_E),
+                    self._w3.to_checksum_address(PUSD),
                     PARENT_COLLECTION_ID,
                     cid,
                     DEFAULT_PARTITION,
                     amount,
                 )
             tx = fn.build_transaction(self._tx_params())
-            return target, bytes.fromhex(tx["data"][2:]), target, amount
+            return target, bytes.fromhex(tx["data"][2:]), target, PUSD, amount
 
         # redeem
         if neg_risk:
@@ -761,12 +960,12 @@ class CTFMixin:
         else:
             index_sets = op.get("index_sets") or DEFAULT_PARTITION
             tx = self._ct_contract.functions.redeemPositions(
-                self._w3.to_checksum_address(USDC_E),
+                self._w3.to_checksum_address(PUSD),
                 PARENT_COLLECTION_ID,
                 cid,
                 index_sets,
             ).build_transaction(self._tx_params())
-        return target, bytes.fromhex(tx["data"][2:]), None, 0
+        return target, bytes.fromhex(tx["data"][2:]), None, PUSD, 0
 
     def _send_ctf_batch_relayed(
         self, calls: list[tuple[int, str, int, bytes]]
@@ -821,12 +1020,14 @@ class CTFMixin:
         auto_approve: bool = False,
         estimate: bool = False,
     ) -> SubmitTransactionResponse | GasEstimate:
-        """Bundle multiple split/merge/redeem operations into one proxy call.
+        """Bundle multiple CTF operations into one proxy call.
 
-        Each op dict accepts: ``op`` (``"split"`` | ``"merge"`` | ``"redeem"``),
-        ``condition_id``, ``amount`` or ``amount_usdc`` (split/merge),
+        Each op dict accepts: ``op`` (``"split"`` | ``"merge"`` | ``"redeem"``
+        | ``"convert"`` | ``"wrap"`` | ``"unwrap"``), ``condition_id`` (or
+        ``market_id`` for convert/wrap/unwrap), ``amount`` or ``amount_usdc``,
         ``neg_risk`` (bool), ``index_sets`` (redeem, standard), ``amounts``
-        (redeem, neg-risk). A DataFrame is converted via ``to_dict("records")``.
+        (redeem, neg-risk), ``index_set`` (convert), ``to`` (wrap/unwrap
+        recipient). A DataFrame is converted via ``to_dict("records")``.
 
         Gas savings come from a single proxy signature / GSN relay hop instead
         of one per op. The underlying CTF calls still run individually.
@@ -866,12 +1067,13 @@ class CTFMixin:
             )
 
         calls: list[tuple[int, str, int, bytes]] = []
-        approvals: dict[str, int] = {}
+        approvals: dict[tuple[str, str], int] = {}
         for op in ops:
-            target, data, spender, approval_amount = self._build_ctf_call(op)
+            target, data, spender, token, approval_amount = self._build_ctf_call(op)
             calls.append((1, target, 0, data))  # typeCode=1 (Call)
             if spender is not None:
-                approvals[spender] = approvals.get(spender, 0) + approval_amount
+                key = (spender, token)
+                approvals[key] = approvals.get(key, 0) + approval_amount
 
         if estimate:
             proxy_data = self._encode_proxy_calls(calls)
@@ -879,7 +1081,7 @@ class CTFMixin:
             return self.estimate_ctf_tx(tx)
 
         if auto_approve:
-            for spender, total in approvals.items():
-                self._ensure_allowance(spender, total)
+            for (spender, token), total in approvals.items():
+                self._ensure_allowance(spender, total, token=token)
 
         return self._send_ctf_batch_relayed(calls)

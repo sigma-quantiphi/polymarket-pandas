@@ -169,38 +169,41 @@ class ClobPrivateMixin:
         owner: str,
         orderType: str,
         post_only: bool = False,
+        defer_exec: bool = False,
     ) -> SendOrderResponse:
         """
-        Create and place an order using the Polymarket CLOB API.
+        Create and place an order using the Polymarket CLOB V2 API.
 
         Args:
             order (dict): The signed order object.
             owner (str): API key of the order owner.
-            orderType (str): The order type, e.g., "FOK", "GTC", "GTD".
+            orderType (str): Time-in-force — ``"GTC"``, ``"GTD"``, ``"FOK"``,
+                or ``"FAK"`` (V2: fill-and-kill, distinct from FOK).
             post_only: If True, reject the order if it would immediately
                 match (maker-only). Only valid with GTC/GTD.
+            defer_exec: V2 envelope flag — deferred execution hint to the
+                matching engine. Defaults to ``False``.
 
         Returns:
             dict: Response from the API.
 
         Note:
-            If builder API credentials are configured on the client
-            (``_builder_api_key`` / ``_builder_api_secret`` /
-            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
-            vars), ``POLY_BUILDER_*`` attribution headers are automatically
-            attached to this request and matched fills will be credited to
-            the builder for rewards.
+            V2: ``POLY_BUILDER_*`` HMAC attribution headers are no longer
+            attached. Builder attribution is per-order via the signed
+            ``builder`` (bytes32) field — set ``builder_code`` on the
+            client or pass it through :meth:`build_order`.
         """
         if post_only and orderType not in ("GTC", "GTD"):
             raise ValueError(f"post_only is only valid with GTC or GTD, got {orderType!r}")
         data: dict = {"order": order, "owner": owner, "orderType": orderType}
         if post_only:
             data["postOnly"] = True
+        if defer_exec:
+            data["deferExec"] = True
         return self._request_clob_private(
             path="order",
             method="POST",
             data=data,
-            attribute=True,
         )
 
     def place_orders(self, orders: pd.DataFrame) -> DataFrame[SendOrderResponseSchema]:
@@ -221,21 +224,21 @@ class ClobPrivateMixin:
             ValueError: If more than 15 orders are provided.
 
         Note:
-            If builder API credentials are configured on the client
-            (``_builder_api_key`` / ``_builder_api_secret`` /
-            ``_builder_api_passphrase``, or the ``POLYMARKET_BUILDER_*`` env
-            vars), ``POLY_BUILDER_*`` attribution headers are automatically
-            attached to this request and matched fills will be credited to
-            the builder for rewards.
+            V2: ``POLY_BUILDER_*`` HMAC attribution headers are no longer
+            attached. Builder attribution is per-order via the signed
+            ``builder`` (bytes32) field. Use :meth:`submit_orders` (which
+            wraps :meth:`build_order`) to thread ``builder_code`` through
+            from the input intent DataFrame's ``builderCode`` column.
         """
         from polymarket_pandas.order_schema import PlaceOrderSchema
 
         if len(orders) > 15:
             raise ValueError(f"CLOB API accepts at most 15 orders per call, got {len(orders)}")
         PlaceOrderSchema.validate(orders)
-        envelope_cols = {"owner", "orderType", "postOnly"}
+        envelope_cols = {"owner", "orderType", "postOnly", "deferExec"}
         order_cols = [c for c in orders.columns if c not in envelope_cols]
         has_post_only = "postOnly" in orders.columns
+        has_defer_exec = "deferExec" in orders.columns
         orders_data = []
         for row in orders.itertuples(index=False):
             order_dict = {c: getattr(row, c) for c in order_cols}
@@ -250,12 +253,13 @@ class ClobPrivateMixin:
                         f"postOnly is only valid with GTC or GTD, got {row.orderType!r}"
                     )
                 entry["postOnly"] = True
+            if has_defer_exec and getattr(row, "deferExec", False):
+                entry["deferExec"] = True
             orders_data.append(entry)
         response = self._request_clob_private(
             path="orders",
             method="POST",
             data=orders_data,
-            attribute=True,
         )
         return self.response_to_dataframe(response)
 

@@ -1065,16 +1065,14 @@ def build_order(
     price: float,
     size: float,
     side: str,
-    expiration: int = 0,
 ) -> str:
-    """Build and sign a CLOB order (does NOT submit it). Requires private key.
+    """Build and sign a CLOB V2 order (does NOT submit it). Requires private key.
 
     Args:
         token_id: The clobTokenId to trade.
         price: Limit price (0-1).
         size: Number of shares.
         side: "BUY" or "SELL".
-        expiration: Unix timestamp for expiry (0=GTC, no expiry).
 
     Returns the signed order dict, ready to pass to place_order.
     """
@@ -1083,7 +1081,6 @@ def build_order(
         price=price,
         size=size,
         side=side,
-        expiration=expiration,
     )
     return json.dumps(dict(order), default=str, indent=2)
 
@@ -1095,7 +1092,6 @@ def place_order(
     size: float,
     side: str,
     order_type: str = "GTC",
-    expiration: int = 0,
 ) -> str:
     """Build, sign, and submit a limit order. Requires private key + L2 auth.
 
@@ -1107,7 +1103,6 @@ def place_order(
         size: Number of shares.
         side: "BUY" or "SELL".
         order_type: "GTC" (good-til-cancel), "GTD" (good-til-date), or "FOK" (fill-or-kill).
-        expiration: Unix timestamp for GTD expiry (0=GTC).
     """
     client = _client()
     order = client.build_order(
@@ -1115,7 +1110,6 @@ def place_order(
         price=price,
         size=size,
         side=side,
-        expiration=expiration,
     )
     if not client.address:
         return "Error: POLYMARKET_ADDRESS not set. Cannot place orders."

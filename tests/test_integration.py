@@ -333,6 +333,15 @@ def test_get_profile(client: PolymarketPandas, user_address: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.xfail(
+    reason=(
+        "CLOB /time returns 503 in the post-V2-cutover infrastructure window "
+        "(2026-04-28). Other CLOB paths (e.g. /clob-markets, /midpoint) are "
+        "responsive — endpoint appears specifically unavailable. Re-enable "
+        "once Polymarket restores /time."
+    ),
+    strict=False,
+)
 def test_get_server_time(client: PolymarketPandas) -> None:
     t = client.get_server_time()
     assert isinstance(t, int)
@@ -351,8 +360,20 @@ def test_get_neg_risk(client: PolymarketPandas, token: str) -> None:
 
 
 def test_get_fee_rate(client: PolymarketPandas, token: str) -> None:
+    """V2 deprecation shim: get_fee_rate now always returns 0."""
     rate = client.get_fee_rate(token_id=token)
-    assert isinstance(rate, int)
+    assert rate == 0
+
+
+def test_get_clob_market_info(client: PolymarketPandas, condition_id: str) -> None:
+    """V2 single-call market info (`/clob-markets/{conditionId}`)."""
+    info = client.get_clob_market_info(condition_id)
+    assert isinstance(info, dict)
+    # Confirmed live keys post-cutover (2026-04-28). Other auxiliary keys
+    # exist (aot/r/ao/cbos/ibce/c) but their semantics aren't documented.
+    assert {"mts", "mos", "fd", "t"} <= set(info)
+    assert isinstance(info["mts"], (int, float))
+    assert isinstance(info["t"], list) and len(info["t"]) >= 2
 
 
 def test_get_orderbook(client: PolymarketPandas, token: str) -> None:
