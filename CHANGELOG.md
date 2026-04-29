@@ -9,6 +9,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.3] — 2026-04-29
+
+### Fixed
+- **`NegRiskUmaCtfAdapter` address bug.** On-chain probe (2026-04-29) confirmed that the address shipped in v0.9.x (`0x2F5e3684cb1F318ec51b00Edba38d79Ac2c7c324`) has zero bytecode on Polygon — no contract is deployed there. Neg-risk UMA calls (`propose_price` / `dispute_price` / `settle_oo` / `resolve_market` with `neg_risk=True`) previously reverted silently with empty data; they now raise `NotImplementedError` referencing the V2-port follow-up issue (#20).
+- **`_require_uma_contracts`** no longer attempts to instantiate the broken neg-risk adapter; only the regular `UmaCtfAdapter` and `OptimisticOracleV2` are wired up.
+
+### Documented
+- Module docstring on `polymarket_pandas/mixins/_uma.py` now warns that the contracts here are **V1-era**. The V2 contracts page lists a different `UmaCtfAdapter` (`0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74`) with a different ABI; full V2 UMA support is tracked in #20. The non-neg-risk V1 flow remains usable for V1 markets.
+
+Closes #17.
+
+---
+
 ## [0.9.2] — 2026-04-29
 
 ### Changed

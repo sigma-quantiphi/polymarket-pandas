@@ -5,13 +5,28 @@ callers can script market-resolution disputes (propose price, dispute,
 settle, resolve).  Requires the ``web3`` optional dependency:
 ``pip install polymarket-pandas[ctf]``.
 
+.. warning::
+    **V1 flow only.** The contract addresses below are V1-era. After the
+    V2 cutover (2026-04-28), Polymarket published a different
+    UmaCtfAdapter address (``0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74``)
+    that exposes a different ABI from the one declared here. The V1
+    addresses still have on-chain bytecode and the regular (non-neg-risk)
+    flow remains usable for V1 markets, but **V2 markets cannot be
+    queried or disputed through this mixin until issue #20 is resolved**.
+
+    The previously-shipped ``NegRiskUmaCtfAdapter`` address
+    (``0x2F5e3684cb1F318ec51b00Edba38d79Ac2c7c324``) was verified to have
+    **zero bytecode** on Polygon — no contract is deployed at that
+    address. Any neg-risk UMA call now raises ``NotImplementedError``
+    pointing at issue #20 instead of silently failing.
+
 Contract layer (all on Polygon mainnet):
 
-* ``UmaCtfAdapter``        — stores per-question metadata and, on
+* ``UmaCtfAdapter``        — V1; stores per-question metadata and, on
                               ``resolve``, pulls the settled price from
                               OOv2 and reports payouts to the CTF.
-* ``NegRiskUmaCtfAdapter`` — same role for neg-risk markets.
-* ``OptimisticOracleV2``   — where all propose / dispute / settle calls
+* ``NegRiskUmaCtfAdapter`` — V1; **address unknown / not deployed**. See above.
+* ``OptimisticOracleV2``   — V1; where all propose / dispute / settle calls
                               actually happen.  The adapter is only the
                               ``requester`` for OO lookups.
 
@@ -32,8 +47,20 @@ from polymarket_pandas.types import (
 # ── Contract addresses (Polygon mainnet) ─────────────────────────────
 
 UMA_CTF_ADAPTER = "0x157Ce2d672854c848c9b79C49a8Cc6cc89176a49"
-NEG_RISK_UMA_CTF_ADAPTER = "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c7c324"
+# V1 address; on-chain probe (2026-04-29) showed 0 bytecode — no contract
+# deployed at this address. Kept as a sentinel so existing imports don't
+# break, but `_adapter_contract(neg_risk=True)` raises NotImplementedError.
+# See issue #20 for the V2 NegRiskUmaCtfAdapter port.
+NEG_RISK_UMA_CTF_ADAPTER: str | None = None
 OPTIMISTIC_ORACLE_V2 = "0xeE3Afe347D5C74317041E2618C49534dAf887c24"
+
+_NEG_RISK_NOT_SUPPORTED = (
+    "Neg-risk UMA flow is not supported in this release. The "
+    "NegRiskUmaCtfAdapter address shipped in v0.9.x "
+    "(0x2F5e3684cb1F318ec51b00Edba38d79Ac2c7c324) has no on-chain "
+    "bytecode, and the V2 contracts page does not list a replacement. "
+    "Track issue #20 for the full V2 UMA port."
+)
 
 # bytes32("YES_OR_NO_QUERY") — right-padded with zeros to 32 bytes.
 YES_OR_NO_IDENTIFIER = b"YES_OR_NO_QUERY".ljust(32, b"\x00")
@@ -226,7 +253,13 @@ class UmaMixin:
     # ── Internal helpers ─────────────────────────────────────────────
 
     def _require_uma_contracts(self) -> None:
-        """Lazily instantiate UMA adapter + OOv2 web3 contract objects."""
+        """Lazily instantiate UMA adapter + OOv2 web3 contract objects.
+
+        The neg-risk adapter is **not** instantiated — its address has
+        no on-chain bytecode (see module docstring). Neg-risk callers
+        get a clear ``NotImplementedError`` from
+        :meth:`_adapter_contract` instead of a silent revert.
+        """
         self._require_web3()
         if hasattr(self, "_uma_adapter"):
             return
@@ -234,10 +267,7 @@ class UmaMixin:
             address=self._w3.to_checksum_address(UMA_CTF_ADAPTER),
             abi=_UMA_ADAPTER_ABI,
         )
-        self._uma_nr_adapter = self._w3.eth.contract(
-            address=self._w3.to_checksum_address(NEG_RISK_UMA_CTF_ADAPTER),
-            abi=_UMA_ADAPTER_ABI,
-        )
+        self._uma_nr_adapter = None  # see module docstring + issue #20
         self._oo_v2 = self._w3.eth.contract(
             address=self._w3.to_checksum_address(OPTIMISTIC_ORACLE_V2),
             abi=_OO_ABI,
@@ -245,10 +275,14 @@ class UmaMixin:
 
     @staticmethod
     def _adapter_address(neg_risk: bool) -> str:
-        return NEG_RISK_UMA_CTF_ADAPTER if neg_risk else UMA_CTF_ADAPTER
+        if neg_risk:
+            raise NotImplementedError(_NEG_RISK_NOT_SUPPORTED)
+        return UMA_CTF_ADAPTER
 
     def _adapter_contract(self, neg_risk: bool):
-        return self._uma_nr_adapter if neg_risk else self._uma_adapter
+        if neg_risk:
+            raise NotImplementedError(_NEG_RISK_NOT_SUPPORTED)
+        return self._uma_adapter
 
     @staticmethod
     def _validate_proposed_price(price: int) -> None:
