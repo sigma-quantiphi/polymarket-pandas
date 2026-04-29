@@ -209,12 +209,18 @@ class RelayPayload(TypedDict):
 # Used by: submit_transaction
 
 
-class SubmitTransactionResponse(TypedDict):
-    """Response from submitting a relayer transaction."""
+class SubmitTransactionResponse(TypedDict, total=False):
+    """Response from submitting a relayer transaction.
+
+    V2 (2026-04-21): the relayer's ``POST /submit`` returns immediately
+    with just ``{transactionID, state: "STATE_NEW"}``. ``transactionHash``
+    is populated only after polling :meth:`get_transaction` once the
+    relayer has broadcast the transaction.
+    """
 
     transactionID: str
-    transactionHash: str
-    state: str
+    state: str  # e.g. "STATE_NEW" on the immediate response
+    transactionHash: str  # NotRequired; obtain via get_transaction()
 
 
 # ── Signed order ──────────────────────────────────────────────────────

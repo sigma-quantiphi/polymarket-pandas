@@ -2844,6 +2844,49 @@ def test_delete_readonly_api_key(authed_client: PolymarketPandas, httpx_mock: HT
 
 
 # ════════════════════════════════════════════════════════════════════
+#  Relayer submit_transaction (V2 response shape, #9)
+# ════════════════════════════════════════════════════════════════════
+
+
+def test_submit_transaction_v2_response_shape(authed_client: PolymarketPandas, monkeypatch):
+    """V2 relayer returns {transactionID, state} only — transactionHash absent.
+
+    Confirms the helper passes the response through unchanged so callers
+    can poll get_relayer_transaction(transactionID) for the on-chain hash.
+    """
+    captured = {}
+
+    def _stub_request(*args, **kwargs):
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return {"transactionID": "0190b317-a1d3-7bec-9b91-eeb6dcd3a620", "state": "STATE_NEW"}
+
+    authed_client._builder_api_key = None  # force relayer-key path
+    authed_client._builder_api_secret = None
+    authed_client._builder_api_passphrase = None
+    authed_client._relayer_api_key = "test-relayer-key"
+    authed_client._relayer_api_key_address = "0x" + "ab" * 20
+    monkeypatch.setattr(authed_client, "_request_relayer", _stub_request)
+
+    out = authed_client.submit_transaction(
+        from_="0x" + "11" * 20,
+        to="0x" + "22" * 20,
+        proxy_wallet="0x" + "33" * 20,
+        data="0xdead",
+        nonce="1",
+        signature="0x" + "ee" * 65,
+        type="PROXY",
+        signature_params={"gasPrice": "0", "gasLimit": "100000", "relayerFee": "0"},
+    )
+    assert out == {
+        "transactionID": "0190b317-a1d3-7bec-9b91-eeb6dcd3a620",
+        "state": "STATE_NEW",
+    }
+    # transactionHash deliberately absent — caller must poll get_relayer_transaction.
+    assert "transactionHash" not in out
+
+
+# ════════════════════════════════════════════════════════════════════
 #  UMA resolution / dispute (_uma.py)
 # ════════════════════════════════════════════════════════════════════
 

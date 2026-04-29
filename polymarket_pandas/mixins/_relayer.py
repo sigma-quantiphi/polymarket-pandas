@@ -118,7 +118,12 @@ class RelayerMixin:
                 ``safeTxnGas``, ``baseGas``, ``gasToken``, ``refundReceiver``.
 
         Returns:
-            dict: ``{"transactionID": str, "transactionHash": str, "state": str}``.
+            dict: ``{"transactionID": str, "state": str}``. As of the
+            V2 relayer rollout (2026-04-21) the on-chain
+            ``transactionHash`` is no longer included in the immediate
+            response — call :meth:`get_relayer_transaction` (`GET
+            /transaction/{transactionID}`) to retrieve it once the
+            relayer broadcasts.
         """
         body = {
             "from": from_,

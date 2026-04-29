@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.2] — 2026-04-29
+
+### Changed
+- **`SubmitTransactionResponse`** TypedDict relaxed to `total=False`. The Polymarket relayer's `POST /submit` no longer returns `transactionHash` in the immediate response (per the [2026-04-21 changelog entry](https://docs.polymarket.com/changelog#apr-21-2026)) — it returns `{transactionID, state: "STATE_NEW"}` and you poll `get_relayer_transaction(transactionID)` to retrieve the on-chain hash once the relayer broadcasts. Closes #9.
+- **`submit_transaction`** docstring updated to document the new two-step pattern.
+- **`docs/api/ctf.md`** and **`docs/api/relayer.md`** examples updated to call `get_relayer_transaction` for the hash.
+
+---
+
 ## [0.10.1] — 2026-04-29
 
 ### Added — V2 read endpoints (closes #14)

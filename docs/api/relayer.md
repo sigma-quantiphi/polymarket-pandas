@@ -70,7 +70,11 @@ result = client.submit_transaction(
         "refundReceiver": "0x0000000000000000000000000000000000000000",
     },
 )
-# result: {"transactionID": str, "transactionHash": str, "state": str}
+# result: {"transactionID": str, "state": "STATE_NEW"}
+# V2: transactionHash is no longer in the immediate response.
+# Poll get_relayer_transaction for the on-chain hash.
+tx = client.get_relayer_transaction(result["transactionID"])
+print(tx[0]["transactionHash"])
 ```
 
 ---

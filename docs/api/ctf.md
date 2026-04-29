@@ -175,7 +175,10 @@ print(f"Gas: {est['gas']:,}  Cost: {est['costMatic']:.6f} MATIC")
 # auto_approve=True coalesces allowance checks — one approval per spender,
 # for the sum of all split/merge amounts targeting that spender.
 resp = client.batch_ctf_ops(ops, auto_approve=True)
-print(resp["transactionHash"])
+# V2 relayer returns {transactionID, state} — poll get_relayer_transaction
+# for the on-chain hash once the relayer broadcasts.
+tx = client.get_relayer_transaction(resp["transactionID"])
+print(tx[0]["transactionHash"])
 
 # DataFrame input works too
 df = pd.DataFrame(ops)
