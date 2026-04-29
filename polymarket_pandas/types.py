@@ -396,17 +396,24 @@ class XTrackerTracking(TypedDict, total=False):
 
 
 class UmaQuestion(TypedDict):
-    """UMA CTF Adapter stored metadata for a single question."""
+    """UMA CTF Adapter stored metadata for a single question.
+
+    The regular V2 adapter (``UMA_CTF_ADAPTER``) drops ``liveness`` and
+    ``refund`` from its on-chain struct — :meth:`get_uma_question`
+    returns ``None`` for those keys when querying the V2 path. The
+    neg-risk adapter still uses the V1 12-field layout and populates
+    them as ``int`` / ``bool``.
+    """
 
     requestTimestamp: int
     reward: int
     proposalBond: int
-    liveness: int
+    liveness: int | None
     emergencyResolutionTimestamp: int
     resolved: bool
     paused: bool
     reset: bool
-    refund: bool
+    refund: bool | None
     rewardToken: str
     creator: str
     ancillaryData: bytes

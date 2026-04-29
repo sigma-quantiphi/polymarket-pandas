@@ -207,15 +207,20 @@ On-chain merge / split / redeem via Polymarket's Conditional Token Framework con
 
 Automates the UMA optimistic-oracle flow that resolves Polymarket markets. Shares the `ctf` extra (no new dependency) and reuses `_require_web3`, `_eoa_address`, `_has_proxy_wallet`, `_tx_params`, `_send_ctf_tx`, `_send_ctf_tx_relayed`, `_ensure_allowance`, `estimate_ctf_tx` from `CTFMixin`.
 
-**⚠️ V1 flow only (as of v0.9.3).** The contracts here are V1-era and continue to work for V1-resolved markets. The V2 contracts page lists a different `UmaCtfAdapter` (`0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74`) with a different ABI; calls against it from this mixin produce `BadFunctionCallOutput`. `NegRiskUmaCtfAdapter` is `None` because the historical address has zero on-chain bytecode and the V2 page does not list a replacement; neg-risk UMA calls raise `NotImplementedError`. Full V2 UMA support tracked in #20.
+**Asymmetric ABIs (as of v0.11.0).** The regular and neg-risk adapters use **different** `getQuestion` return shapes:
 
-**Contract layer (Polygon):**
+- Regular V2 `UmaCtfAdapter` returns a **10-field** struct: dropped `liveness` and `refund` from the V1 layout. `liveness` now lives only on OOv2 per-request (read via `customLiveness` in `getRequest`).
+- Neg-risk adapter still returns the **V1 12-field** struct.
 
-| Role | Address |
-|---|---|
-| UmaCtfAdapter (V1) | `0x157Ce2d672854c848c9b79C49a8Cc6cc89176a49` |
-| NegRiskUmaCtfAdapter | `None` — see #20 |
-| OptimisticOracleV2 (V1) | `0xeE3Afe347D5C74317041E2618C49534dAf887c24` |
+`get_uma_question` returns ``None`` for `liveness`/`refund` when querying the regular V2 path; both fields are populated for `neg_risk=True`.
+
+**Contract layer (Polygon, verified 2026-04-29):**
+
+| Role | Address | Notes |
+|---|---|---|
+| UmaCtfAdapter (V2) | `0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74` | 10-field struct |
+| NegRiskUmaCtfAdapter | `0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d` | V1-style 12-field struct (corrected from buggy `…7c324` shipped in v0.9.x) |
+| OptimisticOracleV2 | `0xeE3Afe347D5C74317041E2618C49534dAf887c24` | UMA-team-deployed; confirmed canonical via `optimisticOracle()` on both adapters |
 
 **Adapter vs OO split.** Adapters only store per-question metadata and, on `resolve(questionID)`, pull the settled price from OOv2 and call `ctf.reportPayouts`. All proposer / disputer / settler traffic goes to **OOv2 directly** with the adapter passed as the `requester`. USDC.e approvals therefore target **OOv2, not the adapter** — `propose_price` / `dispute_price` call `_ensure_allowance(OPTIMISTIC_ORACLE_V2, ...)`.
 

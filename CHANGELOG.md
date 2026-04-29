@@ -9,6 +9,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.0] — 2026-04-29
+
+### Changed (breaking)
+- **UMA flow ported to V2 contracts.** Closes #20.
+  - `UMA_CTF_ADAPTER` → `0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74` (Polymarket V2 deployment, verified via Sourcify).
+  - `NEG_RISK_UMA_CTF_ADAPTER` → `0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d` — corrected from the buggy `…7c324` shipped in v0.9.x (which had **zero on-chain bytecode**). The corrected address comes from `Polymarket/neg-risk-ctf-adapter@addresses.json`.
+  - `OPTIMISTIC_ORACLE_V2` unchanged at `0xeE3Afe347D5C74317041E2618C49534dAf887c24`. Confirmed canonical by querying `optimisticOracle()` on both Polymarket adapters; the address listed on the V2 contracts page (`0xCB18…`) is **not** what Polymarket adapters point at.
+- **Asymmetric `getQuestion` ABIs.** The regular V2 adapter returns a **10-field** `QuestionData` struct (dropped `liveness` and `refund` from V1), while the neg-risk adapter still returns the V1 **12-field** struct. `_uma.py` instantiates them with separate ABIs (`_UMA_ADAPTER_V2_ABI`, `_UMA_ADAPTER_V1_ABI`).
+
+### Fixed
+- **Neg-risk UMA flow restored.** v0.9.3 had `_adapter_contract(neg_risk=True)` raise `NotImplementedError` because the shipped address was bogus. v0.11.0 routes neg-risk through the corrected adapter and the V1-shape ABI.
+
+### Documentation
+- `polymarket_pandas/mixins/_uma.py` module docstring rewritten — V1-only warning removed.
+- `CLAUDE.md` UmaMixin section reflects the dual-ABI reality and the corrected addresses.
+
+### Notes for callers
+`get_uma_question(question_id)` returns `None` for the `liveness` and `refund` keys when querying the regular V2 path (those fields are no longer stored on-chain). Both keys are populated for `neg_risk=True`. Code that assumed `int`/`bool` types should now handle `None`.
+
+---
+
 ## [0.10.2] — 2026-04-29
 
 ### Changed

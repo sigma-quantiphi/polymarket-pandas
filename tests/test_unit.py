@@ -2900,21 +2900,36 @@ def _mock_uma(ctf_client, monkeypatch, *, state_idx: int = 1):
     ``state_idx`` maps to the ``_OO_STATES`` tuple (0=Invalid, 1=Requested,
     2=Proposed, ...).
 
-    V0.9.3+: the neg-risk adapter is no longer instantiated by
-    ``_require_uma_contracts`` (its address has no on-chain bytecode).
-    The fourth return value is kept for back-compat with existing tests
-    but always ``None``.
+    V0.11.0+: instantiates BOTH the V2 regular adapter (10-field
+    ``getQuestion`` tuple) and the V1-style neg-risk adapter (12-field
+    tuple). The ``_w3.eth.contract`` side-effect emits adapter, nr_adapter,
+    oo in order to match ``_require_uma_contracts``.
     """
     ct, nr, usdc = _mock_web3(ctf_client, monkeypatch)
 
     adapter = MagicMock()
+    nr_adapter = MagicMock()
     oo = MagicMock()
 
-    ctf_client._w3.eth.contract = MagicMock(side_effect=[adapter, oo])
+    ctf_client._w3.eth.contract = MagicMock(side_effect=[adapter, nr_adapter, oo])
 
     usdc.functions.allowance.return_value.call.return_value = 0
 
-    question_tuple = (
+    # Regular V2 adapter — 10 fields (no liveness, no refund).
+    question_tuple_v2 = (
+        1_700_000_000,
+        2_000_000,
+        500_000_000,
+        0,
+        False,
+        False,
+        False,
+        "0x" + "11" * 20,
+        "0x" + "22" * 20,
+        b"q?",
+    )
+    # Neg-risk adapter — V1-style 12 fields.
+    question_tuple_v1 = (
         1_700_000_000,
         2_000_000,
         500_000_000,
@@ -2928,8 +2943,10 @@ def _mock_uma(ctf_client, monkeypatch, *, state_idx: int = 1):
         "0x" + "22" * 20,
         b"q?",
     )
-    adapter.functions.getQuestion.return_value.call.return_value = question_tuple
+    adapter.functions.getQuestion.return_value.call.return_value = question_tuple_v2
+    nr_adapter.functions.getQuestion.return_value.call.return_value = question_tuple_v1
     adapter.functions.ready.return_value.call.return_value = True
+    nr_adapter.functions.ready.return_value.call.return_value = True
 
     oo.functions.getState.return_value.call.return_value = state_idx
     oo.functions.getRequest.return_value.call.return_value = (
@@ -2945,12 +2962,12 @@ def _mock_uma(ctf_client, monkeypatch, *, state_idx: int = 1):
         1_500_000_000,
     )
 
-    for contract in (adapter, oo):
+    for contract in (adapter, nr_adapter, oo):
         for fn_name in ("proposePrice", "disputePrice", "settle", "resolve"):
             fn = getattr(contract.functions, fn_name, MagicMock())
             fn.return_value.build_transaction.return_value = {"data": "0x"}
 
-    return adapter, None, oo, usdc
+    return adapter, nr_adapter, oo, usdc
 
 
 def test_uma_requires_private_key(client: PolymarketPandas):
@@ -3015,15 +3032,44 @@ def test_uma_dispute_rejects_bad_state(ctf_client: PolymarketPandas, monkeypatch
         ctf_client.dispute_price(STUB_QUESTION_ID)
 
 
-def test_uma_neg_risk_raises_not_implemented(ctf_client: PolymarketPandas, monkeypatch):
-    """V0.9.3: NegRiskUmaCtfAdapter has no on-chain bytecode at the
-    historical address, and the V2 contracts page does not list a
-    replacement. Neg-risk UMA calls must raise NotImplementedError until
-    issue #20 lands the V2 port.
+def test_uma_neg_risk_routes_through_nr_adapter(ctf_client: PolymarketPandas, monkeypatch):
+    """V0.11.0: neg-risk UMA flow routes through the V1-shape NegRisk adapter.
+
+    The corrected NegRiskUmaCtfAdapter address (``0x2F5e...0aA9d``) is
+    deployed and uses the V1 12-field ``QuestionData`` struct. This test
+    asserts that ``propose_price(neg_risk=True)`` reads the question
+    from the neg-risk adapter and submits to OOv2 with that adapter as
+    the ``requester``.
     """
-    _mock_uma(ctf_client, monkeypatch, state_idx=1)
-    with pytest.raises(NotImplementedError, match="Neg-risk UMA flow"):
-        ctf_client.propose_price(STUB_QUESTION_ID, 0, neg_risk=True)
+    from polymarket_pandas.mixins._uma import NEG_RISK_UMA_CTF_ADAPTER
+
+    _adapter, nr_adapter, oo, _usdc = _mock_uma(ctf_client, monkeypatch, state_idx=1)
+    ctf_client.propose_price(STUB_QUESTION_ID, 0, neg_risk=True)
+
+    nr_adapter.functions.getQuestion.assert_called()
+    args = oo.functions.proposePrice.call_args[0]
+    assert args[0] == NEG_RISK_UMA_CTF_ADAPTER
+
+
+def test_uma_get_question_v2_shape_omits_liveness_refund(ctf_client: PolymarketPandas, monkeypatch):
+    """V2 regular adapter doesn't store liveness/refund — TypedDict has None there."""
+    _mock_uma(ctf_client, monkeypatch)
+    q = ctf_client.get_uma_question(STUB_QUESTION_ID)
+    assert q["liveness"] is None
+    assert q["refund"] is None
+    # Other fields still present and well-typed
+    assert q["requestTimestamp"] == 1_700_000_000
+    assert q["reward"] == 2_000_000
+    assert q["proposalBond"] == 500_000_000
+
+
+def test_uma_get_question_neg_risk_v1_shape_has_liveness(ctf_client: PolymarketPandas, monkeypatch):
+    """Neg-risk adapter still stores the V1 12-field struct including liveness/refund."""
+    _mock_uma(ctf_client, monkeypatch)
+    q = ctf_client.get_uma_question(STUB_QUESTION_ID, neg_risk=True)
+    assert q["liveness"] == 7200  # V1 fixture sets this; V2 doesn't store it
+    assert q["refund"] is False
+    assert q["requestTimestamp"] == 1_700_000_000
 
 
 def test_uma_resolve_market_calls_adapter(ctf_client: PolymarketPandas, monkeypatch):

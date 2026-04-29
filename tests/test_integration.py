@@ -394,6 +394,48 @@ def test_get_market_trades_events(client: PolymarketPandas, any_market: pd.Serie
     assert isinstance(out, dict)
 
 
+@pytest.fixture(scope="session")
+def uma_question_id(client: PolymarketPandas) -> str:
+    """A questionID from a recently-closed market that went through UMA.
+
+    Falls back to ``pytest.skip`` when none are available. The first
+    market with a non-empty ``questionID`` and a ``umaResolutionStatus``
+    other than ``""`` is used.
+    """
+    df = client.get_markets(closed=True, limit=20, order="endDate", ascending=False)
+    if "questionID" not in df.columns:
+        pytest.skip("Gamma response missing questionID column")
+    df = df[df["questionID"].notna() & (df["questionID"] != "")]
+    if df.empty:
+        pytest.skip("No closed markets with a populated questionID")
+    return str(df["questionID"].iloc[0])
+
+
+def test_get_uma_question_v2_live(uma_question_id: str) -> None:
+    """V2 regular adapter: live `getQuestion` parses without ABI errors.
+
+    Most recently-closed markets are non-neg-risk, so this exercises the
+    V2 10-field path. We don't assert specific values — just that the
+    call succeeds and returns the expected TypedDict keys.
+
+    Uses a known-good public Polygon RPC (``polygon.publicnode.com``).
+    Polymarket's default ``polygon-rpc.com`` rate-limits / 401s under
+    load and is not suitable for CI.
+    """
+    pytest.importorskip("web3")
+    rpc_client = PolymarketPandas(
+        use_tqdm=False, rpc_url="https://polygon.publicnode.com"
+    )
+    try:
+        q = rpc_client.get_uma_question(uma_question_id)
+    except Exception as e:  # noqa: BLE001 — gracefully skip on RPC flake
+        pytest.skip(f"Polygon RPC unavailable: {type(e).__name__}: {e}")
+    assert {"requestTimestamp", "reward", "proposalBond", "ancillaryData"} <= set(q)
+    # V2 path: liveness/refund are None (not stored on V2 adapter)
+    assert q.get("liveness") is None
+    assert q.get("refund") is None
+
+
 def test_get_clob_market_info(client: PolymarketPandas, condition_id: str) -> None:
     """V2 single-call market info (`/clob-markets/{conditionId}`).
 
