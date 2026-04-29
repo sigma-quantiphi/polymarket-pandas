@@ -70,6 +70,9 @@ polymarket_pandas/
     #                                    get_uma_question, get_oo_request,
     #                                    get_uma_state, propose_price,
     #                                    dispute_price, settle_oo, resolve_market
+    _rfq.py            # RfqMixin     — V2 Request-for-Quote — create/cancel/get RFQ
+    #                                    requests + quotes + best-quote + rfq_config
+    #                                    (accept/approve pending V1 signing — issue #21)
     _xtracker.py       # XTrackerMixin — xtracker.polymarket.com post-counter API
     #                                    (X / Truth Social tracking, feeds counter markets)
 ```

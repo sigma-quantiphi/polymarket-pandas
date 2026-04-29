@@ -40,6 +40,7 @@ from polymarket_pandas.mixins import (
     GammaMixin,
     RelayerMixin,
     RewardsMixin,
+    RfqMixin,
     UmaMixin,
     XTrackerMixin,
 )
@@ -170,6 +171,7 @@ class PolymarketPandas(
     CTFMixin,
     UmaMixin,
     RewardsMixin,
+    RfqMixin,
     XTrackerMixin,
 ):
     """Polymarket HTTP client that returns preprocessed pandas DataFrames.

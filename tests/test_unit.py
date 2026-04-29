@@ -2844,6 +2844,151 @@ def test_delete_readonly_api_key(authed_client: PolymarketPandas, httpx_mock: HT
 
 
 # ════════════════════════════════════════════════════════════════════
+#  RFQ subsystem (#12, v0.12.0) — 11 endpoints
+# ════════════════════════════════════════════════════════════════════
+
+
+def _rfq_tick_size_mock(httpx_mock: HTTPXMock, token_id: str, tick: float = 0.01):
+    httpx_mock.add_response(
+        url=f"https://clob.polymarket.com/tick-size?token_id={token_id}",
+        json={"minimum_tick_size": tick},
+    )
+
+
+def test_create_rfq_request_buy(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    _rfq_tick_size_mock(httpx_mock, "12345")
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/request",
+        method="POST",
+        json={"requestId": "rfq-1"},
+    )
+    out = authed_client.create_rfq_request(token_id="12345", price=0.5, size=10.0, side="BUY")
+    assert out == {"requestId": "rfq-1"}
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/request").content
+    )
+    # BUY: assetIn = token, assetOut = "0" (USDC)
+    assert body["assetIn"] == "12345"
+    assert body["assetOut"] == "0"
+    # 10 tokens at 6 decimals = 10_000_000; 5 USDC = 5_000_000
+    assert body["amountIn"] == "10000000"
+    assert body["amountOut"] == "5000000"
+    assert body["userType"] == 1
+
+
+def test_create_rfq_request_sell_inverts_assets(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    _rfq_tick_size_mock(httpx_mock, "12345")
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/request",
+        method="POST",
+        json={"requestId": "rfq-2"},
+    )
+    authed_client.create_rfq_request(token_id="12345", price=0.5, size=10.0, side="SELL")
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/request").content
+    )
+    assert body["assetIn"] == "0"
+    assert body["assetOut"] == "12345"
+    assert body["amountIn"] == "5000000"
+    assert body["amountOut"] == "10000000"
+
+
+def test_cancel_rfq_request(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/request",
+        method="DELETE",
+        json={"cancelled": True},
+    )
+    out = authed_client.cancel_rfq_request("rfq-1")
+    assert out == {"cancelled": True}
+
+
+def test_get_rfq_requests(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/requests?state=active",
+        json={"data": []},
+    )
+    out = authed_client.get_rfq_requests(state="active")
+    assert "data" in out
+
+
+def test_create_rfq_quote(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    _rfq_tick_size_mock(httpx_mock, "12345")
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/quote",
+        method="POST",
+        json={"quoteId": "q-1"},
+    )
+    authed_client.create_rfq_quote(
+        request_id="rfq-1", token_id="12345", price=0.5, size=10.0, side="SELL"
+    )
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/quote").content
+    )
+    assert body["requestId"] == "rfq-1"
+    assert body["assetIn"] == "0"
+    assert body["assetOut"] == "12345"
+
+
+def test_cancel_rfq_quote(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/quote",
+        method="DELETE",
+        json={"cancelled": True},
+    )
+    out = authed_client.cancel_rfq_quote("q-1")
+    assert out == {"cancelled": True}
+
+
+def test_get_rfq_requester_quotes(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/requester/quotes?state=active",
+        json={"data": []},
+    )
+    out = authed_client.get_rfq_requester_quotes(state="active")
+    assert "data" in out
+
+
+def test_get_rfq_quoter_quotes(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/quoter/quotes",
+        json={"data": []},
+    )
+    out = authed_client.get_rfq_quoter_quotes()
+    assert "data" in out
+
+
+def test_get_rfq_best_quote(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/best-quote?requestId=rfq-1",
+        json={"price": "0.55"},
+    )
+    out = authed_client.get_rfq_best_quote("rfq-1")
+    assert out["price"] == "0.55"
+
+
+def test_rfq_config(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/config",
+        json={"minSize": 1.0},
+    )
+    out = authed_client.rfq_config()
+    assert out["minSize"] == 1.0
+
+
+def test_accept_rfq_quote_raises_not_implemented(authed_client: PolymarketPandas):
+    with pytest.raises(NotImplementedError, match="V1-signed orders"):
+        authed_client.accept_rfq_quote("rfq-1", "q-1", expiration=0)
+
+
+def test_approve_rfq_order_raises_not_implemented(authed_client: PolymarketPandas):
+    with pytest.raises(NotImplementedError, match="V1-signed orders"):
+        authed_client.approve_rfq_order("rfq-1", "q-1", expiration=0)
+
+
+# ════════════════════════════════════════════════════════════════════
 #  Relayer submit_transaction (V2 response shape, #9)
 # ════════════════════════════════════════════════════════════════════
 

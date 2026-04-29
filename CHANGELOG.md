@@ -9,6 +9,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.0] — 2026-04-29
+
+### Added
+- **`RfqMixin`** in `polymarket_pandas/mixins/_rfq.py` — Polymarket V2 RFQ (Request-for-Quote) flow, ported from `py_clob_client_v2/rfq/`. Standard L2 HMAC auth via `_request_clob_private`. Closes #12 (partially — see follow-up #21).
+
+**Public methods (9 of 11 fully implemented):**
+
+| Method | HTTP | Path | Notes |
+|---|---|---|---|
+| `create_rfq_request(token_id, price, size, side, tick_size=None)` | POST | `/rfq/request` | |
+| `cancel_rfq_request(request_id)` | DELETE | `/rfq/request` | |
+| `get_rfq_requests(...filters...)` | GET | `/rfq/data/requests` | |
+| `create_rfq_quote(request_id, token_id, price, size, side, tick_size=None)` | POST | `/rfq/quote` | |
+| `cancel_rfq_quote(quote_id)` | DELETE | `/rfq/quote` | |
+| `get_rfq_requester_quotes(...filters...)` | GET | `/rfq/data/requester/quotes` | |
+| `get_rfq_quoter_quotes(...filters...)` | GET | `/rfq/data/quoter/quotes` | |
+| `get_rfq_best_quote(request_id)` | GET | `/rfq/data/best-quote` | |
+| `rfq_config()` | GET | `/rfq/config` | |
+| `accept_rfq_quote(...)` | POST | `/rfq/request/accept` | **Raises `NotImplementedError` — see #21** |
+| `approve_rfq_order(...)` | POST | `/rfq/quote/approve` | **Raises `NotImplementedError` — see #21** |
+
+`accept_rfq_quote` and `approve_rfq_order` require V1-signed orders (12-field struct with `taker`/`nonce`/`feeRateBps`/`expiration`); our `build_order` is V2-only since v0.9.0. The two methods raise `NotImplementedError` pointing at #21 for the V1-signing port.
+
+### API style notes
+The mixin uses kwargs-style entry points instead of mirroring py-clob-client-v2's dataclass shape (e.g. `RfqUserRequest`) — consistent with the rest of `polymarket-pandas`. Internally, request/quote bodies follow the V2 `assetIn/assetOut/amountIn/amountOut/userType` shape; helper `_rfq_amounts` rounds price/size and converts to base units using the existing `_TICK_SIZES` / `_round_normal` / `_round_down` utilities from `client.py`.
+
+---
+
 ## [0.11.0] — 2026-04-29
 
 ### Changed (breaking)
