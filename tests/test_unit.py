@@ -2978,14 +2978,262 @@ def test_rfq_config(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
     assert out["minSize"] == 1.0
 
 
-def test_accept_rfq_quote_raises_not_implemented(authed_client: PolymarketPandas):
-    with pytest.raises(NotImplementedError, match="V1-signed orders"):
-        authed_client.accept_rfq_quote("rfq-1", "q-1", expiration=0)
+def test_build_order_v1_returns_v1_wire_shape(authed_client: PolymarketPandas):
+    """V1 helper produces the legacy 12-field signed order body."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    order = authed_client._build_order_v1(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    expected = {
+        "salt",
+        "maker",
+        "signer",
+        "taker",
+        "tokenId",
+        "makerAmount",
+        "takerAmount",
+        "expiration",
+        "nonce",
+        "feeRateBps",
+        "side",
+        "signatureType",
+        "signature",
+    }
+    assert expected <= set(order)
+    assert order["taker"] == "0x" + "00" * 20
+    assert order["nonce"] == "0"
+    assert order["feeRateBps"] == "0"
+    assert order["expiration"] == "0"
+    assert order["signatureType"] == authed_client.signature_type
+    assert order["signature"].startswith("0x")
 
 
-def test_approve_rfq_order_raises_not_implemented(authed_client: PolymarketPandas):
-    with pytest.raises(NotImplementedError, match="V1-signed orders"):
-        authed_client.approve_rfq_order("rfq-1", "q-1", expiration=0)
+def test_build_order_v1_neg_risk_uses_v1_negrisk_exchange(
+    authed_client: PolymarketPandas, monkeypatch
+):
+    """neg_risk=True signs against V1_NEG_RISK_CTF_EXCHANGE."""
+    from polymarket_pandas.client import V1_NEG_RISK_CTF_EXCHANGE
+
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    captured: dict = {}
+
+    real_encode = __import__(
+        "eth_account.messages", fromlist=["encode_typed_data"]
+    ).encode_typed_data
+
+    def _spy(full_message):
+        captured["domain"] = full_message["domain"]
+        return real_encode(full_message=full_message)
+
+    monkeypatch.setattr("polymarket_pandas.client.encode_typed_data", _spy)
+    authed_client._build_order_v1(
+        token_id="11111111111111111111",
+        price=0.50,
+        size=5.0,
+        side="SELL",
+        tick_size="0.01",
+        neg_risk=True,
+    )
+    assert captured["domain"]["version"] == "1"
+    assert captured["domain"]["verifyingContract"] == V1_NEG_RISK_CTF_EXCHANGE
+
+
+def test_accept_rfq_quote_complementary_flips_side(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """COMPLEMENTARY: side flips relative to the quote; tokenId is quote.token."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/requester/quotes?quoteIds=q-1",
+        json={
+            "data": [
+                {
+                    "matchType": "COMPLEMENTARY",
+                    "token": "12345678901234567890",
+                    "side": "BUY",
+                    "sizeOut": "10",
+                    "sizeIn": "5",
+                    "price": "0.5",
+                }
+            ]
+        },
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=12345678901234567890",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=12345678901234567890",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/request/accept",
+        method="POST",
+        json={"accepted": True},
+    )
+    authed_client.accept_rfq_quote("rfq-1", "q-1", expiration=0)
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/request/accept").content
+    )
+    # Side flipped from BUY → SELL; size from sizeIn=5 (since flipped side is SELL)
+    assert body["side"] == "SELL"
+    assert body["tokenId"] == "12345678901234567890"
+    # SELL @ 0.5 of 5 shares: makerAmount=5_000_000 (shares), takerAmount=2_500_000
+    assert body["makerAmount"] == "5000000"
+    assert body["takerAmount"] == "2500000"
+    assert body["requestId"] == "rfq-1"
+    assert body["quoteId"] == "q-1"
+
+
+def test_accept_rfq_quote_mint_uses_complement_and_inverse_price(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """MINT: tokenId is quote.complement; price is 1 - quote.price; side unchanged."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/requester/quotes?quoteIds=q-2",
+        json={
+            "data": [
+                {
+                    "matchType": "MINT",
+                    "token": "11111111111111111111",
+                    "complement": "22222222222222222222",
+                    "side": "BUY",
+                    "sizeIn": "10",
+                    "sizeOut": "6",
+                    "price": "0.6",
+                }
+            ]
+        },
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=22222222222222222222",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=22222222222222222222",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/request/accept",
+        method="POST",
+        json={"accepted": True},
+    )
+    authed_client.accept_rfq_quote("rfq-2", "q-2", expiration=0)
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/request/accept").content
+    )
+    # tokenId = complement; side stays BUY; price 1 - 0.6 = 0.4
+    assert body["tokenId"] == "22222222222222222222"
+    assert body["side"] == "BUY"
+    # BUY 10 shares @ 0.4: makerAmount = 10 * 0.4 * 1e6 = 4_000_000
+    assert body["makerAmount"] == "4000000"
+    assert body["takerAmount"] == "10000000"
+
+
+def test_approve_rfq_order_buy_uses_size_in(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    """BUY side: size from sizeIn; tokenId from quote.token directly."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/quoter/quotes?quoteIds=q-3",
+        json={
+            "data": [
+                {
+                    "token": "12345678901234567890",
+                    "side": "BUY",
+                    "sizeIn": "10",
+                    "sizeOut": "5",
+                    "price": "0.5",
+                }
+            ]
+        },
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=12345678901234567890",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=12345678901234567890",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/quote/approve",
+        method="POST",
+        json={"approved": True},
+    )
+    authed_client.approve_rfq_order("rfq-3", "q-3", expiration=0)
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/quote/approve").content
+    )
+    assert body["side"] == "BUY"
+    assert body["tokenId"] == "12345678901234567890"
+    # BUY 10 @ 0.5: makerAmount = 5_000_000 (USDC), takerAmount = 10_000_000 (shares)
+    assert body["makerAmount"] == "5000000"
+    assert body["takerAmount"] == "10000000"
+
+
+def test_approve_rfq_order_sell_uses_size_out(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """SELL side: size from sizeOut."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/quoter/quotes?quoteIds=q-4",
+        json={
+            "data": [
+                {
+                    "token": "12345678901234567890",
+                    "side": "SELL",
+                    "sizeIn": "3",
+                    "sizeOut": "10",
+                    "price": "0.5",
+                }
+            ]
+        },
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/tick-size?token_id=12345678901234567890",
+        json={"minimum_tick_size": 0.01},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/neg-risk?token_id=12345678901234567890",
+        json={"neg_risk": False},
+    )
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/quote/approve",
+        method="POST",
+        json={"approved": True},
+    )
+    authed_client.approve_rfq_order("rfq-4", "q-4", expiration=0)
+    body = orjson.loads(
+        next(r for r in httpx_mock.get_requests() if r.url.path == "/rfq/quote/approve").content
+    )
+    assert body["side"] == "SELL"
+    # SELL 10 @ 0.5: makerAmount = 10_000_000 (shares), takerAmount = 5_000_000 (USDC)
+    assert body["makerAmount"] == "10000000"
+    assert body["takerAmount"] == "5000000"
+
+
+def test_accept_rfq_quote_missing_quote_raises(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/rfq/data/requester/quotes?quoteIds=missing",
+        json={"data": []},
+    )
+    with pytest.raises(PolymarketAPIError, match="not found"):
+        authed_client.accept_rfq_quote("rfq", "missing", expiration=0)
 
 
 # ════════════════════════════════════════════════════════════════════

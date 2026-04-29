@@ -9,6 +9,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.1] — 2026-04-30
+
+### Added
+- **`accept_rfq_quote(request_id, quote_id, expiration)`** and **`approve_rfq_order(request_id, quote_id, expiration)`** now produce V1-signed orders and POST to `/rfq/request/accept` / `/rfq/quote/approve`. Previously raised `NotImplementedError`. Closes #21.
+- **`PolymarketPandas._build_order_v1(...)`** — private helper that signs a 12-field V1 Order struct under EIP-712 domain `version="1"` against the legacy V1 Exchange contracts (`V1_CTF_EXCHANGE` / `V1_NEG_RISK_CTF_EXCHANGE`). Used **only** by the RFQ accept/approve flow per the reference SDK; do not use for `/order` / `/orders` (those still require V2 via `build_order`).
+- **`V1_CTF_EXCHANGE`** (`0x4bFb…8982E`) and **`V1_NEG_RISK_CTF_EXCHANGE`** (`0xC5d5…f80a`) constants exposed in `polymarket_pandas.client` for callers who want to inspect the V1 verifyingContract.
+
+### Internal
+- `_get_request_order_creation_payload` ported from `py_clob_client_v2/rfq/rfq_client.py`. Handles `matchType` branching: COMPLEMENTARY (side flip), MINT, MERGE (complement-token + inverse `1 - price`).
+
+---
+
 ## [0.12.0] — 2026-04-29
 
 ### Added

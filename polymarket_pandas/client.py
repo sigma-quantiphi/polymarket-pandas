@@ -57,7 +57,7 @@ from polymarket_pandas.utils import (
     expand_column_lists,
     filter_params,
     orderbook_meta,
-    to_unix_timestamp,
+    to_unix_timestamp,  # used by build_order (GTD) + _build_order_v1 (RFQ)
 )
 from polymarket_pandas.utils import (
     preprocess_dataframe as _preprocess_dataframe,
@@ -113,9 +113,13 @@ def _is_retryable_error(exc: BaseException) -> bool:
 
 
 # ── CTF Exchange V2 contract addresses (Polygon mainnet) ───────────
-# Polymarket CLOB V2 cutover: 2026-04-28 ~11:00 UTC. V1 addresses retired.
+# Polymarket CLOB V2 cutover: 2026-04-28 ~11:00 UTC. V1 addresses retired
+# from the public order endpoint, but RFQ accept/approve still signs with
+# the V1 12-field struct against these older verifyingContracts.
 CTF_EXCHANGE = "0xE111180000d2663C0091e4f400237545B87B996B"
 NEG_RISK_CTF_EXCHANGE = "0xe2222d279d744050d28e00520010520000310F59"
+V1_CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
+V1_NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 ZERO_BYTES32 = "0x" + "00" * 32
 
@@ -1807,6 +1811,130 @@ class PolymarketPandas(
         if expiration:
             wire["expiration"] = str(to_unix_timestamp(expiration))
         return wire
+
+    def _build_order_v1(
+        self,
+        token_id: str,
+        price: float,
+        size: float,
+        side: str,
+        *,
+        expiration: int | pd.Timestamp | str = 0,
+        nonce: int = 0,
+        fee_rate_bps: int = 0,
+        neg_risk: bool | None = None,
+        tick_size: str | None = None,
+    ) -> dict:
+        """Sign a V1 12-field CLOB order. Used **only** by RFQ accept/approve.
+
+        The Polymarket V2 cutover (2026-04-28) replaced the public
+        ``/order`` and ``/orders`` endpoints with a 10-field V2 struct
+        signed under EIP-712 domain version ``"2"``. RFQ accept/approve
+        (``/rfq/request/accept`` and ``/rfq/quote/approve``) still want
+        the legacy V1 12-field struct signed under domain version
+        ``"1"`` against the V1 Exchange contracts — confirmed by
+        ``py_clob_client_v2/rfq/rfq_client.py``. Use :meth:`build_order`
+        for any other order placement; this helper is intentionally
+        private and named with a leading underscore.
+
+        Args:
+            token_id: CLOB token ID (ERC-1155 conditional token).
+            price: Limit price per share (0–1). Snapped to the market's
+                tick size.
+            size: Number of shares.
+            side: ``"BUY"`` or ``"SELL"``.
+            expiration: Unix timestamp / ``pd.Timestamp`` / ISO-8601
+                string. ``0`` = no expiry (GTC).
+            nonce: Order nonce for on-chain cancellation (default 0).
+            fee_rate_bps: Fee rate in basis points (default 0).
+            neg_risk: If unset, auto-fetched. ``True`` routes to
+                ``V1_NEG_RISK_CTF_EXCHANGE``.
+            tick_size: Auto-fetched if unset.
+
+        Returns:
+            dict: 12-field V1 wire body + ``signature``.
+        """
+        if not self.private_key:
+            raise PolymarketAuthError(detail="private_key is required to build orders.")
+        if neg_risk is None:
+            neg_risk = self.get_neg_risk(token_id)
+        if tick_size is None:
+            tick_size = str(self.get_tick_size(token_id))
+
+        if tick_size in _TICK_SIZES:
+            price_dec = _TICK_SIZES[tick_size][0]
+            ts_float = float(tick_size)
+            price = _round_normal(round(price / ts_float) * ts_float, price_dec)
+
+        expiration_ts = to_unix_timestamp(expiration)
+        side_int, maker_amount, taker_amount = self._get_order_amounts(side, price, size, tick_size)
+
+        eoa = Account.from_key(self.private_key).address
+        maker = self.address or eoa
+        exchange = V1_NEG_RISK_CTF_EXCHANGE if neg_risk else V1_CTF_EXCHANGE
+        salt = round(time.time() * random.random())
+        sig_type = self.signature_type if self.signature_type is not None else 0
+
+        domain = {
+            "name": "Polymarket CTF Exchange",
+            "version": "1",
+            "chainId": self.chain_id,
+            "verifyingContract": exchange,
+        }
+        types = {
+            "Order": [
+                {"name": "salt", "type": "uint256"},
+                {"name": "maker", "type": "address"},
+                {"name": "signer", "type": "address"},
+                {"name": "taker", "type": "address"},
+                {"name": "tokenId", "type": "uint256"},
+                {"name": "makerAmount", "type": "uint256"},
+                {"name": "takerAmount", "type": "uint256"},
+                {"name": "expiration", "type": "uint256"},
+                {"name": "nonce", "type": "uint256"},
+                {"name": "feeRateBps", "type": "uint256"},
+                {"name": "side", "type": "uint8"},
+                {"name": "signatureType", "type": "uint8"},
+            ],
+        }
+        message = {
+            "salt": salt,
+            "maker": maker,
+            "signer": eoa,
+            "taker": ZERO_ADDRESS,
+            "tokenId": int(token_id),
+            "makerAmount": maker_amount,
+            "takerAmount": taker_amount,
+            "expiration": expiration_ts,
+            "nonce": nonce,
+            "feeRateBps": fee_rate_bps,
+            "side": side_int,
+            "signatureType": sig_type,
+        }
+        signable = encode_typed_data(
+            full_message={
+                "domain": domain,
+                "types": types,
+                "primaryType": "Order",
+                "message": message,
+            }
+        )
+        sig = "0x" + Account.sign_message(signable, private_key=self.private_key).signature.hex()
+        return {
+            "salt": salt,
+            "maker": maker,
+            "signer": eoa,
+            "taker": ZERO_ADDRESS,
+            "tokenId": str(token_id),
+            "makerAmount": str(maker_amount),
+            "takerAmount": str(taker_amount),
+            "expiration": str(expiration_ts),
+            "nonce": str(nonce),
+            "feeRateBps": str(fee_rate_bps),
+            "side": side.upper(),
+            "signatureType": sig_type,
+            "signature": sig,
+        }
 
     def submit_order(
         self,

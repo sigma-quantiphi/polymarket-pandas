@@ -3,17 +3,16 @@
 Mirrors ``py_clob_client_v2/rfq/rfq_client.py``. All methods use standard
 L2 HMAC auth via :meth:`_request_clob_private`.
 
-**Scope (v0.12.0):** ships 9 of the 11 endpoints py-clob-client-v2
-exposes. The two write-side endpoints that require V1-signed orders
-(``accept_rfq_quote`` and ``approve_rfq_order``) raise
-``NotImplementedError`` and point to the follow-up issue (#21). All
-read paths (list/get/best-quote/config) and the create/cancel paths
-work end-to-end with V2 L2 auth.
+**Scope (v0.12.1):** all 11 RFQ endpoints implemented. Accept/approve
+sign V1 12-field orders (``_build_order_v1`` on the parent client) per
+the reference SDK; everything else uses V2 L2 auth.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+
+from polymarket_pandas.exceptions import PolymarketAPIError
 
 if TYPE_CHECKING:
     pass
@@ -22,20 +21,7 @@ if TYPE_CHECKING:
 _BUY = "BUY"
 _SELL = "SELL"
 _COLLATERAL_DECIMALS = 6  # USDC / pUSD
-
-
-_RFQ_ACCEPT_NOT_IMPLEMENTED = (
-    "accept_rfq_quote requires V1-signed orders (see py-clob-client-v2's "
-    "RfqClient._build_v1_order) which are not produced by the V2-only "
-    "build_order in this release. Track issue #21 for the V1-signing "
-    "path needed to close the RFQ accept/approve flow."
-)
-_RFQ_APPROVE_NOT_IMPLEMENTED = (
-    "approve_rfq_order requires V1-signed orders (see py-clob-client-v2's "
-    "RfqClient._build_v1_order) which are not produced by the V2-only "
-    "build_order in this release. Track issue #21 for the V1-signing "
-    "path needed to close the RFQ accept/approve flow."
-)
+_MATCH_TYPES = ("COMPLEMENTARY", "MINT", "MERGE")
 
 
 def _parse_units(amount_str: str, decimals: int = _COLLATERAL_DECIMALS) -> int:
@@ -55,7 +41,9 @@ class RfqMixin:
       ``get_rfq_quoter_quotes``, ``get_rfq_best_quote``, ``rfq_config``
     * Write: ``create_rfq_request``, ``cancel_rfq_request``,
       ``create_rfq_quote``, ``cancel_rfq_quote``
-    * Pending V1 signing (#21): ``accept_rfq_quote``, ``approve_rfq_order``
+    * Accept/approve (V1-signed): ``accept_rfq_quote``,
+      ``approve_rfq_order`` — sign V1 12-field orders via
+      ``_build_order_v1`` per the reference SDK.
     """
 
     # ── helpers ─────────────────────────────────────────────────────
@@ -252,21 +240,148 @@ class RfqMixin:
             params={"requestId": request_id},
         )
 
-    # ── accept/approve (deferred — see issue #21) ────────────────────
+    # ── accept/approve (V1-signed orders) ───────────────────────────
+
+    @staticmethod
+    def _get_request_order_creation_payload(quote: dict) -> dict:
+        """Derive ``(token, side, size, price)`` from an accepted quote.
+
+        Mirrors ``py_clob_client_v2/rfq/rfq_client.py`` —
+        the requester's order shape depends on the quote's
+        ``matchType`` (``COMPLEMENTARY`` / ``MINT`` / ``MERGE``).
+        """
+        match_type = str(quote.get("matchType") or "COMPLEMENTARY").upper()
+        side = (quote.get("side") or _BUY).upper()
+        price = quote.get("price")
+        if price is None:
+            raise PolymarketAPIError(
+                status_code=0, url="<internal>", detail="RFQ quote missing 'price'"
+            )
+
+        if match_type == "COMPLEMENTARY":
+            token = quote.get("token")
+            if not token:
+                raise PolymarketAPIError(
+                    status_code=0,
+                    url="<internal>",
+                    detail="RFQ quote missing 'token' for COMPLEMENTARY match",
+                )
+            # Requester accepts the inverse of the quoter's side.
+            new_side = _SELL if side == _BUY else _BUY
+            size = quote.get("sizeOut") if new_side == _BUY else quote.get("sizeIn")
+            if size is None:
+                raise PolymarketAPIError(
+                    status_code=0,
+                    url="<internal>",
+                    detail="RFQ quote missing sizeIn/sizeOut for COMPLEMENTARY match",
+                )
+            return {"token": token, "side": new_side, "size": size, "price": float(price)}
+
+        if match_type in ("MINT", "MERGE"):
+            token = quote.get("complement")
+            if not token:
+                raise PolymarketAPIError(
+                    status_code=0,
+                    url="<internal>",
+                    detail=f"RFQ quote missing 'complement' for {match_type} match",
+                )
+            size = quote.get("sizeIn") if side == _BUY else quote.get("sizeOut")
+            if size is None:
+                raise PolymarketAPIError(
+                    status_code=0,
+                    url="<internal>",
+                    detail=f"RFQ quote missing sizeIn/sizeOut for {match_type} match",
+                )
+            # Requester price is the inverse of the quote price.
+            return {"token": token, "side": side, "size": size, "price": 1 - float(price)}
+
+        raise PolymarketAPIError(
+            status_code=0, url="<internal>", detail=f"Invalid RFQ matchType {match_type!r}"
+        )
 
     def accept_rfq_quote(self, request_id: str, quote_id: str, expiration: int) -> dict:
-        """V2 RFQ: accept a quote (requester side) — **not implemented yet**.
+        """V2 RFQ: accept a quote (requester side) (`POST /rfq/request/accept`).
 
-        Requires V1-signed orders. See issue #21.
+        Fetches the quote, derives the requester's order shape via
+        :meth:`_get_request_order_creation_payload`, signs a V1 12-field
+        order via :meth:`_build_order_v1`, and submits the acceptance.
+
+        Args:
+            request_id: ID of the RFQ request.
+            quote_id: ID of the quote being accepted.
+            expiration: Unix timestamp for order expiration. ``0`` =
+                no expiry.
         """
-        raise NotImplementedError(_RFQ_ACCEPT_NOT_IMPLEMENTED)
+        resp = self.get_rfq_requester_quotes(quote_ids=[quote_id])
+        data = resp.get("data") or []
+        if not data:
+            raise PolymarketAPIError(
+                status_code=0, url="<internal>", detail=f"RFQ quote {quote_id!r} not found"
+            )
+
+        order_payload = self._get_request_order_creation_payload(data[0])
+        order = self._build_order_v1(
+            token_id=order_payload["token"],
+            price=float(order_payload["price"]),
+            size=float(order_payload["size"]),
+            side=order_payload["side"],
+            expiration=int(expiration),
+        )
+        body = {
+            "requestId": request_id,
+            "quoteId": quote_id,
+            "owner": self._api_key,
+            **order,
+        }
+        return self._request_clob_private(path="rfq/request/accept", method="POST", data=body)
 
     def approve_rfq_order(self, request_id: str, quote_id: str, expiration: int) -> dict:
-        """V2 RFQ: approve a quote (quoter side) — **not implemented yet**.
+        """V2 RFQ: approve an accepted quote (quoter side) (`POST /rfq/quote/approve`).
 
-        Requires V1-signed orders. See issue #21.
+        Fetches the quote, signs a V1 12-field order at the quote's
+        ``token`` / ``price`` / ``side`` (size from ``sizeIn`` for BUY,
+        ``sizeOut`` for SELL), and submits the approval.
         """
-        raise NotImplementedError(_RFQ_APPROVE_NOT_IMPLEMENTED)
+        resp = self.get_rfq_quoter_quotes(quote_ids=[quote_id])
+        data = resp.get("data") or []
+        if not data:
+            raise PolymarketAPIError(
+                status_code=0, url="<internal>", detail=f"RFQ quote {quote_id!r} not found"
+            )
+        quote = data[0]
+
+        side = (quote.get("side") or _BUY).upper()
+        token = quote.get("token")
+        if not token:
+            raise PolymarketAPIError(
+                status_code=0, url="<internal>", detail="RFQ quote missing 'token'"
+            )
+        price = quote.get("price")
+        if price is None:
+            raise PolymarketAPIError(
+                status_code=0, url="<internal>", detail="RFQ quote missing 'price'"
+            )
+        size_key = "sizeIn" if side == _BUY else "sizeOut"
+        size = quote.get(size_key)
+        if size is None:
+            raise PolymarketAPIError(
+                status_code=0, url="<internal>", detail=f"RFQ quote missing {size_key!r}"
+            )
+
+        order = self._build_order_v1(
+            token_id=token,
+            price=float(price),
+            size=float(size),
+            side=side,
+            expiration=int(expiration),
+        )
+        body = {
+            "requestId": request_id,
+            "quoteId": quote_id,
+            "owner": self._api_key,
+            **order,
+        }
+        return self._request_clob_private(path="rfq/quote/approve", method="POST", data=body)
 
     # ── config ──────────────────────────────────────────────────────
 
