@@ -9,6 +9,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.1] — 2026-04-29
+
+### Added — V2 read endpoints (closes #14)
+
+**Public (no auth):**
+- `get_ok()` → `GET /ok` — health check (live server returns the bare string `"OK"`).
+- `get_market_by_token(token_id)` → `GET /markets-by-token/{tokenId}` — token-id-keyed market lookup.
+- `get_market_trades_events(condition_id)` → `GET /markets/live-activity/{conditionId}` — live trade/activity feed for a market.
+
+**Private (L2 auth):**
+- `get_pre_migration_orders(next_cursor=None)` → `GET /data/pre-migration-orders` (cursor-paginated). For visibility into V1 orders that were carried over the V2 cutover.
+- `are_orders_scoring(order_ids)` → `POST /orders-scoring` — batch scoring lookup (single-order `get_order_scoring` already shipped in v0.9.0).
+- `get_notifications(signature_type=None)` → `GET /notifications`; `drop_notifications(ids=None)` → `DELETE /notifications`.
+- `update_balance_allowance(asset_type, token_id=None)` → `GET /balance-allowance/update` — server-side allowance refresh.
+- `get_closed_only_mode()` → `GET /auth/ban-status/closed-only`.
+- `create_builder_api_key()` / `get_builder_api_keys()` / `revoke_builder_api_key()` → `/auth/builder-api-key`.
+- `create_readonly_api_key()` / `get_readonly_api_keys()` / `delete_readonly_api_key(key)` → `/auth/readonly-api-key(s)`.
+
+15 new endpoints total. All have mocked unit tests; the three public ones also have live integration tests.
+
+---
+
 ## [0.10.0] — 2026-04-29
 
 ### Added

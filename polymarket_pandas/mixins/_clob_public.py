@@ -35,6 +35,38 @@ class ClobPublicMixin:
         """
         return self._request_clob(path="time")
 
+    def get_ok(self) -> str | dict:
+        """V2 health check (`GET /ok`).
+
+        The live server returns the bare string ``"OK"``; some test
+        environments may return a JSON payload instead. Both shapes
+        round-trip through this helper.
+        """
+        return self._request_clob(path="ok")
+
+    def get_market_by_token(self, token_id: str) -> dict:
+        """V2 token-id-keyed market lookup (`GET /markets-by-token/{token_id}`).
+
+        Args:
+            token_id: CLOB token ID (uint256 string).
+
+        Returns:
+            dict: The market record for the condition that owns this token,
+            including the matching ``conditionId``.
+        """
+        return self._request_clob(path=f"markets-by-token/{token_id}")
+
+    def get_market_trades_events(self, condition_id: str) -> dict:
+        """V2 live-activity feed for a market (`GET /markets/live-activity/{conditionId}`).
+
+        Args:
+            condition_id: Market condition ID (hex 0x-prefixed).
+
+        Returns:
+            dict: Recent trade / activity events for the market.
+        """
+        return self._request_clob(path=f"markets/live-activity/{condition_id}")
+
     @instance_cache(ttl=300)
     def get_tick_size(self, token_id: str) -> float:
         """

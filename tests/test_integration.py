@@ -356,6 +356,44 @@ def test_get_fee_rate(client: PolymarketPandas, token: str) -> None:
     assert rate == 0
 
 
+def test_get_ok(client: PolymarketPandas) -> None:
+    out = client.get_ok()
+    # Live server returns bare string "OK"; test environments may JSON-wrap it.
+    assert out == "OK" or (isinstance(out, dict) and out)
+
+
+@pytest.fixture(scope="session")
+def any_market(client: PolymarketPandas) -> pd.Series:
+    """First open market — independent of the crypto_slugs fixture chain."""
+    df = client.get_markets(closed=False, limit=5)
+    assert not df.empty, "Gamma returned no open markets"
+    return df.iloc[0]
+
+
+def test_get_market_by_token(client: PolymarketPandas, any_market: pd.Series) -> None:
+    import json
+
+    raw = any_market["clobTokenIds"]
+    if isinstance(raw, str):
+        try:
+            decoded = json.loads(raw)
+        except json.JSONDecodeError:
+            decoded = raw
+    else:
+        decoded = raw
+    if isinstance(decoded, list):
+        token_id = str(decoded[0])
+    else:
+        token_id = str(decoded)
+    out = client.get_market_by_token(token_id)
+    assert isinstance(out, dict)
+
+
+def test_get_market_trades_events(client: PolymarketPandas, any_market: pd.Series) -> None:
+    out = client.get_market_trades_events(any_market["conditionId"])
+    assert isinstance(out, dict)
+
+
 def test_get_clob_market_info(client: PolymarketPandas, condition_id: str) -> None:
     """V2 single-call market info (`/clob-markets/{conditionId}`).
 

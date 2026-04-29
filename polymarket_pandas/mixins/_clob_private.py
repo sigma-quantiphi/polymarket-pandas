@@ -356,3 +356,118 @@ class ClobPrivateMixin:
     def delete_api_key(self) -> dict:
         """Delete the current API key (L2 auth)."""
         return self._request_clob_private(path="auth/api-key", method="DELETE")
+
+    # ── V2 read endpoints (added in v0.10.1) ─────────────────────────────
+
+    def get_pre_migration_orders(self, next_cursor: str | None = None) -> dict:
+        """V2: list pre-cutover orders carried over for the authenticated user.
+
+        Cursor-paginated. Useful during the V1→V2 migration window for
+        showing users which V1 orders survived the cutover.
+
+        Args:
+            next_cursor: Opaque base64 cursor from a previous response.
+
+        Returns:
+            dict with ``data`` (list) and ``next_cursor``.
+        """
+        return self._request_clob_private(
+            path="data/pre-migration-orders",
+            params={"next_cursor": next_cursor},
+        )
+
+    def are_orders_scoring(self, order_ids: list[str]) -> dict:
+        """V2: batch-check whether multiple orders are being scored for rewards.
+
+        Args:
+            order_ids: List of order IDs.
+
+        Returns:
+            dict mapping order ID → scoring flag.
+        """
+        return self._request_clob_private(
+            path="orders-scoring",
+            method="POST",
+            data=order_ids,
+        )
+
+    def get_notifications(self, signature_type: int | None = None) -> dict:
+        """V2: fetch the authenticated user's notification feed.
+
+        Args:
+            signature_type: Optional ``signatureType`` filter (matches the
+                proxy/EOA convention used by ``get_balance_allowance``).
+        """
+        params = {"signature_type": signature_type} if signature_type is not None else None
+        return self._request_clob_private(path="notifications", params=params)
+
+    def drop_notifications(self, ids: list[str] | None = None) -> dict:
+        """V2: clear notifications, optionally limited to a list of IDs."""
+        params = {"ids": ",".join(ids)} if ids else None
+        return self._request_clob_private(
+            path="notifications",
+            method="DELETE",
+            params=params,
+        )
+
+    def update_balance_allowance(
+        self,
+        asset_type: int | str,
+        token_id: str | None = None,
+    ) -> dict:
+        """V2: trigger an on-chain refresh of the user's recorded allowance.
+
+        Args:
+            asset_type: ``"COLLATERAL"`` (pUSD) or ``"CONDITIONAL"``
+                (outcome token). Integer shortcuts ``0`` / ``1`` accepted.
+            token_id: Required when ``asset_type == "CONDITIONAL"``.
+        """
+        if isinstance(asset_type, int):
+            asset_type = _ASSET_TYPE_ENUMS[asset_type]
+        params: dict = {"asset_type": asset_type, "token_id": token_id}
+        if self.signature_type is not None:
+            params["signatureType"] = self.signature_type
+        return self._request_clob_private(path="balance-allowance/update", params=params)
+
+    def get_closed_only_mode(self) -> dict:
+        """V2: report whether the user is in close-only (banned-from-opening) mode.
+
+        Returns:
+            dict like ``{"closed_only": False}``.
+        """
+        return self._request_clob_private(path="auth/ban-status/closed-only")
+
+    def create_builder_api_key(self) -> dict:
+        """V2: provision a new builder API key for the authenticated user."""
+        return self._request_clob_private(path="auth/builder-api-key", method="POST")
+
+    def get_builder_api_keys(self) -> dict:
+        """V2: list builder API keys owned by the authenticated user."""
+        return self._request_clob_private(path="auth/builder-api-key")
+
+    def revoke_builder_api_key(self) -> dict:
+        """V2: revoke the current builder API key for the authenticated user."""
+        return self._request_clob_private(path="auth/builder-api-key", method="DELETE")
+
+    def create_readonly_api_key(self) -> dict:
+        """V2: provision a new read-only API key.
+
+        Read-only keys can query private endpoints but cannot place or
+        cancel orders.
+        """
+        return self._request_clob_private(path="auth/readonly-api-key", method="POST")
+
+    def get_readonly_api_keys(self) -> dict:
+        """V2: list read-only API keys owned by the authenticated user.
+
+        Note: server path is plural (``/auth/readonly-api-keys``).
+        """
+        return self._request_clob_private(path="auth/readonly-api-keys")
+
+    def delete_readonly_api_key(self, key: str) -> dict:
+        """V2: delete a specific read-only API key by its identifier."""
+        return self._request_clob_private(
+            path="auth/readonly-api-key",
+            method="DELETE",
+            data={"key": key},
+        )

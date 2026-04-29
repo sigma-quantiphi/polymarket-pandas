@@ -2702,6 +2702,148 @@ def test_get_balance_allowance_omits_signature_type_when_unset(
 
 
 # ════════════════════════════════════════════════════════════════════
+#  V2 missing endpoints (#14, v0.10.1) — public + private
+# ════════════════════════════════════════════════════════════════════
+
+
+def test_get_ok(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url="https://clob.polymarket.com/ok", json={"ok": True})
+    assert client.get_ok() == {"ok": True}
+
+
+def test_get_market_by_token(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/markets-by-token/12345",
+        json={"conditionId": "0xabc", "tokenId": "12345"},
+    )
+    out = client.get_market_by_token("12345")
+    assert out["conditionId"] == "0xabc"
+
+
+def test_get_market_trades_events(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/markets/live-activity/0xabc",
+        json={"events": []},
+    )
+    out = client.get_market_trades_events("0xabc")
+    assert "events" in out
+
+
+def test_get_pre_migration_orders(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/data/pre-migration-orders",
+        json={"data": [], "next_cursor": "LTE="},
+    )
+    out = authed_client.get_pre_migration_orders()
+    assert out["next_cursor"] == "LTE="
+
+
+def test_are_orders_scoring(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/orders-scoring",
+        method="POST",
+        json={"0xabc": True, "0xdef": False},
+    )
+    out = authed_client.are_orders_scoring(["0xabc", "0xdef"])
+    assert out["0xabc"] is True
+
+
+def test_get_notifications(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/notifications",
+        json={"notifications": []},
+    )
+    out = authed_client.get_notifications()
+    assert "notifications" in out
+
+
+def test_drop_notifications(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/notifications?ids=1%2C2",
+        method="DELETE",
+        json={"dropped": 2},
+    )
+    out = authed_client.drop_notifications(["1", "2"])
+    assert out["dropped"] == 2
+
+
+def test_update_balance_allowance(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/balance-allowance/update?asset_type=COLLATERAL&signatureType=1",
+        json={"balance": "100"},
+    )
+    out = authed_client.update_balance_allowance(asset_type=0)
+    assert out["balance"] == "100"
+
+
+def test_get_closed_only_mode(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/ban-status/closed-only",
+        json={"closed_only": False},
+    )
+    out = authed_client.get_closed_only_mode()
+    assert out["closed_only"] is False
+
+
+def test_create_builder_api_key(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/builder-api-key",
+        method="POST",
+        json={"key": "builder-key-1"},
+    )
+    out = authed_client.create_builder_api_key()
+    assert out["key"] == "builder-key-1"
+
+
+def test_get_builder_api_keys(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/builder-api-key",
+        json={"keys": []},
+    )
+    out = authed_client.get_builder_api_keys()
+    assert "keys" in out
+
+
+def test_revoke_builder_api_key(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/builder-api-key",
+        method="DELETE",
+        json={"revoked": True},
+    )
+    out = authed_client.revoke_builder_api_key()
+    assert out["revoked"] is True
+
+
+def test_create_readonly_api_key(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/readonly-api-key",
+        method="POST",
+        json={"key": "ro-1"},
+    )
+    out = authed_client.create_readonly_api_key()
+    assert out["key"] == "ro-1"
+
+
+def test_get_readonly_api_keys(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/readonly-api-keys",
+        json={"keys": []},
+    )
+    out = authed_client.get_readonly_api_keys()
+    assert "keys" in out
+
+
+def test_delete_readonly_api_key(authed_client: PolymarketPandas, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://clob.polymarket.com/auth/readonly-api-key",
+        method="DELETE",
+        json={"deleted": True},
+    )
+    out = authed_client.delete_readonly_api_key("ro-1")
+    assert out["deleted"] is True
+
+
+# ════════════════════════════════════════════════════════════════════
 #  UMA resolution / dispute (_uma.py)
 # ════════════════════════════════════════════════════════════════════
 
