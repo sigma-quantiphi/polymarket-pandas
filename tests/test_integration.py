@@ -333,15 +333,6 @@ def test_get_profile(client: PolymarketPandas, user_address: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason=(
-        "CLOB /time returns 503 in the post-V2-cutover infrastructure window "
-        "(2026-04-28). Other CLOB paths (e.g. /clob-markets, /midpoint) are "
-        "responsive — endpoint appears specifically unavailable. Re-enable "
-        "once Polymarket restores /time."
-    ),
-    strict=False,
-)
 def test_get_server_time(client: PolymarketPandas) -> None:
     t = client.get_server_time()
     assert isinstance(t, int)

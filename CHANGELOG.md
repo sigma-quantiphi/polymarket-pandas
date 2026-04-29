@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.1] — 2026-04-29
+
+### Fixed
+- **`test_get_server_time`** — re-enabled (xfail removed). The CLOB `/time` endpoint was unresponsive during the V2 cutover window on 2026-04-28 and was temporarily marked xfail in v0.9.0; it returns 200 again as of 2026-04-29. Closes #18.
+
+---
+
 ## [0.9.0] — 2026-04-28
 
 **Polymarket CLOB V2 cutover release.** V2 went live on Polygon at ~11:00 UTC on 2026-04-28; V1 is no longer accessible. This release rewrites the trading path against the V2 EIP-712 domain, Order struct, exchange contracts, and collateral token (pUSD). Read endpoints (Gamma, Data, public CLOB, websockets) are unaffected.
