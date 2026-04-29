@@ -1477,6 +1477,159 @@ def test_build_order_threads_builder_code(authed_client: PolymarketPandas):
     assert order["builder"] == "0x" + "ee" * 32
 
 
+# ── submit_market_order (V2 fee-adjusted FOK) ──────────────────────────
+
+
+def test_adjust_market_buy_amount_balance_sufficient():
+    """If balance covers fill + fees, return input amount unchanged."""
+    out = PolymarketPandas._adjust_market_buy_amount(
+        amount=10.0,
+        balance=1000.0,  # plenty
+        price=0.5,
+        fee_rate=0.05,
+        fee_exponent=1.0,
+        builder_taker_fee_rate=0.0,
+    )
+    assert out == 10.0
+
+
+def test_adjust_market_buy_amount_balance_short():
+    """If balance is below total cost, scale amount down to balance/divisor.
+
+    With price=0.5, fee_rate=0.05, fee_exp=1: base=0.25, pfr=0.0125,
+    divisor = 1 + 0.0125/0.5 + 0 = 1.025. balance=10 → 10/1.025 ≈ 9.756.
+    """
+    out = PolymarketPandas._adjust_market_buy_amount(
+        amount=10.0,
+        balance=10.0,  # exactly matches the BUY (insufficient for fee)
+        price=0.5,
+        fee_rate=0.05,
+        fee_exponent=1.0,
+        builder_taker_fee_rate=0.0,
+    )
+    assert abs(out - 10.0 / 1.025) < 1e-9
+
+
+def test_adjust_market_buy_amount_with_builder_fee():
+    """Builder taker fee is added to the divisor."""
+    out = PolymarketPandas._adjust_market_buy_amount(
+        amount=10.0,
+        balance=10.0,
+        price=0.5,
+        fee_rate=0.05,
+        fee_exponent=1.0,
+        builder_taker_fee_rate=0.01,
+    )
+    # divisor = 1 + 0.0125/0.5 + 0.01 = 1.035
+    assert abs(out - 10.0 / 1.035) < 1e-9
+
+
+def test_submit_market_order_uses_fok_and_adjusts(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """submit_market_order builds an FOK and fee-adjusts BUY when balance set."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    cid = "0x" + "12" * 32
+
+    httpx_mock.add_response(
+        url=f"https://clob.polymarket.com/clob-markets/{cid}",
+        json={
+            "c": cid,
+            "mts": 0.01,
+            "fd": {"r": 0.05, "e": 1.0, "to": True},
+            "t": [],
+        },
+    )
+    captured = {}
+
+    def _capture_place(self, order, owner, orderType, post_only=False, defer_exec=False):
+        captured["order"] = order
+        captured["orderType"] = orderType
+        return {"orderID": "0xabc", "status": "matched"}
+
+    import types
+
+    authed_client.place_order = types.MethodType(_capture_place, authed_client)
+
+    authed_client.submit_market_order(
+        token_id="99999999999999999999",
+        amount=10.0,
+        side="BUY",
+        price=0.5,
+        condition_id=cid,
+        user_usdc_balance=10.0,  # triggers fee adjust
+        tick_size="0.01",
+        neg_risk=False,
+    )
+
+    assert captured["orderType"] == "FOK"
+    # makerAmount in base units (6dp). Pre-adjust: 10 USDC = 10_000_000.
+    # Post-adjust: 10/1.025 ≈ 9.7561 USDC = 9_756_097 (rounded by tick_size).
+    maker_amount = int(captured["order"]["makerAmount"])
+    assert maker_amount < 10_000_000
+    assert maker_amount > 9_500_000
+
+
+def test_submit_market_order_no_adjust_when_balance_unset(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """Without user_usdc_balance, BUY uses amount as-is (no fee adjust)."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+
+    captured = {}
+
+    def _capture_place(self, order, owner, orderType, post_only=False, defer_exec=False):
+        captured["order"] = order
+        return {"orderID": "0xabc"}
+
+    import types
+
+    authed_client.place_order = types.MethodType(_capture_place, authed_client)
+
+    authed_client.submit_market_order(
+        token_id="11111111111111111111",
+        amount=10.0,
+        side="BUY",
+        price=0.5,
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    # No fee-adjust → 10 USDC at 0.5 = 20 shares = 10_000_000 base units
+    assert int(captured["order"]["makerAmount"]) == 10_000_000
+
+
+def test_submit_market_order_sell_passes_through(
+    authed_client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """SELL side: amount is interpreted as shares; no fee adjustment."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+
+    captured = {}
+
+    def _capture_place(self, order, owner, orderType, post_only=False, defer_exec=False):
+        captured["order"] = order
+        return {"orderID": "0xdef"}
+
+    import types
+
+    authed_client.place_order = types.MethodType(_capture_place, authed_client)
+
+    authed_client.submit_market_order(
+        token_id="11111111111111111111",
+        amount=10.0,  # 10 shares
+        side="SELL",
+        price=0.5,
+        user_usdc_balance=1000.0,  # ignored for SELL
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    # SELL: makerAmount = shares = 10_000_000
+    assert int(captured["order"]["makerAmount"]) == 10_000_000
+
+
 # ── submit_orders (DataFrame) ──────────────────────────────────────────
 
 

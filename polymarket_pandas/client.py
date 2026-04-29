@@ -1847,6 +1847,140 @@ class PolymarketPandas(
             order=order, owner=self._api_key, orderType=order_type, post_only=post_only
         )
 
+    @staticmethod
+    def _adjust_market_buy_amount(
+        amount: float,
+        balance: float,
+        price: float,
+        fee_rate: float,
+        fee_exponent: float,
+        builder_taker_fee_rate: float = 0.0,
+    ) -> float:
+        """Fee-adjusted USDC amount for a market BUY.
+
+        Verbatim port of ``adjust_market_buy_amount`` from
+        ``py-clob-client-v2/utilities.py``. Returns the input ``amount``
+        unchanged if the user's ``balance`` is sufficient to cover both
+        the fill and all fees; otherwise scales ``amount`` down so that
+        the **total cost** (fill + platform fee + builder fee) equals
+        ``balance``.
+
+        Fee formula (V2): ``base = price * (1 - price)``,
+        ``platform_fee_rate = fee_rate * base ** fee_exponent``, and
+        ``platform_fee = (amount / price) * platform_fee_rate``. The
+        builder fee is a flat fraction of ``amount`` on top of the
+        platform fee.
+        """
+        from decimal import Decimal
+
+        d_amount = Decimal(str(amount))
+        d_price = Decimal(str(price))
+        d_balance = Decimal(str(balance))
+        d_fee_rate = Decimal(str(fee_rate))
+        d_fee_exp = Decimal(str(fee_exponent))
+        d_btr = Decimal(str(builder_taker_fee_rate))
+
+        base = float(d_price * (Decimal("1") - d_price))
+        d_pfr = d_fee_rate * Decimal(str(base ** float(d_fee_exp)))
+
+        platform_fee = d_amount / d_price * d_pfr
+        total_cost = d_amount + platform_fee + d_amount * d_btr
+
+        if d_balance <= total_cost:
+            divisor = Decimal("1") + d_pfr / d_price + d_btr
+            return float(d_balance / divisor)
+        return amount
+
+    def submit_market_order(
+        self,
+        token_id: str,
+        amount: float,
+        side: str,
+        price: float,
+        *,
+        condition_id: str | None = None,
+        user_usdc_balance: float | None = None,
+        builder_code: str | None = None,
+        disable_fee_adjust: bool = False,
+        neg_risk: bool | None = None,
+        tick_size: str | None = None,
+    ) -> SendOrderResponse:
+        """Build, sign, and submit a market-style FOK order.
+
+        Convenience wrapper that auto-applies V2 fee-aware sizing on the
+        BUY side so the user's USDC balance covers the fill plus all
+        taker fees. SELL side passes through unchanged (only takers pay
+        fees in V2; SELL is the maker side here).
+
+        Args:
+            token_id: CLOB token ID.
+            amount: BUY → USDC to spend. SELL → shares to sell.
+            side: ``"BUY"`` or ``"SELL"``.
+            price: Limit price for the FOK (typically best ask for BUY,
+                best bid for SELL — fetch via :meth:`get_market_price`
+                or :meth:`get_orderbook`).
+            condition_id: Required for fee adjustment (BUY only). The V2
+                fee schedule lives at ``GET /clob-markets/{conditionId}``.
+            user_usdc_balance: User's pUSD balance in USDC units. Required
+                to enable fee adjustment. Without it, ``amount`` is used
+                as-is.
+            builder_code: Per-call builder code (bytes32 hex). Falls back
+                to ``self.builder_code`` if unset. Influences the builder
+                taker fee rate when fee-adjusting.
+            disable_fee_adjust: Pass ``True`` to skip the fee adjustment
+                even if ``user_usdc_balance`` is provided.
+            neg_risk: Forwarded to :meth:`build_order`. Auto-fetched
+                otherwise.
+            tick_size: Forwarded to :meth:`build_order`. Auto-fetched
+                otherwise.
+
+        Returns:
+            dict: CLOB API response from :meth:`place_order`.
+        """
+        self._require_l2_auth()
+        side_upper = side.upper()
+        if side_upper not in ("BUY", "SELL"):
+            raise ValueError(f"side must be 'BUY' or 'SELL', got {side!r}")
+
+        adjusted_amount = amount
+        if (
+            side_upper == "BUY"
+            and user_usdc_balance is not None
+            and not disable_fee_adjust
+            and condition_id is not None
+        ):
+            info = self.get_clob_market_info(condition_id)
+            fd = info.get("fd") or {}
+            fee_rate = float(fd.get("r") or 0.0)
+            fee_exp = float(fd.get("e") or 0.0)
+
+            builder_rate = 0.0
+            effective_code = builder_code if builder_code is not None else self.builder_code
+            normalized = self._normalize_builder_code(effective_code)
+            if normalized != ZERO_BYTES32:
+                try:
+                    builder_rate = float(self.get_builder_fee_rate(normalized))
+                except Exception:
+                    builder_rate = 0.0
+
+            adjusted_amount = self._adjust_market_buy_amount(
+                amount, user_usdc_balance, price, fee_rate, fee_exp, builder_rate
+            )
+
+        # Convert USDC → shares for BUY; SELL keeps `amount` as shares directly.
+        size = adjusted_amount / price if side_upper == "BUY" else adjusted_amount
+
+        order = self.build_order(
+            token_id,
+            price,
+            size,
+            side_upper,
+            neg_risk=neg_risk,
+            tick_size=tick_size,
+            builder_code=builder_code,
+        )
+        return self.place_order(order=order, owner=self._api_key, orderType="FOK")
+
     _BATCH_SIZE = 15  # CLOB API max orders per /orders call
 
     def submit_orders(

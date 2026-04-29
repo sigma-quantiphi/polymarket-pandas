@@ -9,6 +9,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.0] — 2026-04-29
+
+### Added
+- **`PolymarketPandas.submit_market_order(token_id, amount, side, price, ...)`** — convenience wrapper that builds + signs + submits an FOK order at the given price. For BUY orders, optionally adjusts the input USDC amount so the user's balance covers fill + taker fees. Pass `condition_id` and `user_usdc_balance` to enable fee-aware sizing; pass `disable_fee_adjust=True` to skip it. SELL passes through unchanged. Closes #15.
+- **`PolymarketPandas._adjust_market_buy_amount(amount, balance, price, fee_rate, fee_exponent, builder_taker_fee_rate=0.0)`** static helper — verbatim port of py-clob-client-v2's V2 fee formula (`utilities.py:51-74`). Uses `Decimal` to avoid float drift. Returns the input amount unchanged when balance is sufficient; otherwise scales to `balance / (1 + pfr/price + builder_rate)`.
+
+---
+
 ## [0.9.3] — 2026-04-29
 
 ### Fixed
