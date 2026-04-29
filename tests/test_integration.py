@@ -423,9 +423,7 @@ def test_get_uma_question_v2_live(uma_question_id: str) -> None:
     load and is not suitable for CI.
     """
     pytest.importorskip("web3")
-    rpc_client = PolymarketPandas(
-        use_tqdm=False, rpc_url="https://polygon.publicnode.com"
-    )
+    rpc_client = PolymarketPandas(use_tqdm=False, rpc_url="https://polygon.publicnode.com")
     try:
         q = rpc_client.get_uma_question(uma_question_id)
     except Exception as e:  # noqa: BLE001 — gracefully skip on RPC flake
