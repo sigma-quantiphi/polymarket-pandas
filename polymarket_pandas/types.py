@@ -256,31 +256,46 @@ class SignedOrder(TypedDict, total=False):
 class ClobMarketInfoFee(TypedDict, total=False):
     """Fee details inside ``ClobMarketInfo.fd`` (V2)."""
 
-    r: float  # rate
-    e: float  # exponent
+    r: float  # rate (e.g. 0.05 for 5%)
+    e: float  # exponent (typically 1)
+    to: bool  # taker-only flag
 
 
 class ClobMarketInfoToken(TypedDict):
     """Token entry inside ``ClobMarketInfo.t`` (V2)."""
 
-    t: str  # tokenID
-    o: str  # outcome
+    t: str  # tokenID (uint256 string)
+    o: str  # outcome label ("Yes" / "No" / etc.)
+
+
+class ClobMarketInfoRewards(TypedDict, total=False):
+    """Reward parameters inside ``ClobMarketInfo.r`` (V2)."""
+
+    moas: int  # max-orders-at-size threshold for reward eligibility
 
 
 class ClobMarketInfo(TypedDict, total=False):
     """V2 ``GET /clob-markets/{conditionId}`` response (abbreviated keys).
 
-    Confirmed keys (live response 2026-04-28): ``mts`` (min tick),
-    ``mos`` (min order size), ``fd`` (fee details), ``t`` (tokens),
-    plus several short-named auxiliary keys whose semantics are not yet
-    documented (``aot``, ``r``, ``ao``, ``cbos``, ``ibce``, ``c``).
-    All keys are optional in this TypedDict to allow forward compatibility.
+    Verified against the live API on 2026-04-29. All keys are optional
+    here to allow forward compatibility with new fields. Some short-named
+    keys (``cbos``, ``ibce``) have undocumented semantics — typed as
+    ``bool`` based on observed values; verify before relying on meaning.
     """
 
-    mts: float  # minimum tick size
-    mos: float  # minimum order size
-    fd: ClobMarketInfoFee
+    c: str  # condition ID
     t: list[ClobMarketInfoToken]
+    mts: float  # minimum tick size
+    mos: int  # minimum order size
+    mbf: int  # maker base fee (bps)
+    tbf: int  # taker base fee (bps)
+    ao: bool  # accept-orders flag
+    cbos: bool  # close-by-order-set; semantics undocumented
+    ibce: bool  # semantics undocumented; observed bool
+    aot: str  # active-opening time (ISO-8601)
+    nr: bool  # neg-risk flag (only present on neg-risk markets)
+    fd: ClobMarketInfoFee
+    r: ClobMarketInfoRewards
 
 
 # ── Order placement responses ─────────────────────────────────────────
@@ -416,6 +431,7 @@ __all__ = [
     "CancelOrdersResponse",
     "ClobMarketInfo",
     "ClobMarketInfoFee",
+    "ClobMarketInfoRewards",
     "ClobMarketInfoToken",
     "CurrentRewardsCursorPage",
     "CursorPage",

@@ -357,14 +357,22 @@ def test_get_fee_rate(client: PolymarketPandas, token: str) -> None:
 
 
 def test_get_clob_market_info(client: PolymarketPandas, condition_id: str) -> None:
-    """V2 single-call market info (`/clob-markets/{conditionId}`)."""
+    """V2 single-call market info (`/clob-markets/{conditionId}`).
+
+    Confirmed canonical keys (live probe 2026-04-29):
+      ``c, t, mts, mos, mbf, tbf, ao, cbos, ibce, aot, fd, r``.
+    ``nr`` is only present on neg-risk markets.
+    """
     info = client.get_clob_market_info(condition_id)
     assert isinstance(info, dict)
-    # Confirmed live keys post-cutover (2026-04-28). Other auxiliary keys
-    # exist (aot/r/ao/cbos/ibce/c) but their semantics aren't documented.
-    assert {"mts", "mos", "fd", "t"} <= set(info)
-    assert isinstance(info["mts"], (int, float))
+    assert {"c", "t", "mts", "mos", "fd"} <= set(info)
+    assert info["c"].lower() == condition_id.lower()
+    assert isinstance(info["mts"], (int, float)) and info["mts"] > 0
     assert isinstance(info["t"], list) and len(info["t"]) >= 2
+    # Each token entry has tokenID `t` and outcome label `o`.
+    assert {"t", "o"} <= set(info["t"][0])
+    # Fee details: rate `r` and exponent `e`.
+    assert {"r", "e"} <= set(info["fd"])
 
 
 def test_get_orderbook(client: PolymarketPandas, token: str) -> None:

@@ -9,6 +9,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.2] — 2026-04-29
+
+### Changed
+- **`ClobMarketInfo`** TypedDict updated to match the actual V2 `/clob-markets/{conditionId}` response (verified 2026-04-29). New canonical keys: `c` (condition ID), `mbf`/`tbf` (maker/taker base fees), `ao` (accept-orders flag), `cbos`, `ibce`, `aot` (active-opening time), `nr` (neg-risk; only on neg-risk markets), `r` (rewards block with `moas`). The `fd` block now declares `to` (taker-only flag) alongside `r`/`e`. Closes #16.
+- **`ClobMarketInfoRewards`** TypedDict added and exported (`r.moas`).
+
+### Fixed
+- **`test_get_clob_market_info`** — integration test now asserts the canonical V2 keys (previously asserted speculative `rfqe` which is absent in real responses).
+
+---
+
 ## [0.9.1] — 2026-04-29
 
 ### Fixed
