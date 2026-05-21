@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.2] — 2026-05-21
+
+### Changed
+- **Keyset pagination default `limit` lowered 300 → 100** for `get_markets_keyset`, `get_markets_keyset_all`, `get_events_keyset`, and `get_events_keyset_all`. Polymarket's 2026-05-14 changelog reduced the server-side cap on `/markets/keyset` to 100; the events endpoint uses the same convention. Docstrings updated.
+
+### Added
+- **`builderCode` column** declared on `BuilderLeaderboardSchema` and `BuilderVolumeSchema`. Polymarket added this field to `/v1/builders/leaderboard` and `/v1/builders/volume` on 2026-05-18 (legacy builders return an empty string). Already flowed through at runtime via `_Lenient` schemas; this change makes the field part of the typed surface.
+
+---
+
 ## [0.12.1] — 2026-04-30
 
 ### Added

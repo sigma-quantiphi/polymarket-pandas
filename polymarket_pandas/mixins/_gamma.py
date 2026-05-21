@@ -138,7 +138,7 @@ class GammaMixin:
 
     def get_markets_keyset(
         self,
-        limit: int | None = 300,
+        limit: int | None = 100,
         after_cursor: str | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -173,11 +173,12 @@ class GammaMixin:
         """Fetch markets using keyset (cursor) pagination.
 
         Recommended over :meth:`get_markets` for large scans — stable ordering
-        under concurrent writes, and up to 1000 rows per page. Unlike
-        :meth:`get_markets`, this endpoint does not accept ``offset``.
+        under concurrent writes, and up to 100 rows per page (server cap
+        tightened 2026-05-14). Unlike :meth:`get_markets`, this endpoint
+        does not accept ``offset``.
 
         Args:
-            limit: Rows per page (1-1000, default 300).
+            limit: Rows per page (1-100, default 100).
             after_cursor: Opaque cursor from a previous response's
                 ``next_cursor``. Omit for the first page.
             order: Sort fields (e.g. ``["volume_num", "liquidity_num"]``).
@@ -375,7 +376,7 @@ class GammaMixin:
 
     def get_events_keyset(
         self,
-        limit: int | None = 300,
+        limit: int | None = 100,
         after_cursor: str | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -422,11 +423,12 @@ class GammaMixin:
         """Fetch events using keyset (cursor) pagination.
 
         Recommended over :meth:`get_events` for large scans — stable ordering
-        under concurrent writes, and up to 500 rows per page. Unlike
-        :meth:`get_events`, this endpoint does not accept ``offset``.
+        under concurrent writes, and up to 100 rows per page (server cap
+        tightened 2026-05-14). Unlike :meth:`get_events`, this endpoint
+        does not accept ``offset``.
 
         Args:
-            limit: Rows per page (1-500, default 300).
+            limit: Rows per page (1-100, default 100).
             after_cursor: Opaque cursor from a previous response's
                 ``next_cursor``. Omit for the first page.
             order: Sort fields (e.g. ``["volume", "liquidity"]``).

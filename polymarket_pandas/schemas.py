@@ -413,6 +413,7 @@ class BuilderLeaderboardSchema(_Lenient):
 
     rank: str | None = pa.Field(nullable=True)
     builder: str | None = pa.Field(nullable=True)
+    builderCode: str | None = pa.Field(nullable=True)
     volume: float | None = pa.Field(nullable=True)
     activeUsers: pd.Int64Dtype = pa.Field(nullable=True)
     verified: bool | None = pa.Field(nullable=True)
@@ -425,6 +426,7 @@ class BuilderVolumeSchema(_Lenient):
     """
 
     builder: str | None = pa.Field(nullable=True)
+    builderCode: str | None = pa.Field(nullable=True)
     volume: float | None = pa.Field(nullable=True)
     verified: bool | None = pa.Field(nullable=True)
 

@@ -871,7 +871,7 @@ class PolymarketPandas(
         self,
         *,
         max_pages: int | None = None,
-        limit: int | None = 300,
+        limit: int | None = 100,
         after_cursor: str | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -923,7 +923,7 @@ class PolymarketPandas(
         ``after_cursor``.
 
         Prefer this over :meth:`get_events_all` for bulk scans — it uses the
-        keyset endpoint (stable ordering, up to 500 rows/page) instead of
+        keyset endpoint (stable ordering, up to 100 rows/page) instead of
         offset pagination.
 
         Returns:
@@ -1060,7 +1060,7 @@ class PolymarketPandas(
         self,
         *,
         max_pages: int | None = None,
-        limit: int | None = 300,
+        limit: int | None = 100,
         after_cursor: str | None = None,
         order: list[str] | None = None,
         ascending: bool | None = None,
@@ -1100,7 +1100,7 @@ class PolymarketPandas(
         ``after_cursor``.
 
         Prefer this over :meth:`get_markets_all` for bulk scans — it uses the
-        keyset endpoint (stable ordering, up to 1000 rows/page) instead of
+        keyset endpoint (stable ordering, up to 100 rows/page) instead of
         offset pagination.
 
         Returns:
