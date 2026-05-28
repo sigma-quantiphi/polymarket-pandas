@@ -9,6 +9,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.2] — 2026-05-28
+
+### Added
+- **`BridgeMixin.withdraw(address, to_chain_id, to_token_address, recipient_addr)`** — clearer canonical name for the Polymarket → multi-chain withdrawal flow (Ethereum / Arbitrum / Base / Solana / Bitcoin). POSTs to `/withdraw` and returns the EVM/SVM/BTC bridge addresses the caller transfers pUSD to. Docstring documents the end-to-end flow (`get_bridge_supported_assets` → `get_bridge_quote` → `withdraw` → transfer pUSD → `get_bridge_transaction_status`) and the V2 collateral migration (USDC.e → pUSD). Closes #24.
+
+### Changed
+- **`create_withdrawal_address(...)`** is now a backwards-compat alias for `withdraw(...)` — same signature, same underlying request. Existing code keeps working unchanged.
+
+---
+
 ## [0.13.1] — 2026-05-28
 
 ### Added

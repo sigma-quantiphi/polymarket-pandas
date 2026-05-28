@@ -41,18 +41,22 @@ result = client.create_deposit_address("0xYourPolymarketWallet")
 # result: {"address": {"evm": "0x...", "svm": "...", "btc": "bc1q..."}, "note": "..."}
 ```
 
-### `create_withdrawal_address(address, to_chain_id, to_token_address, recipient_addr) -> BridgeAddress`
+### `withdraw(address, to_chain_id, to_token_address, recipient_addr) -> BridgeAddress`
 
-Bridge funds out of Polymarket to another chain.
+Initiate a Polymarket → multi-chain withdrawal. Returns bridge addresses; transfer pUSD from your Polymarket wallet to the address matching your destination chain family (EVM / Solana / Bitcoin) and the bridge auto-swaps to the requested token.
+
+Full flow: `get_bridge_supported_assets` → `get_bridge_quote` → `withdraw` → transfer pUSD → `get_bridge_transaction_status`.
 
 ```python
-result = client.create_withdrawal_address(
+result = client.withdraw(
     address="0xYourPolymarketWallet",
     to_chain_id="1",                    # Ethereum mainnet
     to_token_address="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     recipient_addr="0xRecipientOnEthereum",
 )
 ```
+
+`create_withdrawal_address(...)` is a backwards-compat alias for the same method.
 
 ### `get_bridge_transaction_status(address) -> pd.DataFrame`
 

@@ -3684,3 +3684,61 @@ def test_builder_code_opt_out_via_env_var(monkeypatch):
         neg_risk=False,
     )
     assert order["builder"] == "0x" + "00" * 32
+
+
+# ── Bridge: withdraw ──────────────────────────────────────────────────
+
+
+_STUB_BRIDGE_RESPONSE = {
+    "address": {
+        "evm": "0xBridgeEvmAddress0000000000000000000000000",
+        "svm": "BridgeSolanaAddress11111111111111111111111111",
+        "btc": "bc1qbridgebitcoinaddressxxxxxxxxxxxxxxxxxxxxxxxx",
+    },
+    "note": "Send pUSD to the address matching your destination chain.",
+}
+
+
+def test_withdraw_posts_to_withdraw_endpoint(client: PolymarketPandas, httpx_mock: HTTPXMock):
+    """withdraw() POSTs the four required fields to /withdraw."""
+    httpx_mock.add_response(
+        url="https://bridge.polymarket.com/withdraw",
+        method="POST",
+        json=_STUB_BRIDGE_RESPONSE,
+    )
+    out = client.withdraw(
+        address="0x9156dd10bea4c8d7e2d591b633d1694b1d764756",
+        to_chain_id="1",
+        to_token_address="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        recipient_addr="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    )
+    req = next(r for r in httpx_mock.get_requests() if r.url.path == "/withdraw")
+    body = json.loads(req.content)
+    assert body == {
+        "address": "0x9156dd10bea4c8d7e2d591b633d1694b1d764756",
+        "toChainId": "1",
+        "toTokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "recipientAddr": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    }
+    assert out["address"]["evm"].startswith("0x")
+    assert "note" in out
+
+
+def test_create_withdrawal_address_is_alias_for_withdraw(
+    client: PolymarketPandas, httpx_mock: HTTPXMock
+):
+    """Backwards-compat: create_withdrawal_address still works (alias for withdraw)."""
+    httpx_mock.add_response(
+        url="https://bridge.polymarket.com/withdraw",
+        method="POST",
+        json=_STUB_BRIDGE_RESPONSE,
+    )
+    out = client.create_withdrawal_address(
+        address="0x9156dd10bea4c8d7e2d591b633d1694b1d764756",
+        to_chain_id="8453",
+        to_token_address="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        recipient_addr="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    )
+    assert out["address"]["evm"]
+    # Confirm both names point to the same underlying function
+    assert PolymarketPandas.create_withdrawal_address is PolymarketPandas.withdraw

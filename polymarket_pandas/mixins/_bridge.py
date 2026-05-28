@@ -28,25 +28,50 @@ class BridgeMixin:
         """
         return self._request_bridge("deposit", method="POST", data={"address": address})
 
-    def create_withdrawal_address(
+    def withdraw(
         self,
         address: str,
         to_chain_id: str,
         to_token_address: str,
         recipient_addr: str,
     ) -> BridgeAddress:
-        """
-        Create withdrawal addresses for bridging funds out of a Polymarket wallet.
+        """Initiate a Polymarket → multi-chain withdrawal.
+
+        POSTs to ``/withdraw`` to register the destination and obtain
+        bridge addresses (EVM / SVM / BTC). To actually move funds, the
+        user transfers **pUSD** from their Polymarket wallet on Polygon
+        to the returned bridge address; the bridge then auto-swaps to
+        the requested ``to_token_address`` on ``to_chain_id`` and
+        forwards to ``recipient_addr``.
+
+        Polymarket recommends the following end-to-end flow:
+
+        1. ``get_bridge_supported_assets`` — confirm the destination is supported.
+        2. ``get_bridge_quote`` — preview fees and output amount.
+        3. ``withdraw`` (this method) — register the destination, get bridge addresses.
+        4. Transfer pUSD to the returned ``evm``/``svm``/``btc`` address.
+        5. ``get_bridge_transaction_status`` — poll until ``status == "completed"``.
+
+        Per Polymarket docs: do not pre-generate withdrawal addresses;
+        only call this when you are ready to transfer.
 
         Args:
             address: Source Polymarket wallet on Polygon (``0x``-prefixed).
-            to_chain_id: Destination chain ID (e.g. ``"1"`` = Ethereum,
-                ``"8453"`` = Base, ``"1151111081099710"`` = Solana).
-            to_token_address: Destination token contract address.
-            recipient_addr: Destination wallet address on the target chain.
+            to_chain_id: Destination chain ID as a string. Common values:
+                ``"1"`` = Ethereum, ``"8453"`` = Base, ``"42161"`` = Arbitrum,
+                ``"1151111081099710"`` = Solana, ``"20000000000001"`` = Bitcoin.
+            to_token_address: Destination token contract address on
+                ``to_chain_id``.
+            recipient_addr: Destination wallet address (EVM hex, Solana
+                base58, or Bitcoin address as appropriate for the chain).
 
         Returns:
-            dict: ``{"address": {"evm": str, "svm": str, "btc": str}, "note": str}``.
+            ``BridgeAddress`` — ``{"address": {"evm": str, "svm": str,
+            "btc": str}, "note": str}``. Transfer pUSD to the address
+            matching your destination chain family.
+
+        See:
+            https://docs.polymarket.com/api-reference/bridge/create-withdrawal-addresses
         """
         return self._request_bridge(
             "withdraw",
@@ -58,6 +83,9 @@ class BridgeMixin:
                 "recipientAddr": recipient_addr,
             },
         )
+
+    # Backwards-compat alias (pre-v0.13.2 name). Prefer ``withdraw``.
+    create_withdrawal_address = withdraw
 
     def get_bridge_quote(
         self,

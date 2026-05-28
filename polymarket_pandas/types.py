@@ -177,7 +177,7 @@ class BalanceAllowance(TypedDict):
 
 
 # ── Bridge addresses ─────────────────────────────────────────────────
-# Used by: create_deposit_address, create_withdrawal_address
+# Used by: create_deposit_address, withdraw (alias: create_withdrawal_address)
 
 
 class BridgeAddressInfo(TypedDict):
