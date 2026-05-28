@@ -40,7 +40,13 @@ class PlaceOrderSchema(pa.DataFrameModel):
         description="Taker amount in fixed-math (6 decimals)",
     )
     side: str = pa.Field(isin=["BUY", "SELL"], description="Order side")
-    signatureType: int = pa.Field(isin=[0, 1, 2], description="Signature type enum")
+    signatureType: int = pa.Field(
+        isin=[0, 1, 2, 3],
+        description=(
+            "Signature type enum (0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE, "
+            "3=POLY_1271 / deposit wallet)"
+        ),
+    )
     timestamp: str = pa.Field(
         str_matches=r"^\d+$",
         description="Order creation time in milliseconds (replaces V1 nonce)",

@@ -3477,3 +3477,129 @@ def test_uma_propose_price_estimate(ctf_client: PolymarketPandas, monkeypatch):
     out = ctf_client.propose_price(STUB_QUESTION_ID, 10**18, estimate=True)
     ctf_client._w3.eth.send_raw_transaction.assert_not_called()
     assert out["gas"] == 200_000
+
+
+# ── Signature type 3 (POLY_1271 / deposit wallet) ─────────────────────
+
+
+def test_place_order_schema_accepts_signature_type_3():
+    """PlaceOrderSchema accepts signatureType=3 (POLY_1271 / deposit wallet)."""
+    df = pd.DataFrame([_v2_signed_order_row(signatureType=3)])
+    validated = PlaceOrderSchema.validate(df)
+    assert validated.iloc[0]["signatureType"] == 3
+
+
+def test_place_order_schema_rejects_signature_type_4():
+    """PlaceOrderSchema still rejects signatureType outside [0,1,2,3]."""
+    import pandera
+
+    df = pd.DataFrame([_v2_signed_order_row(signatureType=4)])
+    with pytest.raises(pandera.errors.SchemaError):
+        PlaceOrderSchema.validate(df)
+
+
+def test_build_order_poly_1271_requires_address(authed_client: PolymarketPandas):
+    """signature_type=3 with no `address` set raises PolymarketAuthError."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = None
+    authed_client.signature_type = 3
+    with pytest.raises(PolymarketAuthError, match="POLY_1271"):
+        authed_client.build_order(
+            token_id="12345678901234567890",
+            price=0.50,
+            size=10.0,
+            side="BUY",
+            tick_size="0.01",
+            neg_risk=False,
+        )
+
+
+def test_build_order_poly_1271_rejects_address_equal_to_eoa(authed_client: PolymarketPandas):
+    """signature_type=3 with address == derived EOA raises PolymarketAuthError."""
+    from eth_account import Account
+
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = Account.from_key(authed_client.private_key).address
+    authed_client.signature_type = 3
+    with pytest.raises(PolymarketAuthError, match="must differ"):
+        authed_client.build_order(
+            token_id="12345678901234567890",
+            price=0.50,
+            size=10.0,
+            side="BUY",
+            tick_size="0.01",
+            neg_risk=False,
+        )
+
+
+def test_build_order_poly_1271_happy_path(authed_client: PolymarketPandas):
+    """signature_type=3 with a distinct maker signs successfully."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "11" * 20  # distinct deposit-wallet address
+    authed_client.signature_type = 3
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    assert order["signatureType"] == 3
+    assert order["maker"].lower() != order["signer"].lower()
+    assert order["signature"].startswith("0x")
+
+
+def test_build_order_v1_poly_1271_requires_distinct_address(authed_client: PolymarketPandas):
+    """V1 RFQ signing path enforces the same maker != signer guard."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = None
+    authed_client.signature_type = 3
+    with pytest.raises(PolymarketAuthError, match="POLY_1271"):
+        authed_client._build_order_v1(
+            token_id="12345678901234567890",
+            price=0.50,
+            size=10.0,
+            side="BUY",
+            tick_size="0.01",
+            neg_risk=False,
+            expiration=0,
+            nonce=0,
+            fee_rate_bps=0,
+        )
+
+
+# ── env=prod/dev switch ───────────────────────────────────────────────
+
+
+def test_env_default_is_prod():
+    """env defaults to 'prod' and clob_url is the production URL."""
+    c = PolymarketPandas(use_tqdm=False)
+    assert c.env == "prod"
+    assert c.clob_url == "https://clob.polymarket.com/"
+
+
+def test_env_dev_swaps_clob_url():
+    """env='dev' swaps clob_url to the staging URL."""
+    c = PolymarketPandas(use_tqdm=False, env="dev")
+    assert c.clob_url == "https://clob-staging.polymarket.com/"
+
+
+def test_env_dev_respects_explicit_clob_url_override():
+    """An explicit clob_url= wins over the env=dev URL swap."""
+    c = PolymarketPandas(use_tqdm=False, env="dev", clob_url="https://custom-clob.example/")
+    assert c.clob_url == "https://custom-clob.example/"
+
+
+def test_env_var_resolves_to_dev(monkeypatch):
+    """POLYMARKET_ENV=dev resolves env on construction."""
+    monkeypatch.setenv("POLYMARKET_ENV", "dev")
+    c = PolymarketPandas(use_tqdm=False)
+    assert c.env == "dev"
+    assert c.clob_url == "https://clob-staging.polymarket.com/"
+
+
+def test_env_invalid_value_raises():
+    """env values outside {'prod','dev'} raise ValueError."""
+    with pytest.raises(ValueError, match="env must be"):
+        PolymarketPandas(use_tqdm=False, env="staging")  # type: ignore[arg-type]

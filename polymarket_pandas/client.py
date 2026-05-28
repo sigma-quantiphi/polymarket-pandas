@@ -11,7 +11,7 @@ import os
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Self
+from typing import Literal, Self
 
 import httpx
 import pandas as pd
@@ -187,6 +187,7 @@ class PolymarketPandas(
     pool is closed.
     """
 
+    env: Literal["prod", "dev"] | None = field(default=None, repr=False)
     data_url: str = "https://data-api.polymarket.com/"
     gamma_url: str = "https://gamma-api.polymarket.com/"
     clob_url: str = "https://clob.polymarket.com/"
@@ -227,6 +228,7 @@ class PolymarketPandas(
     # Mapping: (field_name, env_var, fallback)
     _ENV_DEFAULTS: dict = field(
         default_factory=lambda: {
+            "env": ("POLYMARKET_ENV", "prod"),
             "rpc_url": ("POLYMARKET_RPC_URL", "https://polygon-rpc.com"),
             "proxy_url": ("HTTP_PROXY", None),
             "address": ("POLYMARKET_ADDRESS", None),
@@ -250,6 +252,14 @@ class PolymarketPandas(
         for attr, (env_var, fallback) in self._ENV_DEFAULTS.items():
             if getattr(self, attr) is None:
                 setattr(self, attr, os.getenv(env_var, fallback))
+
+        # env=dev points clob_url at staging unless the caller passed an
+        # explicit override. Only the CLOB REST URL has a known staging
+        # variant; gamma/data/bridge/ws are prod-only.
+        if self.env not in ("prod", "dev"):
+            raise ValueError(f"env must be 'prod' or 'dev', got {self.env!r}")
+        if self.env == "dev" and self.clob_url == "https://clob.polymarket.com/":
+            self.clob_url = "https://clob-staging.polymarket.com/"
 
         # Normalize timeout to httpx.Timeout so connect/read/write/pool are
         # independently bounded. A scalar applies to all four phases.
@@ -1740,6 +1750,15 @@ class PolymarketPandas(
         exchange = NEG_RISK_CTF_EXCHANGE if neg_risk else CTF_EXCHANGE
         salt = round(time.time() * random.random())
         sig_type = self.signature_type if self.signature_type is not None else 0
+        if sig_type != 0 and (self.address is None or self.address.lower() == eoa.lower()):
+            raise PolymarketAuthError(
+                detail=(
+                    f"signature_type={sig_type} (proxy/safe/deposit-wallet) requires "
+                    "`address` to be set to the funder wallet, and it must differ "
+                    "from the EOA derived from `private_key`. For POLY_1271 (3), "
+                    "set `address` to your deposit-wallet contract address."
+                )
+            )
         ts_ms = timestamp_ms if timestamp_ms is not None else int(time.time() * 1000)
         meta_b32 = self._normalize_builder_code(metadata) if metadata else ZERO_BYTES32
         builder_b32 = self._normalize_builder_code(
@@ -1874,6 +1893,15 @@ class PolymarketPandas(
         exchange = V1_NEG_RISK_CTF_EXCHANGE if neg_risk else V1_CTF_EXCHANGE
         salt = round(time.time() * random.random())
         sig_type = self.signature_type if self.signature_type is not None else 0
+        if sig_type != 0 and (self.address is None or self.address.lower() == eoa.lower()):
+            raise PolymarketAuthError(
+                detail=(
+                    f"signature_type={sig_type} (proxy/safe/deposit-wallet) requires "
+                    "`address` to be set to the funder wallet, and it must differ "
+                    "from the EOA derived from `private_key`. For POLY_1271 (3), "
+                    "set `address` to your deposit-wallet contract address."
+                )
+            )
 
         domain = {
             "name": "Polymarket CTF Exchange",

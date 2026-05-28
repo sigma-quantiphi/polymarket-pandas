@@ -9,6 +9,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.0] — 2026-05-28
+
+### Added
+- **Signature type 3 (POLY_1271 / deposit wallet)** is now a first-class option for `PolymarketPandas(signature_type=3, ...)`. The signing path was already type-agnostic (EOA signs the EIP-712 struct; on-chain ERC-1271 `isValidSignature` validates against the maker contract), but `PlaceOrderSchema` previously hard-rejected `signatureType ∉ {0, 1, 2}` at `place_orders()` input validation. Schema now accepts `[0, 1, 2, 3]`.
+- **`env: Literal["prod", "dev"]` field** on `PolymarketPandas` (also resolved from `POLYMARKET_ENV`). `env="dev"` automatically points `clob_url` at the staging CLOB (`https://clob-staging.polymarket.com/`) unless the user passes an explicit `clob_url=` (which wins). Other base URLs (gamma, data, bridge, ws, etc.) are prod-only and unchanged. Invalid env values raise `ValueError`.
+
+### Changed
+- **`build_order` / `_build_order_v1` fail-fast guard**: for any non-EOA `signature_type` (1=POLY_PROXY, 2=POLY_GNOSIS_SAFE, 3=POLY_1271), `address` must be set to a funder/maker wallet distinct from the EOA derived from `private_key`. Misconfiguration now raises `PolymarketAuthError` before signing instead of producing an order that would revert on-chain with an opaque ERC-1271 / proxy error.
+
+---
+
 ## [0.12.2] — 2026-05-21
 
 ### Changed

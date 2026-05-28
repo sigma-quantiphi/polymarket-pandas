@@ -38,12 +38,13 @@ class ClobPrivateMixin:
         Returns:
             dict with ``balance`` and ``allowances``.
 
-        For proxy wallets (``signature_type=1`` or ``2``), the server looks
-        up the proxy's USDC balance rather than the EOA's when
+        For non-EOA wallets (``signature_type=1`` / ``2`` for legacy proxies,
+        or ``3`` for POLY_1271 / deposit wallet), the server looks up the
+        funder wallet's USDC balance rather than the EOA's when
         ``signatureType`` is in the query. This method auto-attaches that
         param when a non-default ``signature_type`` is configured on the
-        client, so proxy users see their real trading balance without
-        having to touch internals.
+        client, so smart-wallet users see their real trading balance
+        without having to touch internals.
         """
         if isinstance(asset_type, int):
             asset_type = _ASSET_TYPE_ENUMS[asset_type]

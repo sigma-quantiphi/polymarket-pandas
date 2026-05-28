@@ -90,7 +90,7 @@ all_earnings = client.get_rewards_earnings_all(date="2026-03-30")
 | Parameter | Type | Description |
 |---|---|---|
 | `date` | str | Target date in `YYYY-MM-DD` format |
-| `signature_type` | int | Address derivation type (0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE) |
+| `signature_type` | int | Address derivation type (0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE, 3=POLY_1271 / deposit wallet) |
 | `maker_address` | str | Ethereum address to query |
 | `sponsored` | bool | If True, filter to sponsored earnings only |
 | `next_cursor` | str | Opaque cursor from a previous response |

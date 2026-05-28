@@ -108,6 +108,8 @@ A `@dataclass` that inherits from all 9 mixins. `client.py` contains infrastruct
 | `xtracker_url` | `https://xtracker.polymarket.com/api/` | none |
 | `rpc_url` | `https://polygon-rpc.com` (configurable) | none (used by CTFMixin) |
 
+**Environment switch.** `PolymarketPandas(env="dev")` (or `POLYMARKET_ENV=dev`) swaps `clob_url` to `https://clob-staging.polymarket.com/` unless the user passes an explicit `clob_url=`. Default is `"prod"`. Only `clob_url` has a known staging variant; other URLs are unchanged.
+
 **Request helpers** (all call `_handle_response` which maps HTTP errors to custom exceptions):
 - `_request_data`, `_request_gamma`, `_request_clob` — unauthenticated
 - `_request_clob_private` — L2 HMAC auth, calls `_require_l2_auth()` guard first
@@ -155,7 +157,7 @@ All four are exported from the top-level package. `_handle_response` maps HTTP e
   - BUY: makerAmount = pUSD spent = `size * price * 1e6`, takerAmount = shares received = `size * 1e6`
   - SELL: makerAmount = shares sold = `size * 1e6`, takerAmount = pUSD received = `size * price * 1e6`
 - **Tick-size rounding**: price/size decimals derived from tick_size (0.1→1dp, 0.01→2dp, 0.001→3dp, 0.0001→4dp)
-- **Signature types**: 0=EOA, 1=POLY_PROXY (default), 2=POLY_GNOSIS_SAFE
+- **Signature types**: 0=EOA, 1=POLY_PROXY (default), 2=POLY_GNOSIS_SAFE, 3=POLY_1271 (deposit wallet — `maker` must be the deposit-wallet contract, `signer` is an authorized EOA; ERC-1271 `isValidSignature` validates on-chain). For types 1/2/3, `build_order` enforces `address != EOA` and raises `PolymarketAuthError` if misconfigured.
 - **Builder code helper**: `_normalize_builder_code(s)` left-pads short hex to 32 bytes; `None`/empty → zero bytes32.
 
 ### CTFMixin — On-chain operations (`_ctf.py`)

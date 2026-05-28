@@ -196,7 +196,7 @@ class RewardsMixin:
         Args:
             date: Target date in ``YYYY-MM-DD`` format.
             signature_type: Address derivation type (0=EOA, 1=POLY_PROXY,
-                2=POLY_GNOSIS_SAFE).
+                2=POLY_GNOSIS_SAFE, 3=POLY_1271 / deposit wallet).
             maker_address: Ethereum address to query.
             sponsored: If True, filter to sponsored earnings only.
             next_cursor: Opaque cursor from a previous response.
@@ -233,7 +233,7 @@ class RewardsMixin:
         Args:
             date: Target date in ``YYYY-MM-DD`` format.
             signature_type: Address derivation type (0=EOA, 1=POLY_PROXY,
-                2=POLY_GNOSIS_SAFE).
+                2=POLY_GNOSIS_SAFE, 3=POLY_1271 / deposit wallet).
             maker_address: Ethereum address to query.
             sponsored: If True, aggregates both native and sponsored earnings.
 
@@ -265,7 +265,7 @@ class RewardsMixin:
 
         Args:
             signature_type: Address derivation type (0=EOA, 1=POLY_PROXY,
-                2=POLY_GNOSIS_SAFE).
+                2=POLY_GNOSIS_SAFE, 3=POLY_1271 / deposit wallet).
             maker_address: Ethereum address to query.
 
         Returns:
@@ -310,7 +310,7 @@ class RewardsMixin:
         Args:
             date: Target date in ``YYYY-MM-DD`` format (defaults to today).
             signature_type: Address derivation type (0=EOA, 1=POLY_PROXY,
-                2=POLY_GNOSIS_SAFE).
+                2=POLY_GNOSIS_SAFE, 3=POLY_1271 / deposit wallet).
             maker_address: Ethereum address to query.
             sponsored: If True, return sponsored reward earnings.
             q: Text search on market question/description.
