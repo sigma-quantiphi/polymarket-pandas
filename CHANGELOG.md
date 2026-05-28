@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.1] — 2026-05-28
+
+### Added
+- **`DEFAULT_BUILDER_CODE`** constant in `polymarket_pandas.client`. Orders signed through the SDK now default to the polymarket-pandas builder code via Polymarket's [builder program](https://docs.polymarket.com/developers/CLOB/builders) so attribution funds package development. Resolution order (highest to lowest): per-call `builder_code=` kwarg → constructor field → `POLYMARKET_BUILDER_CODE` env var → `DEFAULT_BUILDER_CODE`. Opt out by passing `builder_code=""` anywhere in the chain — empty string normalizes to `0x000...000` and produces an unattributed order. See README "Builder attribution" for the full rundown.
+
+---
+
 ## [0.13.0] — 2026-05-28
 
 ### Added

@@ -130,6 +130,35 @@ See the [Configuration guide](https://sigma-quantiphi.github.io/polymarket-panda
 
 ---
 
+## Builder attribution
+
+Orders signed through this SDK default to the polymarket-pandas builder code (`DEFAULT_BUILDER_CODE` in `polymarket_pandas/client.py`) via Polymarket's [builder program](https://docs.polymarket.com/developers/CLOB/builders). Attribution funds development and hosting for the package.
+
+**Resolution order** (highest priority first):
+1. Per-call kwarg — `build_order(..., builder_code="0x...")`
+2. Constructor field — `PolymarketPandas(builder_code="0x...")`
+3. Env var — `POLYMARKET_BUILDER_CODE=0x...`
+4. SDK default — `DEFAULT_BUILDER_CODE` (polymarket-pandas)
+
+**Opting out.** Pass an empty string anywhere in the chain:
+
+```python
+# Constructor opt-out
+client = PolymarketPandas(builder_code="")
+
+# Per-call opt-out
+order = client.build_order(..., builder_code="")
+
+# Env var opt-out
+# POLYMARKET_BUILDER_CODE=""
+```
+
+Empty string normalizes to `0x000...000` (zero bytes32) and your order will carry no attribution. Your own builder code works the same way as a string — `builder_code="0x<your-bytes32>"` overrides the SDK default.
+
+The `builder` field is part of the signed EIP-712 struct, so the value visible in your returned `SignedOrder` dict is exactly what gets validated on-chain.
+
+---
+
 ## Examples
 
 | Script | Description |

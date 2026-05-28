@@ -123,6 +123,12 @@ V1_NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 ZERO_BYTES32 = "0x" + "00" * 32
 
+# polymarket-pandas builder code. Orders signed through this SDK default to
+# this attribution unless the caller overrides via `builder_code=`, the
+# constructor field, or `POLYMARKET_BUILDER_CODE`. See README "Builder
+# attribution" for opt-out instructions.
+DEFAULT_BUILDER_CODE = "0x08c82a9d98c4f176d3d9e107db5b6a182192d6083a11aba81c66517768616bed"
+
 # Tick-size → (price_decimals, size_decimals, amount_decimals)
 _TICK_SIZES = {
     "0.1": (1, 2, 3),
@@ -240,7 +246,7 @@ class PolymarketPandas(
             "_builder_api_key": ("POLYMARKET_BUILDER_API_KEY", None),
             "_builder_api_secret": ("POLYMARKET_BUILDER_API_SECRET", None),
             "_builder_api_passphrase": ("POLYMARKET_BUILDER_API_PASSPHRASE", None),
-            "builder_code": ("POLYMARKET_BUILDER_CODE", None),
+            "builder_code": ("POLYMARKET_BUILDER_CODE", DEFAULT_BUILDER_CODE),
             "_relayer_api_key": ("POLYMARKET_RELAYER_API_KEY", None),
             "_relayer_api_key_address": ("POLYMARKET_RELAYER_API_KEY_ADDRESS", None),
         },

@@ -1372,7 +1372,11 @@ def test_build_order_v2_wire_shape(authed_client: PolymarketPandas):
         assert new_field in order, f"V2 wire body missing {new_field!r}"
     # bytes32 fields are 0x-prefixed 32-byte hex
     assert order["metadata"] == "0x" + "00" * 32
-    assert order["builder"] == "0x" + "00" * 32
+    # Default attribution: orders signed by polymarket-pandas carry the
+    # SDK's builder code unless the caller explicitly opts out.
+    from polymarket_pandas.client import DEFAULT_BUILDER_CODE
+
+    assert order["builder"] == DEFAULT_BUILDER_CODE
     # timestamp is a numeric millisecond string
     assert order["timestamp"].isdigit() and int(order["timestamp"]) > 1_700_000_000_000
 
@@ -1530,6 +1534,7 @@ def test_submit_market_order_uses_fok_and_adjusts(
     """submit_market_order builds an FOK and fee-adjusts BUY when balance set."""
     authed_client.private_key = "0x" + "ab" * 32
     authed_client.address = "0x" + "00" * 20
+    authed_client.builder_code = ""  # isolate test to platform fees only
     cid = "0x" + "12" * 32
 
     httpx_mock.add_response(
@@ -3603,3 +3608,79 @@ def test_env_invalid_value_raises():
     """env values outside {'prod','dev'} raise ValueError."""
     with pytest.raises(ValueError, match="env must be"):
         PolymarketPandas(use_tqdm=False, env="staging")  # type: ignore[arg-type]
+
+
+# ── Default builder code (polymarket-pandas attribution) ──────────────
+
+
+def test_default_builder_code_applied(authed_client: PolymarketPandas):
+    """Orders signed without explicit builder_code carry DEFAULT_BUILDER_CODE."""
+    from polymarket_pandas.client import DEFAULT_BUILDER_CODE
+
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    assert order["builder"] == DEFAULT_BUILDER_CODE
+
+
+def test_builder_code_per_call_overrides_default(authed_client: PolymarketPandas):
+    """Per-call builder_code= wins over the SDK default."""
+    authed_client.private_key = "0x" + "ab" * 32
+    authed_client.address = "0x" + "00" * 20
+    custom = "0x" + "ff" * 32
+    order = authed_client.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+        builder_code=custom,
+    )
+    assert order["builder"] == custom
+
+
+def test_builder_code_opt_out_via_empty_string():
+    """Constructor `builder_code=''` opts out of all attribution (zero bytes32)."""
+    c = PolymarketPandas(
+        use_tqdm=False,
+        address="0x" + "00" * 20,
+        private_key="0x" + "ab" * 32,
+        builder_code="",
+    )
+    order = c.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    assert order["builder"] == "0x" + "00" * 32
+
+
+def test_builder_code_opt_out_via_env_var(monkeypatch):
+    """`POLYMARKET_BUILDER_CODE=''` opts out via env var."""
+    monkeypatch.setenv("POLYMARKET_BUILDER_CODE", "")
+    c = PolymarketPandas(
+        use_tqdm=False,
+        address="0x" + "00" * 20,
+        private_key="0x" + "ab" * 32,
+    )
+    assert c.builder_code == ""
+    order = c.build_order(
+        token_id="12345678901234567890",
+        price=0.50,
+        size=10.0,
+        side="BUY",
+        tick_size="0.01",
+        neg_risk=False,
+    )
+    assert order["builder"] == "0x" + "00" * 32
