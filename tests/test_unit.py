@@ -3742,3 +3742,123 @@ def test_create_withdrawal_address_is_alias_for_withdraw(
     assert out["address"]["evm"]
     # Confirm both names point to the same underlying function
     assert PolymarketPandas.create_withdrawal_address is PolymarketPandas.withdraw
+
+
+# ── Offset auto-pagination: graceful stop at the Data API offset cap ──────────
+
+
+def _make_offset_fetcher(pages: dict[int, object], limit: int = 100):
+    """
+    Build a fetcher(limit=..., offset=...) for use with ``_autopage``.
+
+    ``pages`` maps an offset to either a DataFrame to return or an exception to
+    raise at that offset. A DataFrame's ``attrs["_raw_count"]`` (or its length)
+    drives how far ``_autopage`` advances the offset.
+    """
+
+    def fetcher(*, limit: int = limit, offset: int = 0):
+        result = pages[offset]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    return fetcher
+
+
+def _offset_cap_error(url: str) -> PolymarketAPIError:
+    """The exact 400 the Data API returns past offset 3000."""
+    return PolymarketAPIError(
+        status_code=400,
+        url=url,
+        detail={"error": "max historical activity offset of 3000 exceeded"},
+    )
+
+
+def test_autopage_stops_at_offset_cap_and_returns_collected_rows(
+    client: PolymarketPandas,
+):
+    """A full first page then an offset-cap 400 → return page 1, do not raise."""
+    page0 = pd.DataFrame({"id": range(100)})
+    page0.attrs["_raw_count"] = 100
+    url = "https://data-api.polymarket.com/trades?offset=100"
+    fetcher = _make_offset_fetcher({0: page0, 100: _offset_cap_error(url)})
+
+    with pytest.warns(UserWarning, match="offset cap"):
+        df = client._autopage(fetcher, limit=100)
+
+    assert len(df) == 100
+    assert list(df["id"]) == list(range(100))
+
+
+def test_autopage_offset_cap_warning_mentions_url(client: PolymarketPandas):
+    """The truncation warning includes the offending URL so callers can trace it."""
+    page0 = pd.DataFrame({"id": range(100)})
+    page0.attrs["_raw_count"] = 100
+    url = "https://data-api.polymarket.com/activity?user=0xabc&offset=100"
+    fetcher = _make_offset_fetcher({0: page0, 100: _offset_cap_error(url)})
+
+    with pytest.warns(UserWarning, match=url.replace("?", r"\?")):
+        client._autopage(fetcher, limit=100)
+
+
+def test_autopage_propagates_non_cap_api_error(client: PolymarketPandas):
+    """A 500 mid-pagination must propagate, not be swallowed as a cap stop."""
+    page0 = pd.DataFrame({"id": range(100)})
+    page0.attrs["_raw_count"] = 100
+    err = PolymarketAPIError(
+        status_code=500,
+        url="https://data-api.polymarket.com/trades?offset=100",
+        detail="internal server error",
+    )
+    fetcher = _make_offset_fetcher({0: page0, 100: err})
+
+    with pytest.raises(PolymarketAPIError) as exc_info:
+        client._autopage(fetcher, limit=100)
+    assert exc_info.value.status_code == 500
+
+
+def test_autopage_propagates_unrelated_400(client: PolymarketPandas):
+    """A 400 whose message is not the offset-cap error must still propagate."""
+    page0 = pd.DataFrame({"id": range(100)})
+    page0.attrs["_raw_count"] = 100
+    err = PolymarketAPIError(
+        status_code=400,
+        url="https://data-api.polymarket.com/trades?offset=100",
+        detail={"error": "invalid market id"},
+    )
+    fetcher = _make_offset_fetcher({0: page0, 100: err})
+
+    with pytest.raises(PolymarketAPIError) as exc_info:
+        client._autopage(fetcher, limit=100)
+    assert exc_info.value.status_code == 400
+
+
+def test_is_offset_cap_error_detection():
+    """_is_offset_cap_error matches by behavior, not by the literal number 3000."""
+    # Canonical server message (dict detail).
+    assert PolymarketPandas._is_offset_cap_error(
+        PolymarketAPIError(400, "u", {"error": "max historical activity offset of 3000 exceeded"})
+    )
+    # String detail, different cap number → still matches (no hardcoded 3000).
+    assert PolymarketPandas._is_offset_cap_error(
+        PolymarketAPIError(400, "u", "max historical activity offset of 5000 EXCEEDED")
+    )
+    # Right words but wrong status code → no match.
+    assert not PolymarketPandas._is_offset_cap_error(
+        PolymarketAPIError(500, "u", "offset exceeded")
+    )
+    # 400 but unrelated message → no match.
+    assert not PolymarketPandas._is_offset_cap_error(
+        PolymarketAPIError(400, "u", {"error": "invalid token id"})
+    )
+
+
+def test_autopage_cap_on_first_page_returns_empty_frame(client: PolymarketPandas):
+    """Cap hit before any page is collected → empty DataFrame, single warning."""
+    url = "https://data-api.polymarket.com/trades?offset=3100"
+    fetcher = _make_offset_fetcher({3100: _offset_cap_error(url)})
+
+    with pytest.warns(UserWarning, match="offset cap"):
+        df = client._autopage(fetcher, limit=100, offset=3100)
+
+    assert df.empty

@@ -10,6 +10,7 @@ import math
 import os
 import random
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Literal, Self
 
@@ -367,6 +368,23 @@ class PolymarketPandas(
             # _handle_response can map it to the right Polymarket*Error.
             return exc.response
 
+    @staticmethod
+    def _is_offset_cap_error(exc: PolymarketAPIError) -> bool:
+        """
+        Detect the Data API's "max historical activity offset exceeded" 400.
+
+        The cap is a server policy (currently offset 3000) that can change, so we
+        match on *behavior* — a 400 whose detail mentions both "offset" and
+        "exceeded" — rather than hardcoding the numeric limit.
+        """
+        if exc.status_code != 400:
+            return False
+        detail = exc.detail
+        text = (
+            " ".join(str(v) for v in detail.values()) if isinstance(detail, dict) else str(detail)
+        ).lower()
+        return "offset" in text and "exceeded" in text
+
     def _autopage(
         self,
         fetcher,
@@ -379,12 +397,16 @@ class PolymarketPandas(
     ) -> pd.DataFrame:
         """
         Auto-paginate any fetcher(limit=..., offset=...) method.
+
+        Stops early — returning the rows already collected — when the API rejects
+        a page with its offset-cap error (see ``_is_offset_cap_error``), emitting a
+        single truncation warning. Every other ``PolymarketAPIError`` propagates.
         """
         sig = inspect.signature(fetcher)
         default_limit = sig.parameters[page_param_limit].default
         limit = kwargs.get(page_param_limit, default_limit)
         offset = kwargs.get(page_param_offset, 0)
-        data = []
+        data: list[pd.DataFrame] = []
         n_pages = 0
         len_pages = limit
         progress_bar = (
@@ -397,7 +419,18 @@ class PolymarketPandas(
             call_kwargs = dict(kwargs)
             call_kwargs[page_param_limit] = limit
             call_kwargs[page_param_offset] = offset
-            page = fetcher(**call_kwargs)
+            try:
+                page = fetcher(**call_kwargs)
+            except PolymarketAPIError as exc:
+                if not self._is_offset_cap_error(exc):
+                    raise
+                warnings.warn(
+                    f"Auto-pagination stopped at the API's offset cap "
+                    f"(offset={offset}); results are truncated to "
+                    f"{sum(len(p) for p in data)} rows. URL: {exc.url}",
+                    stacklevel=2,
+                )
+                break
             data.append(page)
             page_len = getattr(page, "attrs", {}).get("_raw_count", len(page))
             offset += page_len
@@ -406,6 +439,8 @@ class PolymarketPandas(
                 progress_bar.update(1)
         if progress_bar:
             progress_bar.close()
+        if not data:
+            return pd.DataFrame()
         return pd.concat(data, ignore_index=True)
 
     def _build_l1_headers(

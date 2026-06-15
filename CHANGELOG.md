@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.3] — 2026-06-15
+
+### Fixed
+- **Offset auto-pagers now stop gracefully at the Data API's historical-activity offset cap.** The Data API rejects offset-based paging past offset 3000 with `HTTP 400: max historical activity offset of 3000 exceeded`. Previously this 400 was uncaught and aborted the whole `*_all` call, discarding up to ~3000 valid rows already in hand. `_autopage` (the shared offset pager behind `get_trades_all`, `get_user_activity_all`, `get_positions_all`, `get_closed_positions_all`, `get_market_positions_all`, and every other offset `*_all` method — sync **and** async) now breaks the loop on the cap error and returns the rows collected so far, emitting a single `warnings.warn(...)` that names the offset, truncated row count, and offending URL so partial results are never silently mistaken for complete ones. The cap is detected by behavior (`status_code == 400` plus a detail mentioning both "offset" and "exceeded", case-insensitive) — **not** by hardcoding `3000` — so it keeps working if Polymarket changes the limit. Every other `PolymarketAPIError` propagates unchanged. `max_pages` / `limit` behavior is unaffected.
+
+---
+
 ## [0.13.2] — 2026-05-28
 
 ### Added
